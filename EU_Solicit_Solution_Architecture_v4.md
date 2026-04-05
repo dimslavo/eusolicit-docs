@@ -1,6 +1,7 @@
-# EU Solicit — Solution Architecture v3 (Service-Oriented)
+# EU Solicit — Solution Architecture v4 (Service-Oriented)
 
-**Platform**: EU Solicit | **Domain**: EUSolicit.com | **Version**: 3.1 | **Date**: 2026-04-04 | **Status**: Draft
+**Platform**: EU Solicit | **Domain**: EUSolicit.com | **Version**: 4.0 | **Date**: 2026-04-05 | **Status**: Draft
+**Changelog**: v4.0 closes all gaps identified in the Architecture vs Requirements Gap Analysis (2026-04-05). See Sections 1.11–1.15 for new ADRs.
 
 ---
 
@@ -65,6 +66,40 @@ Splitting every domain module into its own service would create 10+ services for
 **Decision**: Documents (uploaded tender files, generated proposals, exports) are retained for the lifetime of the opportunity + 2 years. Retention period is configurable per tenant at the Admin API level.
 
 **Implementation**: A Celery Beat task in the Data Pipeline Service runs weekly to identify and soft-delete expired documents. Hard deletion (S3 purge) follows a 30-day grace period after soft-delete. Audit log entries are never deleted.
+
+### 1.11 Data Pipeline Crawlers: KraftData Agents
+
+**Decision**: All crawlers (AOP, TED, EU Grant portals) are implemented as KraftData agents, not local Python code. The Data Pipeline service orchestrates scheduling and result ingestion but does not own crawling logic.
+
+**Rationale**: Crawling involves parsing heterogeneous document formats (HTML, PDF, XML) across portals that change layout and structure over time. KraftData agents can leverage AI-assisted parsing and be updated independently of EU Solicit deployments. The Data Pipeline's Celery Beat scheduler triggers crawl runs via the AI Gateway; results flow back through the normalization pipeline.
+
+**Trade-offs**: Adds KraftData dependency to the ingestion path. Mitigated by the AI Gateway's circuit breaker — if KraftData is down, existing data continues to serve clients (stale but not broken).
+
+### 1.12 Task Orchestration & Approval Gates
+
+**Decision**: The Client API owns a task orchestration engine and configurable approval workflow system.
+
+**Rationale**: The platform manages multi-week bid preparation lifecycles involving multiple team members. Without task orchestration, users must track work externally (spreadsheets, project management tools), reducing platform stickiness. Approval gates are required by Enterprise clients who need governance sign-offs before submission.
+
+**Implementation**: Tasks are modeled as a directed graph (task + dependencies). Approval workflows are company-configurable stage sequences attached to proposals. Both live in the `client` schema.
+
+### 1.13 Proposal Collaboration & Entity-Level RBAC
+
+**Decision**: Proposals support multi-user collaboration with per-entity role assignments. RBAC is enforced at two levels: company-wide role (sets the ceiling) and entity-level permission (narrows access per opportunity/proposal).
+
+**Rationale**: Professional and Enterprise tiers serve teams of 5+ users working on the same proposals. A global "bid manager" role is insufficient — a user may be bid manager on one proposal and read-only on another. Pessimistic locking (one editor per section at a time) is chosen over real-time CRDT for MVP simplicity.
+
+### 1.14 Billing: Trials, Add-Ons, EU VAT
+
+**Decision**: The billing model supports three flows beyond basic subscriptions: (1) 14-day free trial of Professional tier without credit card, (2) per-bid add-on purchases as Stripe one-time charges, (3) EU VAT compliance via Stripe Tax.
+
+**Rationale**: The trial drives conversion from Free to paid. Per-bid add-ons let users pay for premium AI features (full proposal generation, deep compliance audit) without upgrading their entire subscription. EU VAT handling is legally required for a SaaS platform selling to EU businesses.
+
+### 1.15 Self-Service Bidding: Guided Submission & ESPD
+
+**Decision**: The platform provides structured submission guidance and ESPD auto-fill as core features of the self-service bidding model.
+
+**Rationale**: Since the MVP does not submit bids on behalf of clients, the platform's value depends on guiding users through external submission. Portal-specific step-by-step instructions and pre-filled ESPD forms bridge the gap between AI-generated proposal content and actual bid submission.
 
 ---
 
@@ -157,7 +192,7 @@ Splitting every domain module into its own service would create 10+ services for
 | **Exposure** | `eusolicit.com/api/v1/*`, `api.eusolicit.com/v1/*` (Enterprise) |
 | **DB access** | `client` schema (read/write), `pipeline` schema (read-only: opportunities), `shared` schema (write: audit, usage) |
 
-**Owns**: Opportunity search/listing/detail (tier-gated), proposal generation/versioning/export, bid/no-bid workflow, bid outcome recording, alert preference management, calendar connection management + iCal feed, analytics dashboards, document upload/download, company profiles, user auth (email/password + Google OAuth2), subscription management + Stripe, tier gating + usage metering.
+**Owns**: Opportunity search/listing/detail (tier-gated), proposal generation/versioning/export, proposal collaboration (per-entity roles, section locking, comments), task orchestration (assignments, dependencies, deadlines), approval workflows (configurable stage sequences, sign-off decisions), bid/no-bid workflow, bid outcome recording + preparation time/cost logging, alert preference management, calendar connection management + iCal feed, analytics dashboards (market, ROI, team performance, competitor, forecast, usage) + report export, document upload/download, company profiles, reusable content blocks library, ESPD auto-fill (structured form mapped to company profile), submission guides (portal-specific step-by-step instructions), entity-level RBAC (per-opportunity/proposal permission grants), user auth (email/password + Google OAuth2), subscription management + Stripe (trials, add-ons, VAT), tier gating + usage metering.
 
 **Delegates to**: AI Gateway (all KraftData calls), Notification Service (email delivery, calendar sync execution).
 
@@ -186,7 +221,7 @@ Splitting every domain module into its own service would create 10+ services for
 | **Exposure** | None (no ingress, outbound only) |
 | **DB access** | `pipeline` schema (read/write), `shared` schema (write: audit) |
 
-**Owns**: Celery Beat scheduler, AOP/TED/EU Grant crawler tasks, normalization (via AI Gateway), enrichment (via AI Gateway), opportunity upsert, expired opportunity cleanup. Publishes `opportunities.ingested` events to Redis Streams.
+**Owns**: Celery Beat scheduler, crawl orchestration (triggers AOP/TED/EU Grant crawler agents via AI Gateway — crawling logic lives in KraftData, not locally), normalization (via AI Gateway), enrichment (via AI Gateway), opportunity upsert, submission guide ingestion (auto-generates portal-specific instructions from crawled metadata), expired opportunity cleanup. Publishes `opportunities.ingested` events to Redis Streams.
 
 **Failure isolation**: If the pipeline goes down, Client API keeps serving existing data. Users notice stale results, not an outage.
 
@@ -315,6 +350,12 @@ Splitting every domain module into its own service would create 10+ services for
 | `alert_preference.updated` | Client API | Notification Svc | `{preference_id, user_id}` |
 | `calendar.connected` | Client API | Notification Svc | `{connection_id, user_id, provider}` |
 | `subscription.changed` | Client API | All services (tier cache) | `{company_id, old_tier, new_tier}` |
+| `subscription.trial_expiring` | Client API | Notification Svc | `{company_id, user_id, trial_end}` |
+| `task.assigned` | Client API | Notification Svc | `{task_id, assigned_to, opportunity_id}` |
+| `task.overdue` | Client API | Notification Svc | `{task_id, assigned_to, due_date}` |
+| `approval.requested` | Client API | Notification Svc | `{proposal_id, stage_id, required_role}` |
+| `approval.decided` | Client API | Notification Svc | `{proposal_id, stage_id, decision, decided_by}` |
+| `addon.purchased` | Client API | Client API (unlock) | `{company_id, add_on_type, opportunity_id}` |
 | `compliance_framework.assigned` | Admin API | Client API, AI Gateway | `{opportunity_id, framework_id}` |
 | `crawler.schedule_updated` | Admin API | Data Pipeline | `{crawler_type, new_schedule}` |
 
@@ -324,14 +365,16 @@ Splitting every domain module into its own service would create 10+ services for
 STREAMS = {
     "eu-solicit:opportunities": "Data pipeline events",
     "eu-solicit:agents": "AI Gateway execution events",
-    "eu-solicit:subscriptions": "Subscription lifecycle events",
-    "eu-solicit:notifications": "Notification trigger events",
+    "eu-solicit:subscriptions": "Subscription + trial lifecycle events",
+    "eu-solicit:notifications": "Notification trigger events (alerts, calendar)",
+    "eu-solicit:tasks": "Task assignment, overdue, and approval events",
+    "eu-solicit:billing": "Add-on purchase events",
     "eu-solicit:admin": "Admin action events",
 }
 
 CONSUMER_GROUPS = {
-    "client-api": ["eu-solicit:opportunities", "eu-solicit:agents", "eu-solicit:subscriptions"],
-    "notification-svc": ["eu-solicit:opportunities", "eu-solicit:notifications"],
+    "client-api": ["eu-solicit:opportunities", "eu-solicit:agents", "eu-solicit:subscriptions", "eu-solicit:billing"],
+    "notification-svc": ["eu-solicit:opportunities", "eu-solicit:notifications", "eu-solicit:tasks", "eu-solicit:subscriptions"],
     "data-pipeline": ["eu-solicit:admin"],
     "ai-gateway": ["eu-solicit:admin"],
 }
@@ -362,28 +405,40 @@ services/client-api/
 │   ├── domain/
 │   │   ├── opportunities/      # Search, detail, tier-gated access
 │   │   ├── proposals/          # Generation, versioning, export
-│   │   ├── subscriptions/      # Tier gating, usage metering, Stripe
-│   │   ├── companies/          # Profiles, team members, credentials
+│   │   │   ├── collaboration/  # Per-proposal roles, section locking, comments
+│   │   │   └── content_blocks/ # Reusable boilerplate library (CRUD, tagging, versioning)
+│   │   ├── tasks/              # Task orchestration: assignments, dependencies, deadlines
+│   │   ├── approvals/          # Configurable approval workflows + stage sign-off decisions
+│   │   ├── subscriptions/      # Tier gating, usage metering, Stripe (trials, add-ons, VAT)
+│   │   ├── companies/          # Profiles, team members, credentials, ESPD profiles
 │   │   ├── alerts/             # Preference management (delivery delegated)
 │   │   ├── calendar/           # Connection management, iCal feed
-│   │   ├── analytics/          # Dashboards, competitor, forecast, usage
+│   │   ├── analytics/          # Dashboards, competitor, forecast, usage, ROI, team perf
+│   │   │   └── reporting/      # Scheduled report generation + PDF/DOCX export
+│   │   ├── espd/               # ESPD auto-fill (structured form → company profile mapping)
+│   │   ├── submission_guides/  # Portal-specific step-by-step submission instructions
 │   │   └── audit/              # Write-only audit logging
 │   ├── application/
-│   │   ├── commands/           # register_company, create_proposal, bid_decision, etc.
-│   │   ├── queries/            # search_opportunities, get_analytics, etc.
+│   │   ├── commands/           # register_company, create_proposal, bid_decision,
+│   │   │                      # assign_task, approve_stage, purchase_addon, etc.
+│   │   ├── queries/            # search_opportunities, get_analytics,
+│   │   │                      # get_task_board, get_approval_pipeline, etc.
 │   │   └── dtos/
 │   ├── infrastructure/
 │   │   ├── api/
 │   │   │   ├── app.py
-│   │   │   ├── middleware/     # auth, tier_gate, usage_gate, rate_limit, audit
+│   │   │   ├── middleware/     # auth, tier_gate, usage_gate, rate_limit, audit,
+│   │   │   │                  # entity_permission (per-opportunity/proposal RBAC)
 │   │   │   └── routers/       # opportunities, proposals, companies, subscriptions,
-│   │   │                      # alerts, calendar, analytics, bid_decisions, documents
+│   │   │                      # alerts, calendar, analytics, bid_decisions, documents,
+│   │   │                      # tasks, approvals, content_blocks, espd, submission_guides
 │   │   ├── persistence/       # SQLAlchemy models for client + shared schemas
 │   │   ├── ai_gateway_client/ # HTTP client to call AI Gateway service
-│   │   ├── billing/           # Stripe client + webhook handler
+│   │   ├── billing/           # Stripe client + webhook handler (subscriptions, trials,
+│   │   │                      # add-on purchases, VAT via Stripe Tax)
 │   │   ├── storage/           # S3 client + ClamAV
 │   │   ├── event_bus/         # Redis Streams publisher + consumer
-│   │   └── auth/              # JWT + Google OAuth2
+│   │   └── auth/              # JWT + Google OAuth2 + entity-level permission checks
 │   └── config/
 ├── tests/
 ├── Dockerfile
@@ -427,22 +482,23 @@ services/admin-api/
 services/data-pipeline/
 ├── src/
 │   ├── domain/
-│   │   ├── crawling/           # Crawler orchestration logic
+│   │   ├── crawling/           # Crawl orchestration: scheduling, result ingestion
+│   │   │                      # (crawling logic lives in KraftData agents, not here)
 │   │   ├── normalization/      # Data standardization rules
-│   │   └── enrichment/         # AI enrichment orchestration
+│   │   ├── enrichment/         # AI enrichment orchestration
+│   │   └── submission_guides/  # Auto-generate portal-specific instructions from crawl metadata
 │   ├── infrastructure/
-│   │   ├── crawlers/
-│   │   │   ├── aop_crawler.py
-│   │   │   ├── ted_crawler.py
-│   │   │   └── eu_grants_crawler.py
 │   │   ├── persistence/       # SQLAlchemy models for pipeline schema
-│   │   ├── ai_gateway_client/ # HTTP client to AI Gateway
+│   │   ├── ai_gateway_client/ # HTTP client to AI Gateway (triggers crawler agents,
+│   │   │                      # normalization team, enrichment agents)
 │   │   └── event_bus/         # Redis Streams publisher
 │   ├── workers/
 │   │   ├── celery_app.py
 │   │   ├── beat_schedule.py
 │   │   └── tasks/
-│   │       ├── crawl_opportunities.py
+│   │       ├── trigger_crawl.py       # Triggers KraftData crawler agents via AI Gateway
+│   │       ├── ingest_crawl_results.py # Processes crawler agent output → opportunity upsert
+│   │       ├── generate_submission_guides.py  # Builds portal-specific instructions
 │   │       └── cleanup_expired.py
 │   └── config/
 ├── tests/
@@ -523,11 +579,25 @@ PostgreSQL 16 Instance
 ├── Schema: client              ← Client API Service (read/write)
 │   ├── users
 │   ├── companies
-│   ├── subscriptions
+│   ├── subscriptions           (+ trial_start, trial_end, trial_converted_at)
 │   ├── tier_access_policies
+│   ├── add_on_purchases        ★ NEW — per-bid add-on one-time charges
 │   ├── proposals / proposal_versions
+│   ├── proposal_collaborators  ★ NEW — per-proposal role assignments (user, proposal, role)
+│   ├── proposal_comments       ★ NEW — section-level comments/annotations
+│   ├── proposal_section_locks  ★ NEW — pessimistic locking for concurrent editing
+│   ├── content_blocks          ★ NEW — reusable boilerplate sections (tagged, versioned)
+│   ├── tasks                   ★ NEW — task assignments with deadlines
+│   ├── task_dependencies       ★ NEW — directed dependency graph between tasks
+│   ├── task_templates          ★ NEW — per-opportunity-type task templates
+│   ├── approval_workflows      ★ NEW — company-configurable stage definitions
+│   ├── approval_stages         ★ NEW — ordered stages within a workflow
+│   ├── approval_decisions      ★ NEW — per-stage sign-off records (user, decision, timestamp)
+│   ├── entity_permissions      ★ NEW — per-opportunity/proposal RBAC grants
+│   ├── espd_profiles           ★ NEW — pre-mapped ESPD field values per company
 │   ├── bid_decisions
 │   ├── bid_outcomes
+│   ├── bid_preparation_logs    ★ NEW — time/cost tracking per user per proposal (for ROI)
 │   ├── alert_preferences
 │   ├── calendar_connections
 │   ├── calendar_events
@@ -537,6 +607,7 @@ PostgreSQL 16 Instance
 │
 ├── Schema: pipeline            ← Data Pipeline Service (read/write)
 │   ├── opportunities           ← Central data store
+│   ├── submission_guides       ★ NEW — portal-specific step-by-step instructions per opportunity
 │   ├── crawler_runs
 │   └── enrichment_queue
 │
@@ -572,16 +643,25 @@ PostgreSQL 16 Instance
 
 ## 9. Data Models
 
-All entity definitions from v2 remain unchanged. For reference, the core entities and their schema assignments:
+All entity definitions from v2 remain unchanged except for new entities added in v4 (marked ★). For reference, the core entities and their schema assignments:
 
 | Entity | Schema | Owner Service |
 |---|---|---|
 | `opportunities` | `pipeline` | Data Pipeline |
+| `submission_guides` ★ | `pipeline` | Data Pipeline |
 | `compliance_frameworks` | `admin` | Admin API |
 | `users`, `companies` | `client` | Client API |
 | `subscriptions`, `tier_access_policies` | `client` | Client API |
+| `add_on_purchases` ★ | `client` | Client API |
 | `proposals`, `proposal_versions` | `client` | Client API |
+| `proposal_collaborators` ★, `proposal_comments` ★, `proposal_section_locks` ★ | `client` | Client API |
+| `content_blocks` ★ | `client` | Client API |
+| `tasks` ★, `task_dependencies` ★, `task_templates` ★ | `client` | Client API |
+| `approval_workflows` ★, `approval_stages` ★, `approval_decisions` ★ | `client` | Client API |
+| `entity_permissions` ★ | `client` | Client API |
+| `espd_profiles` ★ | `client` | Client API |
 | `bid_decisions`, `bid_outcomes` | `client` | Client API |
+| `bid_preparation_logs` ★ | `client` | Client API |
 | `alert_preferences` | `client` | Client API |
 | `calendar_connections`, `calendar_events` | `client` | Client API |
 | `documents` | `client` | Client API |
@@ -592,15 +672,85 @@ All entity definitions from v2 remain unchanged. For reference, the core entitie
 | `audit_log` | `shared` | All services (write) |
 | `usage_meters` | `shared` | All services (write) |
 
-Full field-level entity definitions: see [Solution Architecture v2, Sections 5.1–5.9](./EU_Solicit_Solution_Architecture_v2.md#5-data-model--core-entities).
+Full field-level entity definitions for v2 entities: see [Solution Architecture v2, Sections 5.1–5.9](./EU_Solicit_Solution_Architecture_v2.md#5-data-model--core-entities).
+
+### 9.1 New Entity Definitions (v4)
+
+**`tasks`**: `id`, `company_id`, `opportunity_id` (nullable), `proposal_id` (nullable), `title`, `description`, `assigned_to` (user_id), `created_by` (user_id), `status` (pending/in_progress/completed/blocked), `priority` (p1–p4), `due_date`, `completed_at`, `template_id` (nullable, FK to task_templates), `created_at`, `updated_at`.
+
+**`task_dependencies`**: `id`, `task_id` (FK), `depends_on_task_id` (FK), `dependency_type` (finish_to_start/finish_to_finish). Unique constraint on (task_id, depends_on_task_id).
+
+**`task_templates`**: `id`, `company_id`, `name`, `opportunity_type` (tender/grant), `stages` (JSONB — ordered list of template task definitions with relative deadlines). Allows companies to define repeatable task sequences per opportunity type.
+
+**`approval_workflows`**: `id`, `company_id`, `name`, `is_default` (boolean), `created_at`. One company may have multiple workflows (e.g., different governance for tenders vs. grants).
+
+**`approval_stages`**: `id`, `workflow_id` (FK), `name` (e.g., "Technical Review", "Legal Review", "Management Sign-off"), `order` (integer), `required_role` (the entity-level role that can approve this stage), `auto_advance` (boolean — advance to next stage on approval, or wait for manual trigger).
+
+**`approval_decisions`**: `id`, `proposal_id` (FK), `stage_id` (FK), `decided_by` (user_id), `decision` (approved/rejected/returned_for_revision), `comment`, `decided_at`.
+
+**`proposal_collaborators`**: `id`, `proposal_id` (FK), `user_id` (FK), `role` (bid_manager/technical_writer/financial_analyst/legal_reviewer/read_only), `granted_by` (user_id), `granted_at`. Unique constraint on (proposal_id, user_id).
+
+**`proposal_comments`**: `id`, `proposal_id` (FK), `version_id` (FK to proposal_versions), `section_key` (string — identifies the proposal section), `user_id`, `body`, `resolved` (boolean), `resolved_by` (user_id), `created_at`.
+
+**`proposal_section_locks`**: `id`, `proposal_id` (FK), `section_key`, `locked_by` (user_id), `locked_at`, `expires_at` (auto-release after 15 min inactivity). Unique constraint on (proposal_id, section_key).
+
+**`content_blocks`**: `id`, `company_id`, `title`, `category` (company_overview/quality_management/sustainability/methodology/team/custom), `body` (rich text), `tags` (text[]), `version` (integer), `is_approved` (boolean), `approved_by` (user_id), `created_by` (user_id), `created_at`, `updated_at`.
+
+**`entity_permissions`**: `id`, `user_id` (FK), `entity_type` (opportunity/proposal), `entity_id` (UUID), `permission` (view/comment/edit/manage), `granted_by` (user_id), `granted_at`. Unique constraint on (user_id, entity_type, entity_id). Company-wide role sets the ceiling; entity permission narrows or overrides within that ceiling.
+
+**`espd_profiles`**: `id`, `company_id` (FK), `profile_name` (e.g., "Default", "Joint Venture with X"), `espd_data` (JSONB — structured mapping of company fields to ESPD schema sections: exclusion grounds, selection criteria, economic capacity, technical capacity), `created_at`, `updated_at`. Companies may maintain multiple ESPD profiles for different legal entities or consortium arrangements.
+
+**`submission_guides`**: `id`, `opportunity_id` (FK), `source_portal` (aop/ted/eu_grants), `steps` (JSONB — ordered list of {step_number, title, instruction, portal_url, form_reference, tips}), `generated_by` (agent_execution_id), `reviewed` (boolean — admin-reviewed flag), `created_at`, `updated_at`. Auto-generated during crawl ingestion; Client API serves read-only to users.
+
+**`add_on_purchases`**: `id`, `company_id` (FK), `purchased_by` (user_id), `add_on_type` (proposal_generation/deep_compliance_audit/pricing_analysis), `opportunity_id` (nullable — links to specific opportunity if applicable), `stripe_payment_intent_id`, `amount_eur` (integer, cents), `status` (pending/succeeded/failed/refunded), `created_at`.
+
+**`bid_preparation_logs`**: `id`, `proposal_id` (FK), `user_id` (FK), `activity_type` (drafting/review/research/meeting/other), `hours` (decimal), `cost_eur` (decimal, optional — for external costs like consultant fees), `logged_at`, `notes`. Aggregated for ROI tracker and team performance analytics.
 
 ---
 
 ## 10. Tier Gating & Usage Enforcement
 
-Unchanged from v2. The `TierGate` and `UsageGate` middleware live in the Client API service. The `eusolicit-common` shared library provides the base middleware classes so Admin API can reuse the audit middleware.
+The `TierGate`, `UsageGate`, and `EntityPermission` middleware live in the Client API service. The `eusolicit-common` shared library provides the base middleware classes so Admin API can reuse the audit middleware.
 
 Key patterns: free-tier returns `OpportunityFreeResponse` (limited metadata), paid tiers return `OpportunityFullResponse` gated by region/CPV/budget. Usage limits enforced via atomic Redis INCR with rollback on limit exceeded (429 response with upgrade prompt).
+
+### 10.1 Trial Management
+
+New registrations automatically start a 14-day free trial of the Professional tier (no credit card required). Trial state is managed in the `subscriptions` table:
+
+- `trial_start` (timestamp) — set at registration.
+- `trial_end` (timestamp) — `trial_start + 14 days`.
+- `trial_converted_at` (timestamp, nullable) — set when user upgrades to a paid tier during or after trial.
+
+**Trial lifecycle**: Registration → trial active (Professional features unlocked) → trial expiration → graceful downgrade to Free tier (data preserved, features gated) → upgrade prompt. If the user upgrades during trial, the remaining trial days are not credited — billing starts immediately at the chosen tier.
+
+**Stripe integration**: Trial subscriptions are created with `trial_end` set on the Stripe subscription object. No `payment_method` is required during trial creation. Stripe sends `customer.subscription.trial_will_end` webhook 3 days before expiry; the Notification Service sends a reminder email. On trial expiry, Stripe transitions the subscription to `past_due` (no payment method) — the Client API webhook handler downgrades the user to Free tier.
+
+**Eligibility**: One trial per company (not per user). Checked against `subscriptions.trial_start IS NOT NULL` for the company.
+
+### 10.2 Per-Bid Add-On Purchases
+
+Paid-tier users can purchase per-bid add-ons for premium AI features without upgrading their subscription. Add-on types:
+
+| Add-On | Description | Availability |
+|--------|-------------|--------------|
+| Full Proposal Generation | Complete AI-drafted proposal for a specific opportunity | Professional, Enterprise |
+| Deep Compliance Audit | Comprehensive compliance check against assigned framework | Starter, Professional, Enterprise |
+| Pricing Analysis | AI-driven competitive pricing recommendation | Professional, Enterprise |
+
+**Flow**: User selects add-on from opportunity detail → Stripe Checkout Session (one-time payment, `mode: payment`) → on `checkout.session.completed` webhook, create `add_on_purchases` record with `status: succeeded` → unlock the feature for that specific opportunity.
+
+**Tier interaction**: Add-on usage does not count against monthly subscription limits. Add-ons are opportunity-scoped — purchasing a proposal generation add-on for Opportunity A does not unlock it for Opportunity B.
+
+### 10.3 EU VAT Handling
+
+**Stripe Tax**: Enabled on all subscription and add-on charges. Stripe Tax automatically calculates the correct VAT rate based on the customer's country, business status (B2B vs. B2C), and the EU reverse charge mechanism.
+
+**Tax ID collection**: At registration or first upgrade, companies provide their EU VAT number (optional). Stored in `companies.tax_id` and synced to the Stripe Customer object via `customer.tax_ids`. Stripe validates VAT numbers via VIES and applies reverse charge where applicable.
+
+**Invoice requirements**: All Stripe-generated invoices include: seller VAT ID, buyer VAT ID (if provided), applicable VAT rate, net/gross amounts, and the legal basis for any exemption (e.g., "Reverse charge — Article 196 Council Directive 2006/112/EC").
+
+**Enterprise custom invoicing**: Enterprise tier clients can opt for manual invoicing with custom payment terms (NET 30/60). The Admin API generates invoice records; payment is tracked manually. Stripe Invoicing API used for generation; manual payment reconciliation in admin panel.
 
 ---
 
@@ -622,31 +772,39 @@ The gateway adds: circuit breaking (fail-open after 5 consecutive failures, retr
 
 ### 11.2 KraftData Agent Inventory
 
-All agents, teams, and workflows listed below are created and maintained manually via the KraftData admin interface. EU Solicit's AI Gateway references them by logical name mapped to KraftData agent IDs in the agent registry.
+All agents, teams, workflows, and vector stores listed below are created and maintained by KraftData via their admin interface. EU Solicit's AI Gateway references them by logical name mapped to KraftData entity IDs in the agent registry.
 
 | # | Name | Type | KraftData Entity | Calling Service(s) |
 |---|---|---|---|---|
-| 1 | Document Parser Agent | Agent | Agent | Data Pipeline |
-| 2 | Executive Summary Agent | Agent | Agent | Client API |
-| 3 | Compliance Checker Agent | Agent | Agent | Client API, Admin API |
-| 4 | Clause Risk Analyzer Agent | Agent | Agent | Client API |
-| 5 | Relevance Scoring Agent | Agent | Agent | Data Pipeline |
-| 6 | Pricing Assistant Agent | Agent | Agent | Client API |
-| 7 | Scoring Simulator Agent | Agent | Agent | Client API |
-| 8 | Grant Eligibility Agent | Agent | Agent | Client API |
-| 9 | Budget Builder Agent | Agent | Agent | Client API |
-| 10 | Logframe Generator Agent | Agent | Agent | Client API |
-| 11 | Bid/No-Bid Decision Agent | Agent | Agent | Client API |
-| 12 | Market Intelligence Agent | Agent | Agent | Client API |
-| 13 | Regulation Tracker Agent | Agent | Agent | Admin API (scheduled) |
-| 14 | Lessons Learned Agent | Agent | Agent | Client API |
-| 15 | Competitor Analysis Agent | Agent | Agent | Data Pipeline, Client API |
-| 16 | Pipeline Forecasting Agent | Agent | Agent | Client API |
-| 17 | Framework Suggestion Agent | Agent | Agent | Admin API |
-| 18 | Requirement Checklist Agent | Agent | Agent | Client API |
-| 19 | Win Theme Extractor Agent | Agent | Agent | Client API |
-| 20 | Data Normalization Team | Team | Team | Data Pipeline |
-| 21 | Proposal Generator Workflow | Workflow | Workflow | Client API (SSE) |
+| 1 | AOP Crawler Agent | Agent | Agent | Data Pipeline (via AI Gateway) |
+| 2 | TED Crawler Agent | Agent | Agent | Data Pipeline (via AI Gateway) |
+| 3 | EU Grant Portal Agent | Agent | Agent | Data Pipeline (via AI Gateway) |
+| 4 | Document Parser Agent | Agent | Agent | Data Pipeline |
+| 5 | Executive Summary Agent | Agent | Agent | Client API |
+| 6 | Compliance Checker Agent | Agent | Agent | Client API, Admin API |
+| 7 | Clause Risk Analyzer Agent | Agent | Agent | Client API |
+| 8 | Relevance Scoring Agent | Agent | Agent | Data Pipeline |
+| 9 | Pricing Assistant Agent | Agent | Agent | Client API |
+| 10 | Scoring Simulator Agent | Agent | Agent | Client API |
+| 11 | Grant Eligibility Agent | Agent | Agent | Client API |
+| 12 | Budget Builder Agent | Agent | Agent | Client API |
+| 13 | Logframe Generator Agent | Agent | Agent | Client API |
+| 14 | Consortium Finder Agent | Agent | Agent | Client API |
+| 15 | Reporting Template Generator Agent | Agent | Agent | Client API |
+| 16 | Bid/No-Bid Decision Agent | Agent | Agent | Client API |
+| 17 | Market Intelligence Agent | Agent | Agent | Client API |
+| 18 | Regulation Tracker Agent | Agent | Agent | Admin API (scheduled) |
+| 19 | Lessons Learned Agent | Agent | Agent | Client API |
+| 20 | Bid History Analytics Agent | Agent | Agent | Client API (scheduled) |
+| 21 | Competitor Analysis Agent | Agent | Agent | Data Pipeline, Client API |
+| 22 | Pipeline Forecasting Agent | Agent | Agent | Client API |
+| 23 | Framework Suggestion Agent | Agent | Agent | Admin API |
+| 24 | Requirement Checklist Agent | Agent | Agent | Client API |
+| 25 | Win Theme Extractor Agent | Agent | Agent | Client API |
+| 26 | ESPD Auto-Fill Agent | Agent | Agent | Client API |
+| 27 | Submission Guide Agent | Agent | Agent | Data Pipeline |
+| 28 | Data Normalization Team | Team | Team | Data Pipeline |
+| 29 | Proposal Generator Workflow | Workflow | Workflow | Client API (SSE) |
 
 ### 11.3 KraftData Storage Resources (Vector Stores)
 
@@ -655,11 +813,12 @@ Vector stores are provisioned and managed through the KraftData API (`/client/ap
 | # | Storage Resource | Purpose | Populated By |
 |---|---|---|---|
 | 1 | RFP Templates Store | Reference RFP structures and past winning proposals | Admin upload via AI Gateway |
-| 2 | Regulatory Knowledge Store | ZOP, EU directives, procurement regulations | Regulation Tracker Agent |
-| 3 | Company Profiles Store | Client company capabilities, past performance | Client API upload via AI Gateway |
+| 2 | Regulatory Knowledge Store | ZOP, EU directives, procurement regulations, ESPD schemas | Regulation Tracker Agent |
+| 3 | Company Profiles Store | Client company capabilities, past performance, reusable content blocks | Client API upload via AI Gateway |
 | 4 | Historical Bids Store | Past bid outcomes, scoring data, lessons learned | Lessons Learned Agent |
 | 5 | Market Data Store | Market intelligence, competitor data, pricing benchmarks | Market Intelligence Agent |
-| 6 | EU Programmes Store | EU funding programme details, eligibility criteria | Data Pipeline (EU Grant crawler) |
+| 6 | EU Programmes Store | EU funding programme details, eligibility criteria | Data Pipeline (EU Grant crawler agent) |
+| 7 | Consortium Partners Store | Organizations that have participated in EU grants, their domains, past roles, countries | Data Pipeline (EU Grant crawler agent), Admin upload |
 
 ---
 
@@ -679,14 +838,55 @@ Unchanged from v2. JWT RS256 tokens issued by Client API's auth module. Admin AP
 
 ## 13. Billing, Alerts, Calendar, Documents
 
-All functional architectures (Stripe billing lifecycle, alert digest system, calendar sync, document upload with ClamAV) remain as defined in v2. The SOA split changes WHERE each piece runs, not HOW it works:
+Functional architectures from v2 remain, with v4 additions for billing (trials, add-ons, VAT), proposal collaboration, analytics computation, and submission guidance. The SOA split changes WHERE each piece runs, not HOW it works:
 
 | Feature | Configuration/UI | Execution |
 |---|---|---|
-| Stripe billing | Client API (checkout, webhooks) | Notification Svc (usage sync to Stripe) |
+| Stripe billing (subscriptions) | Client API (checkout, webhooks) | Notification Svc (usage sync to Stripe) |
+| Stripe billing (trials) | Client API (trial creation at registration, downgrade on expiry webhook) | Notification Svc (trial expiry reminder email) |
+| Stripe billing (add-ons) | Client API (Checkout Session, payment webhook) | Client API (unlock feature on payment success) |
+| Stripe billing (VAT) | Client API (tax ID collection, Stripe Tax config) | Stripe Tax (automatic calculation) |
 | Email alerts | Client API (preference CRUD) | Notification Svc (matching, digest, SendGrid) |
 | Calendar sync | Client API (OAuth flow, connection CRUD, iCal feed) | Notification Svc (periodic sync via Celery) |
 | Documents | Client API (upload, download, metadata) | Client API (ClamAV scan, S3 storage) |
+| Proposal collaboration | Client API (collaborator assignment, section lock/unlock, comments) | Client API (pessimistic lock enforcement) |
+| Task orchestration | Client API (task CRUD, dependency graph, templates) | Client API (deadline notifications delegated to Notification Svc) |
+| Approval workflows | Client API (workflow config, stage sign-off) | Notification Svc (approval request/decision emails) |
+| Submission guides | Data Pipeline (auto-generation from crawl metadata) | Client API (read-only serving to users) |
+| ESPD auto-fill | Client API (profile management, form generation) | AI Gateway (ESPD Agent for AI-assisted field mapping) |
+| Content blocks | Client API (CRUD, tagging, approval workflow) | AI Gateway (blocks fed to Proposal Generator via RAG) |
+| Analytics & reporting | Client API (dashboard queries, materialized views) | Notification Svc (scheduled report generation + export) |
+
+### 13.1 Proposal Collaboration Architecture
+
+**Editing model**: Pessimistic section-level locking. When a user begins editing a proposal section, the Client API acquires a lock in `proposal_section_locks`. The lock has a 15-minute TTL (auto-released on inactivity). Other users see the section as locked with the editor's name displayed. Attempting to edit a locked section returns a `423 Locked` response with the lock holder's identity.
+
+**Comments**: Threaded comments are anchored to a specific proposal version and section. When a new version is created, existing unresolved comments carry forward. Resolved comments are archived.
+
+**Permission enforcement**: The `entity_permission` middleware checks `proposal_collaborators` for the requesting user's role on the target proposal. Role hierarchy: `bid_manager` > `technical_writer` = `financial_analyst` = `legal_reviewer` > `read_only`. Bid managers can edit all sections, assign collaborators, and approve stages. Other roles can edit only their designated sections.
+
+### 13.2 Task Orchestration Architecture
+
+**Task lifecycle**: pending → in_progress → completed (or blocked). Tasks are linked to opportunities and/or proposals. Dependencies are modeled as a DAG in `task_dependencies` — a task cannot transition to `in_progress` if any of its `finish_to_start` dependencies are incomplete.
+
+**Templates**: Companies can define task templates per opportunity type (tender vs. grant). When a user starts working on a new opportunity, they can apply a template, which creates a full set of tasks with relative deadlines computed from the opportunity's submission deadline (e.g., "Technical review due 7 days before deadline").
+
+**Notifications**: Task assignments and deadline reminders are published as events to Redis Streams and consumed by the Notification Service for email delivery. Overdue tasks generate daily digest alerts.
+
+### 13.3 Analytics Computation Model
+
+**Dashboard data**: Analytics dashboards (market intelligence, ROI, team performance, competitor, forecast, usage) are powered by PostgreSQL materialized views refreshed on a schedule by a Celery Beat task in the Notification Service.
+
+| Dashboard | Data Source | Refresh Frequency |
+|-----------|-------------|-------------------|
+| Market Intelligence | `opportunities` + `bid_outcomes` + Market Intelligence Agent | Daily |
+| ROI Tracker | `bid_outcomes` + `bid_preparation_logs` + `subscriptions` | Daily |
+| Team Performance | `bid_preparation_logs` + `proposals` + `bid_outcomes` per user | Daily |
+| Competitor Intelligence | `competitor_records` + Competitor Analysis Agent | Daily |
+| Pipeline Forecast | `opportunities` + Pipeline Forecasting Agent | Daily |
+| Usage | `usage_meters` (Redis → materialized view) | Hourly |
+
+**Report export**: The Notification Service's `generate_reports` Celery task produces PDF/DOCX reports from materialized view data using the same `python-docx` + `reportlab` stack used for proposal export. Reports can be scheduled (weekly/monthly) or generated on demand via the Client API.
 
 ---
 
@@ -811,55 +1011,69 @@ Trace propagation: `X-Request-ID` and `traceparent` headers propagated across al
 - Per-service Dockerfiles, Helm charts, GitHub Actions matrix
 - Docker Compose for local development (all services)
 - Auth system (email/password + Google OAuth2 + JWT RS256) in Client API
-- User and company profile CRUD
+- Entity-level RBAC middleware (`entity_permissions` table + `EntityPermission` middleware)
+- User and company profile CRUD (including `tax_id` for VAT, `espd_profiles`)
 - Subscription/tier model + tier gating + usage gate middleware
-- Stripe integration (checkout, webhooks, customer portal)
+- 14-day trial flow (Stripe trial subscriptions, downgrade on expiry)
+- Stripe integration (checkout, webhooks, customer portal, Stripe Tax for EU VAT)
+- Per-bid add-on purchase flow (Stripe Checkout one-time payments)
 - Audit trail middleware + shared audit log
 - Admin API scaffold + platform admin auth
-- Redis Streams event bus setup
+- Redis Streams event bus setup (7 streams, 4 consumer groups)
 
 ### Phase 2 — Data Pipeline + AI Gateway (Weeks 5–7)
 - AI Gateway service with KraftData client, circuit breaker, execution logging
-- AOP crawler agent integration (Data Pipeline → AI Gateway → KraftData)
-- TED crawler + EU grant portal crawler
+- AOP crawler agent integration (Data Pipeline triggers KraftData agent via AI Gateway)
+- TED crawler agent + EU grant portal crawler agent (same pattern)
 - Data normalization team integration
 - Central data store schema + upsert pipeline
+- Submission guide auto-generation from crawl metadata (via Submission Guide Agent)
 - Celery Beat scheduling in Data Pipeline
 - `opportunities.ingested` event publishing
 - Document upload + S3 storage + ClamAV scanning
 
-### Phase 3 — Core Platform (Weeks 8–11)
+### Phase 3 — Core Platform (Weeks 8–12)
 - Opportunity search + listing (free-tier limited view, paid-tier gated)
-- Opportunity detail with tier access enforcement
+- Opportunity detail with tier access enforcement + submission guides display
 - AI summary generation (via AI Gateway) + usage metering
 - Alert preferences UI + email digest system in Notification Service
 - Compliance framework admin UI in Admin API + per-opportunity assignment + auto-suggestion
 - Compliance checker agent integration (via AI Gateway)
+- ESPD auto-fill (structured form + ESPD Agent for AI-assisted field mapping)
 - iCal feed generation in Client API
+- Task orchestration engine (task CRUD, dependency graph, templates, deadline notifications)
+- Approval workflow system (configurable stages, sign-off decisions, notifications)
+- Reusable content blocks library (CRUD, tagging, versioning, approval)
 
-### Phase 4 — Proposal & Intelligence Tools (Weeks 12–15)
+### Phase 4 — Proposal & Intelligence Tools (Weeks 13–17)
 - Proposal generator workflow (Client API → AI Gateway SSE proxy)
+- Proposal collaboration (per-proposal roles, section locking, comments)
 - Requirement checklist builder
 - Scoring simulator with scorecard UI
 - Pricing assistant
 - Bid/no-bid decision workflow with AI scorecard + user override
-- Bid outcome tracking + Lessons Learned Agent integration
-- Document export (PDF/DOCX)
+- Bid outcome tracking + preparation time/cost logging + Lessons Learned Agent
+- Consortium finder agent integration (EU grant proposals)
+- Document export (PDF/DOCX) for proposals, checklists, compliance reports
 - Google Calendar sync in Notification Service
 - Microsoft Outlook sync in Notification Service
 
-### Phase 5 — Analytics & Launch (Weeks 16–20)
+### Phase 5 — Analytics, Reporting & Launch (Weeks 18–22)
 - Analytics dashboards (market intelligence, ROI tracker, team performance)
 - Competitor intelligence view + Pipeline forecasting view
 - Usage dashboard
+- Analytics materialized views + scheduled refresh
+- Report generation + export (PDF/DOCX, scheduled + on-demand)
+- Bid History Analytics Agent integration
+- Reporting Template Generator for post-award (grant winners)
 - White-label configuration in Admin API (subdomain + branding)
 - Performance optimization + load testing
-- Security audit (including network policy verification)
+- Security audit (including network policy verification, entity RBAC audit)
 - API documentation (auto-generated OpenAPI spec for Enterprise tier)
-- User guides + onboarding flow
+- User guides + onboarding flow (including trial-to-paid conversion UX)
 
-**Estimated MVP timeline: 20 weeks** with a small team (2-3 developers) using AI-assisted development.
+**Estimated MVP timeline: 22 weeks** with a small team (2-3 developers) using AI-assisted development. The 2-week increase from v3 accounts for task orchestration, approval workflows, proposal collaboration, trial/add-on billing, and submission guides.
 
 ---
 
-*Document version: 3.1 | Date: 2026-04-04 | Status: Draft*
+*Document version: 4.0 | Date: 2026-04-05 | Status: Draft*
