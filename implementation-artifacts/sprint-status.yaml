@@ -1,6 +1,88 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
-state: idle
-current_epic: null
-current_story: null
-development_status: {}
+state: running
+current_epic: 3
+current_story: 3-11-toast-notification-system
+last_updated: '2026-04-08'  # Story 3.11 implemented — 66/66 tests passing
+development_status:
+  epic-1: done
+  1-1-monorepo-scaffold-project-structure: done
+  1-2-docker-compose-local-development-environment: done
+  1-3-postgresql-schema-design-role-based-access: done
+  1-4-alembic-migration-scaffold: done
+  1-5-redis-streams-event-bus-setup: done
+  1-6-eusolicit-common-shared-package: done
+  1-7-eusolicit-models-eusolicit-kraftdata-shared-packages: done
+  1-8-github-actions-ci-pipeline: done
+  1-9-helm-chart-base-template-service-values: done
+  1-10-terraform-scaffold-placeholder-modules: done
+  epic-2: done
+  2-1-database-schema-auth-identity-tables: done
+  2-2-email-password-registration: done
+  2-3-email-password-login-jwt-issuance: done
+  2-4-jwt-authentication-middleware: done
+  2-5-token-refresh-revocation: done
+  2-6-google-oauth2-social-login: done
+  2-7-password-reset-flow: done
+  2-8-company-profile-crud: done
+  2-9-team-member-management: done
+  2-10-entity-level-rbac-middleware: done
+  2-11-audit-trail-middleware: done
+  2-12-espd-profile-crud: done
+  epic-3: in-progress
+  3-1-next-js-14-monorepo-scaffold: done
+  3-2-tailwind-design-token-preset-shadcn-ui-theming: done
+  3-3-app-shell-layout-sidebar-top-bar-content-area: done
+  3-4-responsive-layout-strategy: done
+  3-5-zustand-stores-tanstack-query-setup: done
+  3-6-react-hook-form-zod-validation-patterns: done
+  3-7-i18n-setup-with-next-intl-bg-en: done
+  3-8-authentication-pages: done
+  3-9-company-profile-setup-wizard: done
+  3-10-loading-states-error-boundaries-empty-states: done
+  3-11-toast-notification-system: done
+  3-12-client-side-route-guards-auth-redirects: backlog
+
+  epic-4: backlog
+  epic-5: backlog
+  epic-6: backlog
+  epic-7: backlog
+  epic-8: backlog
+  epic-9: backlog
+  epic-10: backlog
+  epic-11: backlog
+  epic-12: backlog
+tea_status: {}
+
+# TEA test automation status
+tea_status:
+  1-1-monorepo-scaffold-project-structure: done
+  1-2-docker-compose-local-development-environment: done
+  1-3-postgresql-schema-design-role-based-access: done
+  1-4-alembic-migration-scaffold: done
+  1-5-redis-streams-event-bus-setup: done
+  1-6-eusolicit-common-shared-package: done
+  1-7-eusolicit-models-eusolicit-kraftdata-shared-packages: done
+  2-1-database-schema-auth-identity-tables: done
+  2-2-email-password-registration: done
+  2-3-email-password-login-jwt-issuance: done
+  2-4-jwt-authentication-middleware: done
+  2-5-token-refresh-revocation: done
+  2-6-google-oauth2-social-login: done
+  2-7-password-reset-flow: done
+  2-8-company-profile-crud: done
+  2-9-team-member-management: done
+  2-10-entity-level-rbac-middleware: done
+  2-11-audit-trail-middleware: done
+  2-12-espd-profile-crud: done
+  3-1-next-js-14-monorepo-scaffold: done
+  3-2-tailwind-design-token-preset-shadcn-ui-theming: done
+  3-3-app-shell-layout-sidebar-top-bar-content-area: done
+  3-4-responsive-layout-strategy: done
+  3-5-zustand-stores-tanstack-query-setup: done
+  3-6-react-hook-form-zod-validation-patterns: done
+  3-7-i18n-setup-with-next-intl-bg-en: done
+  3-8-authentication-pages: done
+  3-9-company-profile-setup-wizard: done
+  3-10-loading-states-error-boundaries-empty-states: done
+  3-11-toast-notification-system: in-progress
