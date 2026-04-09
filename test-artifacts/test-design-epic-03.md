@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-07'
+lastSaved: '2026-04-09'
 workflowType: 'testarch-test-design'
 mode: 'epic-level'
 epicNumber: 3
@@ -14,7 +14,7 @@ inputDocuments:
 
 # Test Design: Epic 3 — Frontend Shell & Design System
 
-**Date:** 2026-04-07
+**Date:** 2026-04-09
 **Author:** TEA Master Test Architect
 **Status:** Draft
 **Epic:** E03 | **Sprint:** 1–2 (Weeks 1–4) | **Points:** 37

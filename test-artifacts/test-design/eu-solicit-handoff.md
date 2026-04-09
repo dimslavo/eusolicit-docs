@@ -1,13 +1,13 @@
 ---
 title: 'TEA Test Design → BMAD Handoff Document'
-version: '1.1'
+version: '1.2'
 workflowType: 'testarch-test-design-handoff'
 inputDocuments:
   - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
   - 'eusolicit-docs/test-artifacts/test-design-qa.md'
 sourceWorkflow: 'testarch-test-design'
 generatedBy: 'TEA Master Test Architect'
-generatedAt: '2026-04-07'
+generatedAt: '2026-04-09'
 projectName: 'EU Solicit'
 ---
 
@@ -16,6 +16,11 @@ projectName: 'EU Solicit'
 ## Purpose
 
 This document bridges TEA's test design outputs with BMAD's epic/story decomposition workflow (`create-epics-and-stories`). It provides structured integration guidance so that quality requirements, risk assessments, and test strategies flow into implementation planning.
+
+**Version history:**
+- v1.0 (2026-04-05): Initial system-level handoff
+- v1.1 (2026-04-07): R-003 (SSE saturation) and R-006 (entity RBAC) elevated to HIGH; agent count corrected
+- v1.2 (2026-04-09): Agent count corrected to 29 (per Architecture v4 §11.2); added R-016 (locale routing, score 4) and R-017 (JWT refresh race, score 4); risk register expanded to 17; coverage updated to 92 tests; data-testid requirements added; pre-implementation blocker TB-04 (Redis DLQ) added
 
 ## TEA Artifacts Inventory
 
@@ -46,7 +51,7 @@ The following P0/P1 risks should appear as epic-level quality gates:
 |------|--------------|---------------|
 | E01 (Infrastructure) | Docker Compose test environment operational; test data seeding API deployed | TB-01 |
 | E02 (Auth/Identity) | JWT validation tests pass; cross-tenant isolation validated; entity-level RBAC matrix tested | R-002, R-006 |
-| E03 (Frontend Shell) | i18n framework operational; tier-gated UI components render correctly for all tiers | R-012 |
+| E03 (Frontend Shell) | i18n framework operational; tier-gated UI components render correctly for all tiers; locale routing middleware tested (BG/EN); JWT refresh deduplication tested | R-012, R-016, R-017 |
 | E04 (AI Gateway) | Mock mode operational; circuit breaker tested; SSE proxy functional; SSE connection pool isolated | R-001, R-003 |
 | E05 (Data Pipeline) | Crawl → normalize → upsert flow tested; stale-data graceful degradation verified | R-005 |
 | E06 (Opportunity Discovery) | Search/filter tests pass; tier-gated access validated across all 4 tiers | R-012 |
@@ -108,6 +113,8 @@ For E2E testability, the following `data-testid` attributes should be specified 
 | R-010 | SEC | 3 | E05: ClamAV integration for uploads | API |
 | R-012 | BUS | 4 | E06: Tier gating parametrized tests | API |
 | R-015 | SEC | 4 | E10: Section locking race conditions | API |
+| **R-016** ★NEW | TECH | 4 | E03: Frontend Shell locale middleware routing (BG/EN) | E2E |
+| **R-017** ★NEW | SEC | 4 | E02/E03: JWT refresh race condition (concurrent browser tabs) | E2E |
 
 ## Recommended BMAD → TEA Workflow Sequence
 
@@ -122,8 +129,19 @@ For E2E testability, the following `data-testid` attributes should be specified 
 
 | From Phase | To Phase | Gate Criteria |
 |-----------|----------|--------------|
-| Test Design | Epic/Story Creation | All P0 risks (R-001, R-002, R-003, R-004, R-006) have mitigation strategy documented |
-| Epic/Story Creation | ATDD | Stories have acceptance criteria derived from P0/P1 test scenarios |
-| ATDD | Implementation | Failing acceptance tests exist for all P0/P1 scenarios |
-| Implementation | Test Automation | All acceptance tests pass; P0 pass rate = 100% |
-| Test Automation | Release | Trace matrix shows ≥80% coverage of P0/P1 requirements; no open P0/P1 bugs |
+| Test Design | Epic/Story Creation | All 5 high-priority risks (R-001 through R-006) have assigned owners + mitigation strategy; TB-01 through TB-04 scheduled in sprint plan |
+| Epic/Story Creation | ATDD | Stories have P0/P1 acceptance criteria embedded; data-testid attributes specified in frontend stories; pre-implementation blocker stories (TB-01–TB-04) assigned to sprints |
+| ATDD | Implementation | Failing acceptance tests exist for all P0/P1 scenarios; CI pipeline runs and fails (red phase confirmed) |
+| Implementation | Test Automation | All acceptance tests pass (green phase); no open P0/P1 bugs; cross-tenant isolation sweep = 0 leaks |
+| Test Automation | Release | Traceability matrix shows ≥80% coverage of P0/P1 requirements; all Stripe lifecycle tests pass; performance baselines met (REST p95 < 200ms; SSE TTFB < 500ms) |
+
+---
+
+## Pre-Implementation Blockers (BMAD Must Schedule)
+
+| Blocker ID | Title | Blocks Epics | Required Sprint | Owner |
+|-----------|-------|-------------|----------------|-------|
+| **TB-01** | Test data seeding API (`POST /api/test-data/seed` + cleanup) | E02–E12 | Sprint 3 | Backend Lead |
+| **TB-02** | KraftData mock service (all 29 entity types + SSE streaming) | E04, E05, E06, E07, E10, E11 | Sprint 3 | Backend Lead |
+| **TB-03** | Stripe test mode + Stripe CLI webhook forwarding in CI | E08 | Sprint 4 | Backend Lead |
+| **TB-04** | Redis Streams DLQ (per consumer group + Prometheus monitoring) | E05, E09 | Sprint 5 | Backend Lead |

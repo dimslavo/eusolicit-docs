@@ -1,9 +1,9 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
-current_epic: 3
-current_story: 3-11-toast-notification-system
-last_updated: '2026-04-08'  # Story 3.11 implemented — 66/66 tests passing
+current_epic: 11
+current_story: 11-1-espd-profile-compliance-framework-db-schema-migrations
+last_updated: '2026-04-09'  # Epic 11 started — story 11-1 story file created
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -29,7 +29,7 @@ development_status:
   2-10-entity-level-rbac-middleware: done
   2-11-audit-trail-middleware: done
   2-12-espd-profile-crud: done
-  epic-3: in-progress
+  epic-3: done
   3-1-next-js-14-monorepo-scaffold: done
   3-2-tailwind-design-token-preset-shadcn-ui-theming: done
   3-3-app-shell-layout-sidebar-top-bar-content-area: done
@@ -41,7 +41,7 @@ development_status:
   3-9-company-profile-setup-wizard: done
   3-10-loading-states-error-boundaries-empty-states: done
   3-11-toast-notification-system: done
-  3-12-client-side-route-guards-auth-redirects: backlog
+  3-12-client-side-route-guards-auth-redirects: done
 
   epic-4: backlog
   epic-5: backlog
@@ -50,7 +50,23 @@ development_status:
   epic-8: backlog
   epic-9: backlog
   epic-10: backlog
-  epic-11: backlog
+  epic-11: in-progress
+  11-1-espd-profile-compliance-framework-db-schema-migrations: in-progress
+  11-2-espd-profile-crud-api: backlog
+  11-3-espd-auto-fill-agent-integration: backlog
+  11-4-grant-eligibility-agent-integration: backlog
+  11-5-budget-builder-agent-integration: backlog
+  11-6-consortium-finder-agent-integration: backlog
+  11-7-logframe-generator-reporting-template-agent-integrations: backlog
+  11-8-compliance-framework-crud-api-admin: backlog
+  11-9-framework-assignment-auto-suggestion-api-admin: backlog
+  11-10-regulation-tracker-agent-platform-settings-api-admin: backlog
+  11-11-eu-grant-tools-frontend-page-eligibility-budget-panels: backlog
+  11-12-eu-grant-tools-frontend-consortium-finder-logframe-panels: backlog
+  11-13-espd-profile-management-auto-fill-frontend: backlog
+  11-14-compliance-admin-framework-management-frontend: backlog
+  11-15-compliance-admin-assignment-suggestions-regulation-tracker-frontend: backlog
+  11-16-e2e-integration-testing-agent-error-handling-hardening: backlog
   epic-12: backlog
 tea_status: {}
 
@@ -86,3 +102,4 @@ tea_status:
   3-9-company-profile-setup-wizard: done
   3-10-loading-states-error-boundaries-empty-states: done
   3-11-toast-notification-system: in-progress
+  3-12-client-side-route-guards-auth-redirects: done

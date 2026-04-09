@@ -1,9 +1,10 @@
 ---
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-07'
+lastSaved: '2026-04-09'
 workflowType: 'testarch-test-design'
 mode: 'epic-level'
+lastEpic: 11
 inputDocuments:
   - 'eusolicit-docs/EU_Solicit_PRD_v1.md'
   - 'eusolicit-docs/EU_Solicit_Requirements_Brief_v4.md'
@@ -395,3 +396,148 @@ inputDocuments:
 - **Gate thresholds:** P0 = 100%, P1 >= 95%, SEC (route guard) = 100%, build hard-fail, branch coverage >= 80%
 - **Open assumptions:** E01 complete; auth endpoints stubbed via MSW or Playwright route(); BG placeholder translations cover all key namespaces; Playwright ≥1.40 compatible with Next.js 14 App Router
 - **Dependencies:** E01 monorepo scaffold, MSW or Playwright route() auth stubs, packages/ui barrel exports, CPV JSON for wizard, both apps start in CI
+
+---
+
+## Epic-Level: E03 — Re-validated 2026-04-09
+
+**Reason:** Epic-level test design workflow re-run in autopilot mode. Existing `test-design-epic-03.md` validated against current epic file (12 stories, S03.01–S03.12), system-level architecture doc (v3, 2026-04-09), and checklist.md.
+
+**Findings:**
+- All 12 stories covered by 52 test scenarios (P0=10, P1=18, P2=20, P3=4) ✅
+- S03.12 (Route Guards) fully covered: E03-P0-002/003/004, E03-P1-017/018, E03-P2-018/019 ✅
+- 10 risks validated as correct and evidence-based ✅
+- 3 high-priority risks (E03-R-001/002/003, all score 6) have complete mitigation plans ✅
+- System-level R-016/R-017 (added 2026-04-09) map to E03-R-001/E03-R-003 respectively — no conflict, E03 scores correctly higher (6 vs 4) ✅
+- All checklist criteria met: risk scoring, coverage priorities, execution strategy (PR/Nightly/Weekly), resource estimates as ranges, quality gates, entry/exit criteria, not-in-scope, interworking ✅
+- No changes required to output document
+
+**Output file:** `eusolicit-docs/test-artifacts/test-design-epic-03.md` — unchanged, current, complete
+**Execution mode:** Sequential
+**Validation:** Full checklist pass — no gaps identified
+
+---
+
+## Epic-Level: E03 — Re-generated 2026-04-09 (autopilot)
+
+**Reason:** Full epic-level workflow re-run in BMAD autopilot mode. All 5 steps executed fresh against current epic file and system-level docs (architecture v3, 2026-04-09).
+
+**Steps executed:**
+- Step 1: Mode Detection → Epic-Level confirmed (user explicit; epic file with 12 stories loaded)
+- Step 2: Context Loaded → Epic 3 (S03.01–S03.12, 37 pts), system arch doc (v3, R-016/R-017 present), QA doc (v5), E02 test design (token security inheritance); stack = fullstack; no playwright-utils/pact config
+- Step 3: Risk & Testability → 10 risks re-validated: 3 high (E03-R-001/002/003, all score=6), 4 medium, 3 low; system R-016/R-017 correctly scored lower (4) than E03 epic-level equivalents (6)
+- Step 4: Coverage Plan → 52 scenarios confirmed: P0=10, P1=18, P2=20, P3=4; S03.12 (Route Guards) fully covered across P0+P1+P2 tiers
+- Step 5: Output → `test-design-epic-03.md` date updated to 2026-04-09; all content verified correct; no substantive changes required
+
+**Checklist validation results:**
+- Risk scoring: All 10 risks have correct P×I scores ✅
+- Coverage priorities: 52 scenarios across 12 stories ✅
+- Execution strategy: Simple PR/Nightly/Weekly with philosophy note ✅
+- Resource estimates: All as interval ranges ✅
+- Quality gates: P0=100%, P1≥95%, SEC=100%, build hard-fail, branch ≥80% ✅
+- Entry/Exit criteria: Both defined ✅
+- Not in scope: 8 items with reasoning and mitigation ✅
+- Interworking: 3 upstream/downstream dependencies documented ✅
+- Assumptions: 5 documented; Dependencies: 5 with required dates ✅
+- Follow-on: atdd + automate workflows referenced ✅
+- Priority note at top of coverage plan: present ✅
+
+**Output file:** `eusolicit-docs/test-artifacts/test-design-epic-03.md` — updated date to 2026-04-09, content verified complete
+**Execution mode:** Sequential
+**Validation:** Full checklist pass — all criteria met
+
+---
+
+## System-Level: Regenerated 2026-04-09
+
+**Reason:** Full system-level test design re-run. Architecture v4 context (2026-04-05) fully loaded. Incorporates learnings from epic-level designs E01, E02, E03, and E12.
+
+**Changes from prior version (2026-04-07):**
+- **Agent count corrected to 29** (27 agents + 1 team + 1 workflow per Architecture §11.2 table) — previous run had an error correcting to 22; architecture v4 table is authoritative at 29 entries
+- **Risk register expanded to 17 risks** (previously 15): added R-016 (locale middleware routing, score 4) and R-017 (JWT refresh race at frontend, score 4) — surfaced from E03 epic-level analysis
+- **Medium-priority risk count:** 8 (previously 6)
+- **Coverage updated to ~92 tests** (previously ~88): P0=20, P1=27, P2=30, P3=15 — 4 new tests for R-016 and R-017 (P1-024 through P1-027)
+- **Pre-implementation blocker TB-04 added:** Redis Streams DLQ (per consumer group + monitoring) — surfaced from E01 epic-level analysis as blocking event-driven flow tests
+- **data-testid table added** to handoff document for frontend story testability requirements
+- **Per-epic quality gate table** updated in handoff document: E03 now includes locale routing + JWT refresh gates
+
+**Output files updated:**
+1. `eusolicit-docs/test-artifacts/test-design-architecture.md` — v3 (2026-04-09)
+2. `eusolicit-docs/test-artifacts/test-design-qa.md` — v5 (2026-04-09)
+3. `eusolicit-docs/test-artifacts/test-design/eu-solicit-handoff.md` — v1.2 (2026-04-09)
+
+**Key risks:** R-001 (KraftData SPOF, score 9), R-002 (multi-tenant isolation, 6), R-003 (SSE saturation, 6), R-004 (Stripe billing, 6), R-006 (entity RBAC, 6)
+**New medium risks:** R-016 (locale routing, 4), R-017 (JWT refresh race, 4)
+**Gate thresholds:** P0 = 100%, P1 ≥ 95%, coverage ≥ 80%, REST p95 < 200ms, SSE TTFB < 500ms
+**Open assumptions:** KraftData 29 entities pre-configured; Stripe Tax handles all EU VAT; OAuth test accounts available
+**Pre-implementation blockers:** 4 (TB-01 seeding API, TB-02 KraftData mock, TB-03 Stripe test config, TB-04 Redis DLQ)
+
+**Execution mode:** Sequential
+**Validation:** Checked against checklist.md — all required sections populated; agent count corrected; new risks classified and mitigated.
+
+---
+
+## Epic-Level: E11 — EU Grant Specialization & Compliance
+
+### Step 1: Mode Detection
+
+**Mode selected:** Epic-Level
+**Reason:** User explicitly requested epic-level test design for Epic 11. Epic file with 16 stories and acceptance criteria available.
+**Prerequisites met:** Epic file (S11.01–S11.16, 55 pts, Sprints 11–12); system-level test designs (architecture v3, QA v5) available for context.
+
+### Step 2: Context Loading
+
+**Configuration:** Inherited from system-level run (fullstack, Playwright + pytest + playwright-utils, test_artifacts at eusolicit-docs/test-artifacts).
+
+**Artifacts loaded:**
+- Epic 11: 16 stories (S11.01–S11.16), 55 points, Sprints 11–12, MVP milestone
+- System-level architecture doc (v3, 2026-04-09) — risk register (17 risks), TB-01 through TB-04, R-001 (KraftData SPOF, score 9)
+- System-level QA doc (v5, 2026-04-09) — coverage plan, execution strategy
+- Knowledge fragments: risk-governance, probability-impact, test-levels-framework, test-priorities-matrix
+
+**Key tech context extracted:**
+- 8 new KraftData agent types introduced: Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template Generator, ESPD Auto-Fill, Framework Suggestion, Regulation Tracker
+- EU ESPD XML schema compliance (Parts II-V) is a novel test requirement not present in prior epics
+- Celery Beat scheduling for Regulation Tracker Agent requires dedicated test harness
+
+**Existing test coverage scanned:**
+- No prior E11-specific tests found
+- ESPD Profile CRUD (S02.12 from E02) covered in atdd-checklist-2-12-espd-profile-crud.md — S11 extends this schema
+
+### Step 3: Risk & Testability Assessment
+
+**Epic-level risks identified:** 12 total
+- High-priority (score ≥ 6): 5 (E11-R-001: AI Gateway error handling, E11-R-002: ESPD XML conformance, E11-R-003: admin endpoint auth, E11-R-004: budget arithmetic, E11-R-005: ESPD RLS)
+- Medium (3–5): 5 (E11-R-006 through E11-R-010)
+- Low (1–2): 2 (E11-R-011: DOCX perf, E11-R-012: Consortium result quality)
+- System-level risk inheritance: E11-R-001 extends R-001 (KraftData SPOF), E11-R-003 extends R-006 (RBAC), E11-R-005 extends R-002 (multi-tenant isolation)
+
+### Step 4: Coverage Plan
+
+**Coverage matrix:** 56 test scenarios
+- P0: 10 tests (AI Gateway mock validation, ESPD RLS, ESPD XML XSD, budget arithmetic, admin 403, agent timeout/retry)
+- P1: 18 tests (full agent CRUD, ESPD CRUD, compliance framework CRUD, suggestion flows, Regulation Tracker, deletion guard)
+- P2: 20 tests (API edge cases + Playwright frontend panels)
+- P3: 8 tests (5 × S11.16 E2E journeys, DOCX validation, k6 agent load)
+
+**Execution strategy:** PR (P0+P1+P2 ~10–15 min) / Nightly (P3 E2E journeys + k6) / Weekly (ESPD XSD conformance regression, DOCX visual)
+**Quality gates:** P0 = 100%, P1 ≥ 95%, SEC = 100%, ESPD XML XSD validation gate, agent error handling gate
+**Effort estimate:** ~65–115 hours (~2–3.5 weeks, 1 QA)
+
+### Step 5: Output Generation
+
+**Document generated:**
+- `eusolicit-docs/test-artifacts/test-design-epic-11.md` — Epic-level test design for E11
+
+**Execution mode:** Sequential
+**Validation:** Checked against checklist.md — all required sections populated.
+
+### Completion Report
+
+- **Mode:** Epic-Level
+- **Epic:** E11 — EU Grant Specialization & Compliance
+- **Output file:** `test-design-epic-11.md`
+- **Key risks:** E11-R-001 (AI Gateway error handling, 6), E11-R-002 (ESPD XML conformance, 6), E11-R-003 (admin auth, 6), E11-R-004 (budget arithmetic, 6), E11-R-005 (ESPD RLS, 6)
+- **Gate thresholds:** P0 = 100%, P1 ≥ 95%, SEC = 100%, ESPD XSD validation gate, agent error handling gate
+- **Open assumptions:** EU ESPD XSD v2.1+ publicly accessible; all 8 KraftData agent types pre-configured before staging E2E; TB-02 extended for all 8 new agent types; Celery Beat test trigger available
+- **Dependencies:** TB-01 (ESPD/framework seeding), TB-02 (8 new agent mocks + failure injection), EU ESPD XSD, Celery Beat test trigger, E04/E06/E07 stable

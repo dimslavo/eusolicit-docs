@@ -1,410 +1,486 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-04-08'
+lastSaved: '2026-04-09'
 workflowType: 'testarch-test-review'
+story: '3-12-client-side-route-guards-auth-redirects'
 inputDocuments:
-  - 'eusolicit-docs/implementation-artifacts/3-10-loading-states-error-boundaries-empty-states.md'
-  - 'eusolicit-docs/test-artifacts/atdd-checklist-3-10-loading-states-error-boundaries-empty-states.md'
-  - 'eusolicit-app/frontend/apps/client/__tests__/loading-states-s3-10.test.ts'
+  - 'eusolicit-docs/implementation-artifacts/3-12-client-side-route-guards-auth-redirects.md'
+  - 'eusolicit-docs/test-artifacts/test-design-epic-03.md'
+  - 'eusolicit-app/e2e/specs/shell/route-guards.spec.ts'
+  - 'eusolicit-app/e2e/specs/shell/route-guards.admin.spec.ts'
+  - 'eusolicit-app/e2e/support/fixtures/auth.fixture.ts'
+  - 'eusolicit-app/e2e/support/helpers/auth.helper.ts'
+  - 'eusolicit-app/playwright.config.ts'
   - '_bmad/bmm/config.yaml'
   - 'resources/knowledge/test-quality.md'
   - 'resources/knowledge/test-levels-framework.md'
   - 'resources/knowledge/fixture-architecture.md'
   - 'resources/knowledge/data-factories.md'
-  - 'resources/knowledge/component-tdd.md'
   - 'resources/knowledge/selector-resilience.md'
+  - 'resources/knowledge/test-healing-patterns.md'
+  - 'resources/knowledge/test-priorities-matrix.md'
 ---
 
-# Test Quality Review: loading-states-s3-10.test.ts
+# Test Quality Review: Story 3.12 — Client-Side Route Guards & Auth Redirects
 
-**Quality Score**: 94/100 (A — Excellent)
-**Review Date**: 2026-04-08
-**Review Scope**: Single file — Story 3.10, Loading States / Error Boundaries / Empty States
+**Quality Score**: 92/100 (A — Good)
+**Review Date**: 2026-04-09
+**Review Scope**: suite (two E2E spec files; all tests for Story 3.12)
 **Reviewer**: TEA Master Test Architect
+**Story Status**: ✅ Done (SR Pass 2 Approved)
 
 ---
 
-> **Coverage Note**: This review audits existing test quality only. Coverage mapping and coverage gates are out of scope. Use `trace` for coverage decisions.
+> **Coverage Note:** This review audits existing tests for quality dimensions (determinism,
+> isolation, maintainability, performance). Coverage mapping and coverage gates are out of
+> scope here. Use `trace` for coverage decisions.
 
 ---
 
 ## Executive Summary
 
-**Overall Assessment**: Excellent
+**Overall Assessment**: Good
 
 **Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-✅ **Perfect isolation** — 160 tests run fully independently with zero shared mutable state; read-only filesystem operations require no teardown; no `beforeAll`/`afterAll` side effects
-✅ **100% AC coverage** — All 10 ACs addressed; every `data-testid`, prop, class, and export specified in the ACs is verified; AC10 correctly deferred to CI
-✅ **Flake-free and fast** — No hard waits, no timing dependencies, no conditional flow; 159 tests execute in 428ms (avg 2.7ms/test; well under the 1.5-min limit)
-✅ **Precise RED-phase evidence** — 155 tests fail on missing files/content (not on bugs); 4 pass on pre-existing artifacts; ENOENT messages pinpoint the exact failing task
-✅ **Explicit assertions throughout** — All `expect()` calls in test bodies; helper functions (`fileExists`, `readFile`, `readJson`, `flattenKeys`) are extraction-only with no hidden assertions
+✅ **Complete AC coverage** — All 10 ACs (AC1–AC10) are exercised across 34 E2E tests in two spec files. Every P0, P1, and P2 test scenario from `test-design-epic-03.md` is present.
+
+✅ **Zero hard waits** — No `waitForTimeout()` calls anywhere. All waits are conditional (`waitForURL`, `toBeVisible({ timeout })`, `page.waitForURL`).
+
+✅ **Correct `addInitScript` pattern** — The S3.12 HIGH patch (single-object arg `{ key, value }`) is properly implemented in both spec files; the pre-patch bug of silently dropped `value` is resolved.
+
+✅ **Network-first mocking** — `mockLoginSuccess()` (route intercept) is always called before `page.goto()`, correctly preventing race conditions on the login API route.
+
+✅ **Full test isolation** — Playwright's per-test page/context isolation means every test starts from a clean browser state. No `beforeAll`/`afterAll` side effects. `page.addInitScript` and `page.route` are page-scoped.
+
+✅ **Structured test IDs and priorities** — All 34 tests use `[ACX-TXX][PX]` naming, all are tagged P0/P1/P2, all Epic test IDs (E03-P0-002, E03-P0-003, E03-P0-004, E03-P1-017, E03-P1-018, E03-P2-018, E03-P2-019) are mapped explicitly in the file header.
+
+✅ **Cookie name corrected** — `auth.fixture.ts` and `auth.helper.ts` both use `eusolicit-session` (S3.12 patch resolved; previously `auth-token`).
 
 ### Key Weaknesses
 
-❌ **File length 1,049 lines** — Significantly exceeds the 300-line quality threshold; should be split into 4–6 focused files by AC group
-❌ **Repeated `readFile()` calls** — 148 filesystem reads across 160 tests; each test independently reads the same file that other tests in its describe block already read
-❌ **Imprecise SkeletonAvatarSize regex** — `/export type SkeletonAvatarSize|SkeletonAvatarSize/` — second alternative has no anchoring and will pass even if the type is only imported, not exported
+❌ **CDP `newCDPSession` is Chromium-only (AC5-T02)** — The test will throw and fail on `client-firefox`, `client-webkit`, and `client-mobile` projects (3 of 5 configured). Needs a browser guard.
+
+⚠️ **AC8-T03 redirect metric is incomplete** — The test counts HTTP 3xx responses but `router.replace()` (client-side) produces no HTTP response. The assertion `≤ 2 redirects` only validates the server-side layer; the comment implies it covers client-side too.
+
+⚠️ **`seedAuthState` duplicated** — Identical function defined in both spec files. Should be extracted to a shared E2E helper.
 
 ### Summary
 
-Story 3.10's ATDD test suite is an excellent static verification suite that cleanly confirms all file-system deliverables, structural content, i18n keys, export declarations, and data-testid attributes required by the ACs. The suite is deterministic and perfectly isolated — it will never flake.
-
-The principal weakness is organisational: at 1,049 lines, the file is 3.5× the recommended limit, making it harder to navigate and maintain as ACs evolve. Splitting into per-AC-group files would add no logic but dramatically improve readability. Two additional medium-severity polish items (shared readFile pattern, imprecise SkeletonAvatarSize regex) are straightforward fixes that tighten assertion precision without changing coverage.
-
-With a weighted quality score of **94/100**, this suite is production-ready and can be approved immediately with the three improvements tracked as follow-up items.
+The Story 3.12 ATDD suite is well-written, correctly structured, and directly maps to acceptance criteria and epic test design priorities. The Senior Developer Review patches are fully resolved. Test isolation, network mocking, and explicit assertions are all strong. The primary issue requiring a fix before the next test run on Firefox/WebKit is the unguarded CDP call in AC5-T02. All other findings are LOW and can be addressed as follow-up improvements.
 
 ---
 
 ## Quality Criteria Assessment
 
-| Criterion                            | Status      | Violations | Notes                                                              |
-| ------------------------------------ | ----------- | ---------- | ------------------------------------------------------------------ |
-| BDD Format (Given-When-Then)         | ⚠️ WARN     | 0          | Functional names acceptable for static tests; not strict BDD       |
-| Test IDs                             | ⚠️ WARN     | 160        | No `3.10-UNIT-nnn` IDs; breaks traceability matrix cross-reference |
-| Priority Markers (P0/P1/P2/P3)       | ⚠️ WARN     | 160        | AC priorities in checklist not reflected in test names             |
-| Hard Waits (sleep, waitForTimeout)   | ✅ PASS     | 0          | No timing dependencies; pure sync node:fs reads                    |
-| Determinism (no conditionals)        | ✅ PASS     | 1          | 1 LOW: overly-broad SkeletonAvatarSize regex second alternative    |
-| Isolation (cleanup, no shared state) | ✅ PASS     | 0          | Perfect — all tests are read-only, zero shared mutable state       |
-| Fixture Patterns                     | ✅ PASS     | 0          | Static tests; helper fns are extraction-only — correct choice      |
-| Data Factories                       | ✅ PASS     | 0          | N/A for static file-system tests                                   |
-| Network-First Pattern                | ✅ PASS     | 0          | N/A — no browser or network operations                             |
-| Explicit Assertions                  | ✅ PASS     | 0          | All `expect()` visible in test bodies                              |
-| Test Length (≤300 lines)             | ❌ FAIL     | 1,049 ln   | File is 3.5× over limit — HIGH severity                            |
-| Test Duration (≤1.5 min)             | ✅ PASS     | 0          | 428ms for 159 tests (0.007 min) — outstanding                      |
-| Flakiness Patterns                   | ✅ PASS     | 0          | No flakiness risk identified                                       |
+| Criterion                            | Status    | Violations | Notes |
+|--------------------------------------|-----------|------------|-------|
+| BDD Format (Given-When-Then)         | ⚠️ WARN   | 0          | Custom `[ACX-TXX][PX] description` format — clear intent, not formal G/W/T |
+| Test IDs                             | ✅ PASS   | 0          | All 34 tests have AC-referenced IDs |
+| Priority Markers (P0/P1/P2)          | ✅ PASS   | 0          | All tests tagged; P0/P1/P2 distribution matches epic design |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS   | 0          | Zero `waitForTimeout` calls |
+| Determinism (no conditionals)        | ❌ FAIL   | 1 HIGH, 2 LOW | CDP Chromium-only (HIGH); throttle timing + AC8 metric (LOWs) |
+| Isolation (cleanup, no shared state) | ✅ PASS   | 1 LOW      | CDP cleanup on failure path (LOW) |
+| Fixture Patterns                     | ⚠️ WARN   | 2 LOW      | `seedAuthState` dup + `mockLoginSuccess` not in fixture |
+| Data Factories                       | ⚠️ WARN   | 0          | No factory functions; direct JSON constants — acceptable for auth seeding |
+| Network-First Pattern                | ✅ PASS   | 0          | `page.route()` always before `page.goto()` |
+| Explicit Assertions                  | ✅ PASS   | 0          | All assertions in test bodies with descriptive messages |
+| Test Length (individual ≤ 300 lines) | ✅ PASS   | 0          | Longest test ~50 lines; avg ~26 lines (JSDoc inflates apparent length) |
+| Test Duration (≤ 1.5 min)            | ✅ PASS   | 2 LOW      | AC5-T02 CPU throttle + multi-step P1 tests |
+| Flakiness Patterns                   | ❌ FAIL   | 1 HIGH     | AC5-T02 CDP will error on non-Chromium browsers |
 
-**Total Violations**: 0 Critical, 1 High, 2 Medium, 2 Low
+**Total Violations**: 0 Critical, 2 High, 1 Medium, 5 Low
 
 ---
 
 ## Quality Score Breakdown
 
-### Dimension Scores (Weighted)
-
-| Dimension       | Score  | Weight | Weighted Contribution |
-|-----------------|--------|--------|-----------------------|
-| Determinism     | 98/100 | 30%    | 29.40                 |
-| Isolation       | 100/100| 30%    | 30.00                 |
-| Maintainability | 78/100 | 25%    | 19.50                 |
-| Performance     | 98/100 | 15%    | 14.70                 |
-| **Overall**     | **94** | 100%   | **93.60 → 94**        |
-
-### Per-Dimension Scoring Detail
-
 ```
-DETERMINISM (98/100)
-  LOW violations × -2:  -1 × 2 = -2
-    → Broad SkeletonAvatarSize regex second alternative
-  Score: 98
+Dimension Evaluation (Weighted):
+─────────────────────────────────────────────────────────────
+  Determinism      (30%)   ×   86  =  25.80
+    HIGH:  CDP newCDPSession Chromium-only         −10
+    LOW:   Machine-dependent CPU throttle timing    −2
+    LOW:   AC8-T03 HTTP-only redirect count        −2
 
-ISOLATION (100/100)
-  No violations.
-  Score: 100
+  Isolation        (30%)   ×   98  =  29.40
+    LOW:   CDP cleanup missing from failure path    −2
 
-MAINTAINABILITY (78/100)
-  HIGH violations × -10: -1 × 10 = -10
-    → File length 1,049 lines (>300 threshold)
-  MEDIUM violations × -5: -2 × 5 = -10
-    → Repeated readFile() calls (148 reads; DRY violation)
-    → Imprecise SkeletonAvatarSize regex
-  LOW violations × -2:  -1 × 2 = -2
-    → No test IDs (3.10-UNIT-NNN format)
-  Score: 100 - 10 - 10 - 2 = 78
+  Maintainability  (25%)   ×   89  =  22.25
+    MEDIUM: AC8-T03 misleading redirect assertion   −5
+    LOW:   seedAuthState duplicated (2 files)       −2
+    LOW:   mockLoginSuccess not in shared fixture   −2
+    LOW:   AC5-T03/T04 assert Tailwind class names  −2
 
-PERFORMANCE (98/100)
-  LOW violations × -2:  -1 × 2 = -2
-    → 148 repeated readFile calls (negligible at 428ms total)
-  Score: 98
-
-OVERALL WEIGHTED: 29.40 + 30.00 + 19.50 + 14.70 = 93.60 → 94/100
+  Performance      (15%)   ×   96  =  14.40
+    LOW:   AC5-T02 CPU throttle adds test duration  −2
+    LOW:   AC2-T02, P1-018-T03 are multi-step UI    −2
+─────────────────────────────────────────────────────────────
+  Overall weighted score:                   91.85 → 92 / 100
+  Grade:                                    A
 ```
-
-**Final Score: 94/100 — Grade A (Excellent)**
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No P0 critical issues detected. ✅
+### 1. AC5-T02: CDP `newCDPSession` is Chromium-only — fails on Firefox, WebKit, mobile
 
----
-
-## High Severity Issues (Should Fix Before Next Story)
-
-### 1. Test File Exceeds 300-Line Quality Threshold
-
-**Severity**: P1 (High)
-**Location**: `apps/client/__tests__/loading-states-s3-10.test.ts:1–1049`
-**Criterion**: Test Length
-**Knowledge Base**: `resources/knowledge/test-quality.md`
+**Severity**: HIGH
+**Location**: `eusolicit-app/e2e/specs/shell/route-guards.spec.ts:239`
+**Criterion**: Determinism / Flakiness Patterns
+**Knowledge Base**: [selector-resilience.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/selector-resilience.md), [test-healing-patterns.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/test-healing-patterns.md)
 
 **Issue Description**:
-At 1,049 lines, this file is 3.5× over the established quality threshold (≤ 300 lines). The 19 describe blocks span 10 ACs covering fundamentally different system concerns (skeleton variants, error boundaries, empty states, i18n, exports, demo page). When a future story modifies a component, a developer must scroll through ~1,000 lines to locate the affected describe block, and a single failing describe block causes the entire 1,049-line file to appear in CI error output.
+`page.context().newCDPSession(page)` uses the Chrome DevTools Protocol, which is only available in Chromium-based browsers. The `playwright.config.ts` runs `route-guards.spec.ts` against five projects: `client-chromium`, `client-firefox`, `client-webkit`, and `client-mobile` (iPhone 14, WebKit). On the three non-Chromium projects, `newCDPSession()` throws `Error: CDP is only supported by Chromium-based browsers`. This causes AC5-T02 to fail on 3 out of 5 browser projects — a consistent, reproducible CI failure.
 
-**Current Structure**:
-```
-loading-states-s3-10.test.ts  (1,049 lines, 19 describe blocks, 160 tests)
-├── AC1 — Skeleton Files (6 tests)
-├── AC1 — SkeletonCard (7 tests)
-├── AC1 — SkeletonTable (7 tests)
-├── AC1 — SkeletonList (6 tests)
-├── AC1 — SkeletonText (7 tests)
-├── AC1 — SkeletonAvatar (9 tests)
-├── AC2 — Global Error Boundary (12 tests)
-├── AC3 — Per-section ErrorBoundary (9 tests)
-├── AC4 — EmptyState (10 tests)
-├── AC5 — EmptyStateNoResults (8 tests)
-├── AC5 — EmptyStateGetStarted (5 tests)
-├── AC5 — EmptyStateNoAccess (7 tests)
-├── AC6 — QueryGuard (11 tests)
-├── AC7 — i18n en.json (9 tests)
-├── AC7 — i18n bg.json (9 tests)
-├── AC7 — i18n parity (2 tests)
-├── AC8 — /dev/ui-states page (8 tests)
-├── AC9 — packages/ui/index.ts exports (18 tests)
-└── AC9 — feedback/index.ts barrel (8 tests)
-```
-
-**Recommended Refactor** — Split by AC group:
-
-```
-apps/client/__tests__/
-  s3-10-ac1-skeletons.test.ts           (~150 lines, 42 tests)
-  s3-10-ac2-ac3-error-boundaries.test.ts (~100 lines, 21 tests)
-  s3-10-ac4-ac5-empty-states.test.ts    (~150 lines, 30 tests)
-  s3-10-ac6-query-guard.test.ts         (~60 lines,  11 tests)
-  s3-10-ac7-i18n.test.ts                (~100 lines, 20 tests)
-  s3-10-ac8-ac9-exports-page.test.ts    (~90 lines,  26 tests)
-
-__tests__/helpers/s3-10-paths.ts        (shared path constants)
-```
-
-**Why This Matters**:
-Focused files enable `vitest run s3-10-ac1*` targeted runs, reduce noise in CI failures, and make it immediately obvious which component's tests are in which file. When AC1 skeleton tests fail, only `s3-10-ac1-skeletons.test.ts` appears in CI output.
-
----
-
-## Medium Severity Issues (Recommended Fixes)
-
-### 2. Repeated `readFile()` Calls Within Describe Blocks
-
-**Severity**: P2 (Medium)
-**Location**: Throughout — 148 `readFile`/`readJson` calls across 160 tests
-**Criterion**: Maintainability, DRY
-**Knowledge Base**: `resources/knowledge/test-quality.md`
-
-**Issue Description**:
-Each `it()` block independently calls `readFile()` on the same file as every other test in its `describe()` block. For example, the SkeletonCard describe block (7 tests) calls `readFile(join(FEEDBACK_DIR, 'SkeletonCard.tsx'))` 7 times. The same pattern repeats for all 11 component files, producing 148 filesystem reads where ~35 unique reads would suffice.
-
-**Current Code** (SkeletonCard — 7 reads for same file):
+**Current Code**:
 ```typescript
-describe('AC1: SkeletonCard — structure and styling', () => {
-  it('SkeletonCard exports SkeletonCard function', () => {
-    const content = readFile(join(FEEDBACK_DIR, 'SkeletonCard.tsx'));  // read #1
-    expect(content).toContain('export function SkeletonCard');
-  });
+// ❌ Bad — CDP only works in Chromium (line 239-251)
+test('[AC5-T02][P0] protected content NOT visible while spinner is shown (E03-R-002)', async ({ page }) => {
+  const client = await page.context().newCDPSession(page);
+  // Throws on Firefox, WebKit, mobile ↓
+  await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 
-  it('SkeletonCard accepts className prop', () => {
-    const content = readFile(join(FEEDBACK_DIR, 'SkeletonCard.tsx'));  // read #2 — same file
-    expect(content).toContain('className');
-  });
-  // 5 more identical reads...
-});
-```
+  await page.goto(DASHBOARD_URL);
+  await expect(page.getByTestId('protected-content')).not.toBeVisible();
 
-**Recommended Improvement**:
-```typescript
-describe('AC1: SkeletonCard — structure and styling', () => {
-  let content: string;
-
-  beforeAll(() => {
-    content = readFile(join(FEEDBACK_DIR, 'SkeletonCard.tsx'));  // read ONCE
-  });
-
-  it('SkeletonCard exports SkeletonCard function', () => {
-    expect(content).toContain('export function SkeletonCard');
-  });
-
-  it('SkeletonCard accepts className prop', () => {
-    expect(content).toContain('className');
-  });
-  // ... all tests share the single `content` read
-});
-```
-
-**Benefits**:
-Reduces filesystem reads by ~75%, makes describe block intent explicit ("all tests in this block assert on the same file"), and simplifies adding new assertions (no need to copy-paste the readFile call).
-
-**Priority**: P2 — does not affect correctness or flakiness; purely a readability and minor performance improvement.
-
----
-
-### 3. Overly Permissive `SkeletonAvatarSize` Type Assertion
-
-**Severity**: P2 (Medium)
-**Location**: `apps/client/__tests__/loading-states-s3-10.test.ts:348`
-**Criterion**: Assertion Precision
-**Knowledge Base**: `resources/knowledge/selector-resilience.md`
-
-**Issue Description**:
-The test verifying `SkeletonAvatarSize` type export uses a regex with two alternatives:
-
-```typescript
-expect(content).toMatch(/export type SkeletonAvatarSize|SkeletonAvatarSize/);
-```
-
-The second alternative `SkeletonAvatarSize` (without any keyword context or anchoring) will match any file where the type name appears — including imports, function argument types, or JSDoc comments. A file that imports `SkeletonAvatarSize` from elsewhere but does not export it would still pass this assertion, producing a false positive.
-
-**Current Code** (line 348):
-```typescript
-it('SkeletonAvatar exports SkeletonAvatarSize type', () => {
-  const content = readFile(join(FEEDBACK_DIR, 'SkeletonAvatar.tsx'));
-  expect(content).toMatch(/export type SkeletonAvatarSize|SkeletonAvatarSize/);
-  // ⚠️ Second alternative matches ANY occurrence, not just the export declaration
+  await client.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 });
 ```
 
 **Recommended Fix**:
 ```typescript
-it('SkeletonAvatar exports SkeletonAvatarSize type', () => {
-  const content = readFile(join(FEEDBACK_DIR, 'SkeletonAvatar.tsx'));
-  expect(content).toMatch(/export type SkeletonAvatarSize/);  // Require actual export declaration
-});
+// ✅ Good — guard with project-name or skip non-Chromium
+test('[AC5-T02][P0] protected content NOT visible while spinner is shown (E03-R-002)',
+  async ({ page }, testInfo) => {
+    // CDP is Chromium-only; test skipped for Firefox/WebKit/mobile
+    if (!testInfo.project.name.includes('chromium')) {
+      test.skip();
+      return;
+    }
+
+    const client = await page.context().newCDPSession(page);
+    try {
+      await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      await page.goto(DASHBOARD_URL);
+      await expect(page.getByTestId('protected-content')).not.toBeVisible();
+    } finally {
+      // Always reset, even on failure
+      await client.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    }
+  }
+);
 ```
 
-Note: The AC9 `index.ts` check (line 956) uses `toContain('SkeletonAvatarSize')` — acceptable there since the index file is exclusively a barrel of exports where any occurrence implies an export.
+**Why This Matters**:
+The test currently errors (not fails) on Firefox, WebKit, and mobile — three of five browser projects. This breaks CI on every branch with non-Chromium test runs. The scenario (no flash of protected content during hydration) is already covered by AC5-T01 (without CPU throttling) which runs on all browsers. AC5-T02's purpose is to explicitly slow hydration to expose the race condition — meaningful only under Chromium where CDP is available.
 
-**Benefits**:
-Eliminates false-positive risk; aligns the assertion intent ("the type is exported") with the assertion precision.
-
-**Priority**: P2 — trivial 1-minute fix.
+**Bonus fix**: The `finally` block also resolves the LOW isolation issue (cleanup on failure path).
 
 ---
 
-## Low Severity Issues
+## Recommendations (Should Fix)
 
-### 4. No Test IDs in Test Names
+### 1. AC8-T03: Redirect count assertion measures HTTP only — client-side router.replace invisible
 
-**Severity**: P3 (Low)
-**Location**: All 160 tests
-**Criterion**: Test IDs
-**Knowledge Base**: `resources/knowledge/test-levels-framework.md`
+**Severity**: MEDIUM
+**Location**: `eusolicit-app/e2e/specs/shell/route-guards.spec.ts:487-506`
+**Criterion**: Maintainability (misleading test intent)
 
 **Issue Description**:
-The test-levels framework defines a test ID format of `{EPIC}.{STORY}-{LEVEL}-{SEQ}` (e.g., `3.10-UNIT-001`). None of the 160 tests carry IDs, making it harder to cross-reference execution reports with the traceability matrix.
+AC8 requires "maximum observed redirect count for any entry path must be ≤ 2." The test counts HTTP 3xx network responses (`status === 301 || 302 || 307 || 308`). However, `router.replace()` (Next.js App Router / client-side navigation) does NOT generate an HTTP response — it triggers a History API `replaceState` call invisible to `page.on('response')`. In practice, the flow for an unauthenticated visit is:
+1. HTTP 307 from middleware → counted ✅
+2. Client-side `router.replace('/login?redirect=...')` from AuthGuard → NOT counted ❌
 
-**Example Fix**:
+The assertion `redirectCount ≤ 2` passes because `redirectCount = 1` (only the 307), not because there are truly ≤ 2 total redirects.
+
+**Current Code**:
 ```typescript
-// Current:
-it('SkeletonCard exports SkeletonCard function', () => { ... });
-
-// With test ID:
-it('[3.10-UNIT-001] SkeletonCard exports SkeletonCard function', () => { ... });
+// ⚠️ Incomplete — misses client-side redirects (line 487-506)
+let redirectCount = 0;
+page.on('response', (response) => {
+  const status = response.status();
+  if (status === 301 || status === 302 || status === 307 || status === 308) {
+    redirectCount++;
+  }
+});
+await page.goto(DASHBOARD_URL);
+await page.waitForURL(LOGIN_RE, { timeout: 10_000 });
+// Comment implies this counts client-side too — it does NOT
+expect(redirectCount, `Expected ≤2 redirects, got ${redirectCount} — AC8`).toBeLessThanOrEqual(2);
 ```
 
-**Priority**: P3 — nice-to-have for traceability; does not affect reliability or coverage.
+**Recommended Improvement**:
+```typescript
+// ✅ Better — clarify HTTP-only scope in comment; optionally add URL change count
+let httpRedirectCount = 0;
+const urlChanges: string[] = [];
+
+page.on('response', (response) => {
+  const status = response.status();
+  if ([301, 302, 307, 308].includes(status)) {
+    httpRedirectCount++;
+  }
+});
+page.on('framenavigated', (frame) => {
+  if (frame === page.mainFrame()) {
+    urlChanges.push(frame.url());
+  }
+});
+
+await page.goto(DASHBOARD_URL);
+await page.waitForURL(LOGIN_RE, { timeout: 10_000 });
+
+// HTTP server-side redirects (middleware 307): expect exactly 1
+expect(httpRedirectCount, 'Middleware should issue exactly 1 HTTP redirect — AC7').toBe(1);
+// Total URL changes (server + client-side): expect ≤ 2
+expect(urlChanges.length, `Expected ≤2 total URL changes (server 307 + client router.replace), got ${urlChanges.length} — AC8`).toBeLessThanOrEqual(2);
+```
+
+**Benefits**: Makes the redirect loop protection assertion complete and accurate. `framenavigated` fires on both server-side and client-side navigation, providing a true redirect count.
+
+**Priority**: P1 (High) — current test gives partial assurance on a security-relevant AC.
+
+---
+
+### 2. Extract `seedAuthState` to shared E2E helper
+
+**Severity**: LOW
+**Location**: `route-guards.spec.ts:110`, `route-guards.admin.spec.ts:69`
+**Criterion**: Maintainability (DRY violation)
+
+**Issue Description**:
+`seedAuthState` is a 3-line function defined identically in both spec files. Adding a future auth store field (e.g., `expiresAt`) would require updating both files.
+
+**Current Code**:
+```typescript
+// ❌ Duplicated in both spec files
+function seedAuthState({ key, value }: { key: string; value: string }): void {
+  localStorage.setItem(key, value);
+}
+```
+
+**Recommended Improvement**:
+```typescript
+// ✅ e2e/support/helpers/auth-state.helper.ts
+export function seedAuthState({ key, value }: { key: string; value: string }): void {
+  localStorage.setItem(key, value);
+}
+
+// In both spec files:
+import { seedAuthState } from '../../support/helpers/auth-state.helper';
+```
+
+**Benefits**: Single source of truth; consistent with `auth.fixture.ts` / `auth.helper.ts` pattern already established in `e2e/support/`.
+
+**Priority**: P2 (Low).
+
+---
+
+### 3. Move `mockLoginSuccess` to shared helper or fixture
+
+**Severity**: LOW
+**Location**: `route-guards.spec.ts:115-133`
+**Criterion**: Fixture Patterns (3+ uses → shared helper)
+
+**Issue Description**:
+`mockLoginSuccess` is an inline `async function` used in 3 tests (AC2-T02, AC8-T01, AC8-T02) and likely needed by future login-related tests. Per fixture architecture: "3+ uses → Create fixture with subpath export."
+
+**Recommended Improvement**:
+```typescript
+// ✅ e2e/support/helpers/mock-login.helper.ts
+export async function mockLoginSuccess(page: Page): Promise<void> {
+  await page.route('**/api/v1/auth/login', (route) => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        access_token: 'stub-jwt-token',
+        refresh_token: 'stub-refresh-token',
+        user: {
+          id: 'test-user-id', email: 'test@eusolicit.com',
+          name: 'Test User', companyId: 'test-company-id', role: 'owner',
+        },
+      }),
+    });
+  });
+}
+// Import in spec files: import { mockLoginSuccess } from '../../support/helpers/mock-login.helper';
+```
+
+**Priority**: P2 (Low).
+
+---
+
+### 4. AC5-T03/T04: Document CSS-class assertions as spec-driven
+
+**Severity**: LOW
+**Location**: `route-guards.spec.ts:265, 283`
+**Criterion**: Selector resilience (implementation coupling)
+
+**Issue Description**:
+`toHaveClass(/fixed/)`, `toHaveClass(/bg-slate-100/)`, and `toHaveClass(/animate-spin/)` assert Tailwind class names. These pass today but could break if the spinner styling is refactored (e.g., renamed to use a CSS variable or different approach).
+
+**Recommended Improvement**:
+```typescript
+// ✅ Add a spec-binding comment to clarify these are intentional per AC5
+// AC5 spec explicitly requires: "fixed inset-0 z-50 ... bg-slate-100 ... Loader2 animate-spin"
+// These assertions are spec-driven, not arbitrary implementation checks.
+await expect(spinner).toHaveClass(/fixed/);    // per AC5: "fixed inset-0 z-50"
+await expect(spinner).toHaveClass(/bg-slate-100/); // per AC5: "slate-100 background"
+```
+
+**Priority**: P3 (Low) — Acceptable given AC5 names these classes explicitly. Add comment to document intent.
 
 ---
 
 ## Best Practices Found
 
-### 1. i18n Key Parity + Non-English Translation Enforcement
+### 1. Single-object `addInitScript` arg — S3.12 HIGH patch correctly resolved
 
-**Location**: `loading-states-s3-10.test.ts:848–861`
+**Location**: `route-guards.spec.ts:110-112`, `route-guards.admin.spec.ts:69-71`
+**Pattern**: Playwright `addInitScript` single-arg destructure
+
+**Why This Is Good**:
+Playwright's `addInitScript(fn, arg?)` accepts exactly one serialisable arg. The pre-patch code used three positional args (`addInitScript(fn, key, value)`) which silently dropped `value`. The corrected form packs both pieces of data into a single object and destructures inside the function — exactly the right pattern.
 
 ```typescript
-// Structural key parity check
-it('bg.json states namespace has same keys as en.json states namespace', () => {
-  const en = readJson(EN_JSON_PATH) as Record<string, Record<string, unknown>>;
-  const bg = readJson(BG_JSON_PATH) as Record<string, Record<string, unknown>>;
-  const enStatesKeys = Object.keys(en.states ?? {}).sort();
-  const bgStatesKeys = Object.keys(bg.states ?? {}).sort();
-  expect(bgStatesKeys).toEqual(enStatesKeys);  // exact key parity, sorted
-});
-
-// Translation quality guard
-it('bg.json states namespace has noResultsTitle (must not be English)', () => {
-  const json = readJson(BG_JSON_PATH) as Record<string, Record<string, string>>;
-  expect(json.states?.noResultsTitle).toBeTruthy();
-  expect(json.states?.noResultsTitle).not.toBe('No results found');  // <- guards untranslated copy
-});
+// ✅ Correct — single object arg
+function seedAuthState({ key, value }: { key: string; value: string }): void {
+  localStorage.setItem(key, value);
+}
+await page.addInitScript(seedAuthState, { key: AUTH_STORE_KEY, value: AUTH_STORE_AUTHENTICATED });
 ```
 
-**Why This Is Excellent**: The `not.toBe(englishString)` assertion is a lightweight but highly effective guard against untranslated i18n keys being committed. Combined with the structural parity check, this pattern ensures both completeness and correctness of translations. Use this as the reference pattern for all future i18n test suites in this project.
+**Use as Reference**: This is the canonical pattern for seeding client-side storage state in Playwright tests.
 
 ---
 
-### 2. Priority-Ordered Render Logic Verification
+### 2. Network-First: `page.route()` always precedes `page.goto()`
 
-**Location**: `loading-states-s3-10.test.ts:709–717`
+**Location**: `route-guards.spec.ts:116`, used at lines 366, 458, 478
+
+**Why This Is Good**:
+`mockLoginSuccess(page)` is called before `page.goto()` in all tests that mock the login API. This prevents race conditions where the route intercept is registered after the browser has already made the request.
 
 ```typescript
-it('QueryGuard uses priority-ordered render logic: loading → error → empty → children', () => {
-  const content = readFile(join(FEEDBACK_DIR, 'QueryGuard.tsx'));
-  const loadingIdx = content.indexOf('isLoading');
-  const errorIdx   = content.indexOf('isError');
-  const emptyIdx   = content.indexOf('isEmpty');
-  expect(loadingIdx).toBeGreaterThanOrEqual(0);
-  expect(errorIdx).toBeGreaterThan(loadingIdx);
-  expect(emptyIdx).toBeGreaterThan(errorIdx);
-});
+// ✅ Correct — intercept before navigate
+await mockLoginSuccess(page);               // register route mock first
+await page.goto(TENDERS_URL);               // then navigate
 ```
-
-**Why This Is Good**: Goes beyond simple string presence checks to validate the _ordering_ of conditional branches, which is an explicit semantic AC requirement. The `indexOf` approach cleverly uses source position as a structural proxy for evaluation order. This is a pragmatic solution in the absence of an AST parser, and it's effective for this code pattern.
 
 ---
 
-### 3. RED-Phase Documentation Standard
+### 3. Explicit assertion messages for P0/SEC scenarios
 
-**Location**: `loading-states-s3-10.test.ts:1–55` (header block)
+**Location**: `route-guards.spec.ts:170, 245, 437`
 
-The file header comprehensively documents: every AC tested and how, the expected failure mode per missing task (ENOENT path → task number), TDD phase status, and the exact run command. This makes it trivial to onboard a new developer or confirm CI failure context. This is the established documentation standard for ATDD suites in this project.
+**Why This Is Good**:
+Tests covering E03-R-002 (route guard flash) include explicit message arguments on `expect()`:
+
+```typescript
+await expect(
+  page.getByTestId('protected-content'),
+  'Protected page content must NOT be visible to unauthenticated users — E03-R-002',
+).not.toBeVisible();
+```
+
+This produces actionable failure messages referencing the risk ID, dramatically reducing diagnosis time in CI.
+
+---
+
+### 4. Server-side middleware tested via `request` fixture (no browser overhead)
+
+**Location**: `route-guards.spec.ts:517-608`
+
+**Why This Is Good**:
+AC7 tests use `{ request }` instead of `{ page }` — direct HTTP calls without a browser window. This is the correct level: verifying middleware 307 behaviour is an integration test of the Next.js middleware, not a user journey.
+
+```typescript
+test('[AC7-T01][P2]...', async ({ request }) => {
+  const response = await request.get(DASHBOARD_URL, {
+    maxRedirects: 0,
+    headers: { Accept: 'text/html' },
+  });
+  expect(response.status()).toBe(307);
+  const location = response.headers()['location'];
+  expect(location).toMatch(/\/login/);
+});
+```
+
+This is faster, more deterministic, and correctly placed at the integration level per the test-levels-framework.
 
 ---
 
 ## Test File Analysis
 
-### File Metadata
+### File 1: `route-guards.spec.ts`
 
-| Property        | Value                                                                         |
-|-----------------|-------------------------------------------------------------------------------|
-| **File Path**   | `eusolicit-app/frontend/apps/client/__tests__/loading-states-s3-10.test.ts`   |
-| **File Size**   | 1,049 lines, ~44 KB                                                            |
-| **Framework**   | Vitest (`environment: 'node'`)                                                 |
-| **Language**    | TypeScript                                                                     |
-| **Test Type**   | Static / File-system (no browser, no network)                                 |
+- **File Path**: `eusolicit-app/e2e/specs/shell/route-guards.spec.ts`
+- **File Size**: 692 lines (JSDoc comments + constants inflate; ~260 lines of pure test logic)
+- **Test Framework**: Playwright
+- **Language**: TypeScript
 
-### Test Structure
+**Test Structure**:
+- **Describe Blocks**: 8
+- **Test Cases**: 27
+- **Average Test Length**: ~25 lines (excl. JSDoc)
+- **Fixtures Used**: `page` (Playwright built-in), `request` (Playwright built-in)
+- **Data Factories Used**: 0 (auth state seeded as JSON constants)
 
-| Property               | Value                                                   |
-|------------------------|---------------------------------------------------------|
-| **Describe Blocks**    | 19                                                      |
-| **Test Cases (it)**    | 160                                                     |
-| **Avg Test Length**    | ~3–5 lines                                              |
-| **Total Assertions**   | 209 `expect()` calls                                    |
-| **Assertions/Test**    | ~1.3 avg                                                |
-| **Helper Functions**   | `fileExists`, `readFile`, `readJson`, `flattenKeys`     |
-| **Fixtures**           | None (static tests; helpers are extraction-only)        |
-| **Actual Run Time**    | 428ms (159 tests in RED phase)                          |
+**Test Scope**:
+- **Test IDs**: AC1-T01 through AC1-T04, AC5-T01 through AC5-T04, AC3-T01 through AC3-T03, AC2-T01 through AC2-T03, AC4-T01, AC4-T02, AC8-T01 through AC8-T03, AC7-T01 through AC7-T05, P1-018-T01 through P1-018-T03
+- **Priority Distribution**:
+  - P0 (Critical): 9 tests (AC1-T01/T02, AC5-T01/T02, AC3-T01/T02 + story P0 group)
+  - P1 (High): 8 tests (AC1-T03/T04, AC5-T03/T04, AC3-T03, AC2-T01/T02/T03, P1-018)
+  - P2 (Medium): 10 tests (AC4, AC8, AC7)
 
-### Test Scope by AC
+**Assertions Analysis**:
+- **Total `expect()` calls**: ~54
+- **Avg per test**: ~2.0
+- **Assertion types**: `toHaveURL`, `not.toBeVisible`, `toBeVisible`, `toBeTruthy`, `toContain`, `toBe`, `toMatch`, `toBeLessThanOrEqual`, `toBeNull`
 
-| AC   | Tests | Priority | Approach                                             |
-|------|-------|----------|------------------------------------------------------|
-| AC1  | 47    | P1       | File existence + structural content checks           |
-| AC2  | 12    | P1       | File existence + 11 content / data-testid assertions |
-| AC3  | 9     | P1       | File existence + 8 content assertions                |
-| AC4  | 10    | P1       | File existence + 9 content / data-testid assertions  |
-| AC5  | 20    | P2       | 3× (file existence + content assertions)             |
-| AC6  | 11    | P1       | File existence + ordering + fallback checks          |
-| AC7  | 20    | P1       | JSON parse + key/value + parity assertions           |
-| AC8  | 8     | P2       | File existence + import + content assertions         |
-| AC9  | 26    | P1       | index.ts symbol presence + barrel re-exports         |
-| AC10 | 0     | P0       | Build/CI only — correctly excluded from Vitest scope |
+---
+
+### File 2: `route-guards.admin.spec.ts`
+
+- **File Path**: `eusolicit-app/e2e/specs/shell/route-guards.admin.spec.ts`
+- **File Size**: 208 lines
+- **Test Framework**: Playwright
+- **Language**: TypeScript
+
+**Test Structure**:
+- **Describe Blocks**: 3
+- **Test Cases**: 7
+- **Avg Test Length**: ~22 lines
+
+**Test Scope**:
+- AC6-T01 through AC6-T04, AC7-AC6-T01/T02, AC9-T01
+- P1 (High): 6 tests | P2 (Medium): 1 test
+
+**Note on AC9-T01**: Tests that the admin app starts without a 500 error (AuthGuard module resolution). This is a good smoke test for AC9 ("exported from packages/ui/index.ts"). It's thin but appropriate — AC9's full coverage comes from the unit/type-check pipeline (dev record: `pnpm build` + `pnpm type-check` pass).
+
+---
+
+## Acceptance Criteria Coverage vs. Test Design
+
+| AC | Priority | Test IDs | Spec Files | Status |
+|----|----------|----------|-----------|--------|
+| AC1 — Unauth redirect to /login?redirect= | P0 | AC1-T01–T04 | client | ✅ Covered |
+| AC2 — Post-login redirect round-trip | P1 | AC2-T01–T03 | client | ✅ Covered |
+| AC3 — Auth user redirected from auth pages | P0 | AC3-T01–T03 | client | ✅ Covered |
+| AC4 — Corrupt state (token=null) treated as unauth | P2 | AC4-T01–T02 | client | ✅ Covered |
+| AC5 — Hydration spinner, no flash | P0 | AC5-T01–T04 | client | ✅ Covered (CDP fix needed) |
+| AC6 — Both apps guarded | P1 | AC6-T01–T04 | admin | ✅ Covered |
+| AC7 — Middleware 307 on missing cookie | P2 | AC7-T01–T05, AC7-AC6-T01/T02 | both | ✅ Covered |
+| AC8 — Redirect loop protection | P2 | AC8-T01–T03 | client | ⚠️ Partial (T03 HTTP-only metric) |
+| AC9 — Export from @eusolicit/ui | P2 | AC9-T01 | admin | ✅ Smoke covered |
+| AC10 — Build & type-check | n/a | CI / pnpm build | N/A | ✅ Build pipeline |
+| E03-P1-018 — Logout clears state + redirects | P1 | P1-018-T01–T03 | client | ✅ Covered |
 
 ---
 
@@ -412,71 +488,64 @@ The file header comprehensively documents: every AC tested and how, the expected
 
 ### Related Artifacts
 
-- **Story File**: [3-10-loading-states-error-boundaries-empty-states.md](../implementation-artifacts/3-10-loading-states-error-boundaries-empty-states.md)
-- **ATDD Checklist**: [atdd-checklist-3-10-loading-states-error-boundaries-empty-states.md](./atdd-checklist-3-10-loading-states-error-boundaries-empty-states.md)
-- **Test Design**: [test-design-epic-03.md](./test-design/test-design-epic-03.md) — E03-P1-015, E03-P1-016, E03-P2-016
+- **Story File**: [3-12-client-side-route-guards-auth-redirects.md](../implementation-artifacts/3-12-client-side-route-guards-auth-redirects.md)
+- **Test Design**: [test-design-epic-03.md](test-design-epic-03.md)
+- **Risk Assessment**: E03-R-002 (SEC — Route guard flash, Score 6) — primary risk addressed by AC5 tests
+- **Priority Framework**: P0-P2 applied; all P0 scenarios covered
 
-### data-testid Coverage
+### Unit Test Gap (informational — coverage scope; not scored)
 
-| Component              | Required testids                                                              | Verified |
-|------------------------|-------------------------------------------------------------------------------|:--------:|
-| Global error boundary  | `global-error-boundary`, `error-try-again`, `error-details-toggle`           | ✅       |
-| Per-section EB         | `section-error-boundary`                                                      | ✅       |
-| EmptyState             | `empty-state`, `empty-state-action`                                           | ✅       |
-| QueryGuard             | `query-guard-loading`, `query-guard-error`, `query-guard-empty`               | ✅       |
+No unit tests were found for the following new pure functions introduced in S3.12:
+
+- `packages/ui/src/lib/auth-routes.ts`: `isAuthRoute()`, `getSafeRedirect()`, `isRelativePath()`
+- `apps/client/middleware.ts` auth cookie check logic
+- `apps/admin/middleware.ts` auth cookie check logic
+
+These are pure/near-pure functions ideally suited for unit tests (fast, no side effects, testable with Vitest). The `getSafeRedirect` function in particular has important security logic (open-redirect prevention) that benefits from exhaustive unit test coverage beyond what E2E can provide. **Recommended follow-up: add `auth-routes.test.ts` in `packages/ui/src/__tests__/lib/`.**
 
 ---
 
-## Quality Score Summary
+## Knowledge Base References
 
-```
-══════════════════════════════════════════════════════════════
-  Test Quality Review Complete
-
-  Story:  3-10-loading-states-error-boundaries-empty-states
-  File:   loading-states-s3-10.test.ts  (1,049 lines, 160 tests)
-
-  Overall Score:  94/100  (Grade: A — Excellent)
-
-  Dimension Scores:
-  ├─ Determinism:      98/100  (A)   — 1 LOW violation
-  ├─ Isolation:       100/100  (A+)  — 0 violations ✅
-  ├─ Maintainability:  78/100  (C+)  — 1H / 2M / 1L violations
-  └─ Performance:      98/100  (A)   — 1 LOW violation
-
-  Violations:
-  ├─ HIGH:   1  (file length 1,049 lines)
-  ├─ MEDIUM: 2  (readFile DRY, imprecise regex)
-  ├─ LOW:    2  (no test IDs, same imprecise regex x2)
-  └─ TOTAL:  5
-
-  ✅ Zero critical blockers — suite is production-ready
-══════════════════════════════════════════════════════════════
-```
+- **[test-quality.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/test-quality.md)** — Core quality definition: no hard waits, <300 lines/test, self-cleaning, explicit assertions
+- **[fixture-architecture.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/fixture-architecture.md)** — Pure function → Fixture → mergeTests pattern; 3+ uses = shared fixture
+- **[network-first.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/network-first.md)** — Route intercept before navigate (race condition prevention)
+- **[test-levels-framework.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/test-levels-framework.md)** — E2E vs API vs Component vs Unit appropriateness
+- **[selector-resilience.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/selector-resilience.md)** — `data-testid` preferred; avoid platform-specific APIs
+- **[test-healing-patterns.md](../../../.claude/skills/bmad-testarch-test-review/resources/knowledge/test-healing-patterns.md)** — Recovering from platform-specific failures
 
 ---
 
 ## Next Steps
 
-### Immediate (Before Next Story Merge)
+### Immediate Actions (Before Next CI Run on Firefox/WebKit)
 
-1. **Fix SkeletonAvatarSize regex** (line 348) — change to `/export type SkeletonAvatarSize/`
-   - Priority: P2 | Effort: 1 min | Owner: Dev/TEA
+1. **Fix AC5-T02 CDP guard** — Add `test.skip()` for non-Chromium projects or wrap in try/finally
+   - Priority: P1 (HIGH — causes CI failures on 3/5 browser projects)
+   - Owner: Frontend / QA
+   - Estimated Effort: 5 minutes
 
-### Follow-up (Tech Debt — Story 3.11 or Dedicated Refactor PR)
+### Follow-up Actions (Future PRs)
 
-1. **Split test file into per-AC-group files** — create 6 focused files from the 1,049-line monolith
-   - Priority: P1 | Effort: ~30 min
+1. **Improve AC8-T03 redirect count** — Use `framenavigated` listener to capture client-side redirects alongside HTTP 3xx
+   - Priority: P1 / Medium
+   - Target: Sprint 3 cleanup PR
 
-2. **Add `beforeAll` shared content variables** — eliminate 148 → ~35 filesystem reads per suite run
-   - Priority: P2 | Effort: ~20 min
+2. **Extract `seedAuthState` to shared helper** — `e2e/support/helpers/auth-state.helper.ts`
+   - Priority: P2
+   - Target: E2E infrastructure refactor
 
-3. **Add test IDs** (`[3.10-UNIT-NNN]` format) — enables traceability matrix cross-reference
-   - Priority: P3 | Effort: ~15 min
+3. **Move `mockLoginSuccess` to shared helper** — `e2e/support/helpers/mock-login.helper.ts`
+   - Priority: P2
+   - Target: E2E infrastructure refactor
+
+4. **Add unit tests for `auth-routes.ts`** — Test `isAuthRoute`, `getSafeRedirect`, `isRelativePath` with Vitest
+   - Priority: P1 (security-critical open-redirect prevention logic)
+   - Target: S3.12 follow-up or next auth-related story
 
 ### Re-Review Needed?
 
-⚠️ Re-review not required before merge. The single P2 regex fix is a 1-minute change with zero risk. Larger improvements (file splitting, DRY reads) are appropriately deferred to a follow-up.
+⚠️ **Re-review AC5-T02 after CDP fix** — verify `test.skip` guard is correct; re-run on Firefox project to confirm no errors.
 
 ---
 
@@ -484,34 +553,42 @@ The file header comprehensively documents: every AC tested and how, the expected
 
 **Recommendation**: Approve with Comments
 
-> Test quality is excellent at **94/100**. The suite provides solid ATDD coverage for all 10 ACs of Story 3.10. It is deterministic, perfectly isolated, and fast. There are no flakiness risks or false-negative threats. The three tracked improvements (regex precision, file splitting, shared reads) are follow-up items that do not block merge.
+**Rationale**:
+Test quality is good with 92/100 score. The suite provides complete acceptance criteria coverage for Story 3.12 across all priority levels. The critical S3.12 Senior Developer Review patches (seedAuthState Playwright API, open-redirect, cookie name) are correctly implemented and verified. All P0 scenarios pass on Chromium.
+
+The one HIGH issue (CDP in AC5-T02) causes test errors on Firefox/WebKit/mobile but does **not** invalidate the test suite — AC5-T01 covers the same scenario without CDP on all browsers. The fix is a 5-minute code change. Medium/Low findings are improvements that enhance long-term maintainability but don't affect test correctness.
+
+> Tests are production-ready on Chromium. The CDP guard fix should be applied before Firefox/WebKit CI runs to prevent false CI failures. Approved pending that trivial fix.
 
 ---
 
-## Appendix: Violation Summary by Location
+## Appendix
 
-| Line      | Severity | Dimension       | Issue                                           | Recommended Fix                                           |
-|-----------|----------|-----------------|-------------------------------------------------|-----------------------------------------------------------|
-| 1–1049    | HIGH     | Maintainability | File 1,049 lines (>300 threshold)               | Split into 6 per-AC-group test files                      |
-| 348       | MEDIUM   | Maintainability | Imprecise SkeletonAvatarSize regex              | Remove second alternative; use `/export type .../`        |
-| all descr | MEDIUM   | Maintainability | 148 repeated readFile/readJson calls            | Add `beforeAll` shared `content` variable per describe    |
-| 348       | LOW      | Determinism     | Same broad regex (false-positive risk)          | Fixed by the regex fix above                              |
-| all tests | LOW      | Maintainability | No test IDs (3.10-UNIT-NNN format)              | Add IDs when splitting into per-AC files                  |
+### Violation Summary by Location
 
----
+| File | Line | Severity | Criterion | Issue | Fix |
+|------|------|----------|-----------|-------|-----|
+| route-guards.spec.ts | 239 | **HIGH** | Determinism / Flakiness | CDP `newCDPSession` Chromium-only | Add `test.skip()` for non-Chromium + `try/finally` |
+| route-guards.spec.ts | 487 | MEDIUM | Maintainability | AC8-T03 HTTP-only redirect count | Add `framenavigated` listener |
+| route-guards.spec.ts | 110 | LOW | Maintainability | `seedAuthState` duplicated | Extract to shared helper |
+| route-guards.admin.spec.ts | 69 | LOW | Maintainability | `seedAuthState` duplicated | Same shared helper |
+| route-guards.spec.ts | 115 | LOW | Fixture Patterns | `mockLoginSuccess` not in fixture | Move to shared helper |
+| route-guards.spec.ts | 265 | LOW | Selector Resilience | CSS class assertions (AC5-T03/T04) | Add spec-binding comment |
+| route-guards.spec.ts | 241 | LOW | Determinism | Machine-dependent CPU throttle | Document assumption |
+| route-guards.spec.ts | 251 | LOW | Isolation | CDP cleanup not in finally block | Add `try/finally` (same fix as HIGH) |
+| route-guards.spec.ts | 494 | LOW | Determinism | HTTP-only metric | Supplement with `framenavigated` |
 
-## Knowledge Base References
+### TEA Score Summary
 
-This review consulted:
+| Dimension | Weight | Score | Weighted |
+|-----------|--------|-------|---------|
+| Determinism | 30% | 86 | 25.80 |
+| Isolation | 30% | 98 | 29.40 |
+| Maintainability | 25% | 89 | 22.25 |
+| Performance | 15% | 96 | 14.40 |
+| **Overall** | | | **91.85 → 92** |
 
-- **test-quality.md** — Definition of Done: no hard waits, <300 lines, <1.5 min, self-cleaning, explicit assertions
-- **test-levels-framework.md** — Static/unit test appropriateness; test ID format (`{EPIC}.{STORY}-{LEVEL}-{SEQ}`)
-- **fixture-architecture.md** — `beforeAll`/`beforeEach` patterns for shared setup
-- **selector-resilience.md** — Assertion precision; avoiding overly-permissive regex patterns
-- **component-tdd.md** — Red-Green-Refactor cycle; proper RED phase evidence standards
-- **test-priorities-matrix.md** — P0–P3 violation classification framework
-
-For coverage analysis, use the `trace` workflow with [traceability-matrix.md](./traceability-matrix.md).
+**TEA_SCORE: 92**
 
 ---
 
@@ -519,8 +596,7 @@ For coverage analysis, use the `trace` workflow with [traceability-matrix.md](./
 
 **Generated By**: BMad TEA Agent (Master Test Architect)
 **Workflow**: testarch-test-review
-**Story**: 3-10-loading-states-error-boundaries-empty-states
-**Review ID**: test-review-loading-states-s3-10-20260408
-**Timestamp**: 2026-04-08
-
-TEA_SCORE: 94
+**Story**: 3-12-client-side-route-guards-auth-redirects
+**Review ID**: test-review-3-12-route-guards-20260409
+**Timestamp**: 2026-04-09 00:00:00
+**Version**: 1.0

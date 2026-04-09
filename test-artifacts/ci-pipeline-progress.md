@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight', 'step-02-generate-pipeline', 'step-03-configure-quality-gates', 'step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-04-07'
+lastSaved: '2026-04-09'
 ---
 
 # CI/CD Pipeline Setup Progress
@@ -400,3 +400,138 @@ All acceptance criteria for story 1-8 verified. All 78 ATDD tests pass. Three co
 - **Fast per-project CI** (ci.yml): 8-job matrix, ≤10 min, runs on every PR
 - **Full test pipeline** (test.yml): E2E + backend + burn-in flaky detection
 - **PR quality gate** (quality-gates.yml): P0/P1 gate enforcement before merge
+
+---
+
+## Enhancement Run — 2026-04-09 (API Test Tier + Docker Compose Stage)
+
+### Context
+
+Run triggered post-Epic-2 retrospective framework enhancement. Today's `bmad-testarch-framework`
+enhancement run 3 added the `tests/api/` live-service test tier (pytest `-m api`), RBAC test
+infrastructure, and cross-tenant isolation fixtures. This CI run fills the gap by adding
+Docker Compose–based API test execution to both workflow files.
+
+### Gap Analysis
+
+| Gap | Root Cause | Resolution |
+|-----|-----------|------------|
+| No `pytest -m api` job in any CI pipeline | `tests/api/` did not exist in April-07 run | Added `test-api` job to `test.yml` |
+| `ci.yml` integration job was a placeholder | AC-7 placeholder pending Docker implementation | Expanded to full Docker Compose API test runner |
+| No Docker layer caching for CI service builds | API tier not yet defined | Added Docker Buildx + `/tmp/.buildx-cache` in both jobs |
+| `make test-api-ci` target missing | API tests were local-only | Added `test-api-ci` to Makefile |
+
+### Changes Made
+
+#### `test.yml` — New Stage 5: API Tests
+
+Added `test-api` job between burn-in and report:
+
+| Property | Value |
+|----------|-------|
+| **Job ID** | `test-api` |
+| **Trigger** | `push` to main/develop + `schedule` (weekly burn-in) |
+| **Condition** | `if: github.event_name == 'push' \|\| github.event_name == 'schedule'` |
+| **Needs** | `lint` (parallel with test-backend and test-e2e) |
+| **Timeout** | 30 minutes |
+| **Docker** | docker/setup-buildx-action@v3 + `/tmp/.buildx-cache` |
+| **Services started** | postgres, redis (infrastructure) + client-api, admin-api, data-pipeline, ai-gateway, notification (application) |
+| **Migrations** | `alembic upgrade head` for each service (psycopg2-binary + alembic pre-installed) |
+| **Test command** | `pytest -m api -v --tb=short --junitxml=test-results/api.xml` |
+| **Artifacts** | api-test-results (14 days), service-logs-api-tests on failure (7 days) |
+| **Cleanup** | `docker compose down -v` (always) |
+
+**Why push-only**: Building 5 Docker images takes 5–10 minutes. Running on every PR would slow down quick feedback. The `pytest.skip()` guards in `tests/api/conftest.py` ensure graceful degradation on PRs.
+
+Updated `report` job:
+- `needs: [test-backend, test-e2e, burn-in, test-api]` (added test-api)
+- Step summary now includes `API Tests (Docker)` row with result
+- API failure/skip messages added to summary
+
+#### `ci.yml` — Integration Job Expanded
+
+Upgraded `integration` job from placeholder to full Docker Compose API test runner:
+
+| Property | Value |
+|----------|-------|
+| **Previous** | `docker compose config --quiet` (validation only) |
+| **New** | Full Docker build → service startup → migrations → `pytest -m api` |
+| **Trigger** | `push` to main (unchanged) |
+| **Timeout** | 10 min → **30 min** |
+| **Docker** | docker/setup-buildx-action@v3 + `/tmp/.buildx-cache-ci` (separate key from test.yml) |
+| **Services** | postgres + redis + all 5 application services |
+| **Migrations** | `alembic upgrade head` for all 5 services |
+| **Test command** | `pytest -m api -v --tb=short --junitxml=test-results/api-ci.xml` |
+| **Artifacts** | api-ci-results (14 days), service-logs-ci on failure (7 days) |
+
+#### `Makefile` — New Target
+
+Added `test-api-ci` target:
+- Starts Docker Compose infrastructure + services
+- Waits for health (30s sleep + pg_isready checks)
+- Runs Alembic migrations via `make migrate-all`
+- Runs `pytest -m api`
+- Stops and cleans up (`docker compose down -v`)
+
+### Validation Checklist
+
+| Check | Status |
+|-------|--------|
+| `test.yml` — Valid YAML | ✅ |
+| `test.yml` — 6 jobs (lint/test-backend/test-e2e/burn-in/test-api/report) | ✅ |
+| `test.yml` — test-api has Docker Buildx | ✅ |
+| `test.yml` — test-api has infrastructure + service health checks | ✅ |
+| `test.yml` — test-api has Alembic migrations | ✅ |
+| `test.yml` — test-api has artifact upload (results + logs) | ✅ |
+| `test.yml` — test-api has `docker compose down -v` cleanup | ✅ |
+| `test.yml` — report includes `test-api` in needs | ✅ |
+| `test.yml` — report includes API result row in summary | ✅ |
+| `test.yml` — test-api timeout: 30 minutes | ✅ |
+| `test.yml` — test-api only on push/schedule (not every PR) | ✅ |
+| `ci.yml` — Valid YAML | ✅ |
+| `ci.yml` — integration name updated to "API Tests (Docker Compose)" | ✅ |
+| `ci.yml` — integration timeout: 30 minutes | ✅ |
+| `ci.yml` — integration has Docker Buildx | ✅ |
+| `ci.yml` — integration has service health wait with curl /healthz | ✅ |
+| `ci.yml` — integration has Alembic migrations | ✅ |
+| `ci.yml` — integration has `pytest -m api` | ✅ |
+| `ci.yml` — integration has artifact upload | ✅ |
+| `ci.yml` — integration has `docker compose down -v` cleanup | ✅ |
+| `ci.yml` — integration triggers on push to main only | ✅ |
+| Security: no credentials in config | ✅ |
+| Security: test-only migration passwords (match .env.example) | ✅ |
+| Security: no `${{ inputs.* }}` in run: blocks | ✅ |
+
+### Files Modified
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `.github/workflows/test.yml` | Updated | Added Stage 5: test-api job + updated report |
+| `.github/workflows/ci.yml` | Updated | Expanded integration placeholder → Docker API tests |
+| `Makefile` | Updated | Added `test-api-ci` target |
+
+### Complete CI Architecture (2026-04-09)
+
+| Pipeline | File | Trigger | Key Jobs |
+|----------|------|---------|----------|
+| Fast per-project CI | `ci.yml` | push/PR | check (8-matrix) + API tests (push to main) |
+| Full test pipeline | `test.yml` | push/PR/schedule | lint → backend → e2e → API (push) → burn-in → report |
+| PR quality gate | `quality-gates.yml` | PR to main/develop | code-quality (P0) + coverage ≥80% (P0) + burn-in stability (P1) |
+| Deploy | `deploy.yml` | push to main | SSH deploy + smoke tests |
+
+### Test Tier Coverage in CI
+
+| Test Tier | Marker | CI Job | Trigger |
+|-----------|--------|--------|---------|
+| Unit | `pytest -m unit` | test.yml:test-backend + ci.yml:check | Every PR + push |
+| Integration | `pytest -m integration` | test.yml:test-backend | Every PR + push |
+| API (live) | `pytest -m api` | test.yml:test-api + ci.yml:integration | Push to main only |
+| E2E (Playwright) | `npx playwright test` | test.yml:test-e2e (4 shards) | Every PR + push |
+| Smoke | `pytest -m smoke` | Manual / local | Local + CD smoke tests |
+| Cross-service | `pytest -m cross_service` | Not yet in CI | Planned (requires full stack) |
+
+### Status: ✅ CI/CD Pipeline Updated — API Test Tier Now Covered
+
+All 4 CI workflow files operational. API test tier (`tests/api/`) now has dedicated Docker
+Compose CI jobs in both `test.yml` (Stage 5) and `ci.yml` (expanded integration). YAML
+validation passed for all files. Docker Buildx caching configured for both jobs.

@@ -1,7 +1,7 @@
 ---
-stepsCompleted: ['step-01-preflight', 'step-02-select-framework', 'step-03-scaffold-framework', 'step-04-docs-and-scripts', 'step-05-validate-and-summary', 'step-03-enhance-run-2', 'step-05-validate-enhance-run-2']
-lastStep: 'step-05-validate-enhance-run-2'
-lastSaved: '2026-04-07'
+stepsCompleted: ['step-01-preflight', 'step-02-select-framework', 'step-03-scaffold-framework', 'step-04-docs-and-scripts', 'step-05-validate-and-summary', 'step-03-enhance-run-2', 'step-05-validate-enhance-run-2', 'step-03-enhance-run-3', 'step-05-validate-enhance-run-3']
+lastStep: 'step-05-validate-enhance-run-3'
+lastSaved: '2026-04-09'
 ---
 
 # Test Framework Setup Progress
@@ -412,3 +412,93 @@ All framework files confirmed present via `python3` path validation.
 **Date:** 2026-04-07
 **Framework:** Playwright (E2E) + pytest + pytest-asyncio (backend)
 **Notes:** Enhancement run completed all gap items found during post-Epic-1 retrospective. All 40 framework files validated present. Two previously-failing ATDD smoke tests (`test_e2e_page_objects_index_exists`, `test_e2e_helpers_index_exists`) unblocked. Cross-service fixture infrastructure fully implemented. Tenant fixture added for Epic 12 tier-gate ATDD.
+
+---
+
+## Enhancement Run 3 — 2026-04-09 (project-context.md RBAC + API tier patterns)
+
+### Context
+
+Run triggered post-Epic-2 retrospective. The framework now operates against a fully implemented
+monorepo (Epics 1 & 2 complete). `project-context.md` was updated with additional canonical
+patterns: `register_and_verify_with_role`, exhaustive RBAC permission matrix testing, and
+cross-tenant isolation. This run fills the remaining gaps against the updated patterns.
+
+### Gaps Identified & Resolved
+
+**Python / pytest:**
+
+| Gap | Resolution |
+|-----|------------|
+| `tests/api/` directory missing — `api` marker defined in pyproject.toml but no conftest or `__init__.py` | Created `tests/api/__init__.py` + `tests/api/conftest.py` with live-service fixtures |
+| `register_and_verify_with_role` pattern from project-context.md not in eusolicit-test-utils | Created `eusolicit_test_utils.auth_helpers` with `register_and_verify_with_role`, `create_company_pair`, `make_role_token_fixture` |
+| RBAC parametrize helpers missing — exhaustive role × permission matrix not available | Created `eusolicit_test_utils.rbac` with `ROLE_HIERARCHY`, `write_access_cases()`, `manage_access_cases()`, `RoleTestCase`, `tc_ids()` |
+| `eusolicit_test_utils.__init__.py` not exporting new modules | Updated to export all new helpers and RBAC utilities |
+| `tests/README.md` missing — no documentation for Python test suite | Created comprehensive README covering all test levels, fixtures, patterns, CI |
+
+**TypeScript / Playwright E2E:**
+
+| Gap | Resolution |
+|-----|------------|
+| No RBAC fixture for 5-tier role hierarchy testing | Created `e2e/support/fixtures/rbac.fixture.ts` with `getRoleClient`, `getRoleToken`, `crossTenantSetup` |
+| `e2e/support/fixtures/index.ts` not including RBAC fixture | Updated to merge `rbacTest` (5 → 6 fixture sources) |
+| No RBAC role hierarchy utilities for E2E | Created `e2e/support/helpers/rbac.helper.ts` with `ROLE_HIERARCHY`, `rolesBelow()`, `canBypassEntityPermissions()`, `buildTestLoginPayload()`, `extractToken()`, permission matrix arrays |
+| `e2e/support/helpers/index.ts` not exporting RBAC helpers | Updated to export all RBAC utilities and types |
+
+### Files Created (7)
+
+| File | Purpose |
+|------|---------|
+| `tests/api/__init__.py` | Python package marker for the `api` test tier |
+| `tests/api/conftest.py` | Live-service fixtures: `live_client_api`, `live_admin_api`, `api_auth_token`, `auth_live_client`, `cross_tenant_clients` |
+| `tests/README.md` | Comprehensive Python test suite documentation |
+| `packages/eusolicit-test-utils/.../auth_helpers.py` | `register_and_verify_with_role`, `create_company_pair`, SQL-level pattern docs |
+| `packages/eusolicit-test-utils/.../rbac.py` | Role hierarchy, permission matrix, parametrize-ready test case builders |
+| `e2e/support/helpers/rbac.helper.ts` | TypeScript RBAC constants, role/permission helpers, test-login payload builder |
+| `e2e/support/fixtures/rbac.fixture.ts` | `getRoleClient`, `getRoleToken`, `crossTenantSetup` with ATDD red-phase fallback |
+
+### Files Updated (4)
+
+| File | Change |
+|------|--------|
+| `packages/eusolicit-test-utils/...//__init__.py` | Added exports for `auth_helpers` and `rbac` modules |
+| `e2e/support/helpers/index.ts` | Added RBAC helper exports + type re-exports |
+| `e2e/support/fixtures/index.ts` | Merged `rbacTest` — 5 fixture sources → 6 |
+
+### Knowledge Base Patterns Applied
+
+- **fixture-architecture.md** — `rbac.fixture.ts` uses one-concern-per-fixture + auto-cleanup pattern for allocated `APIRequestContext` objects
+- **data-factories.md** — `auth_helpers.py` and `rbac.fixture.ts` both support ATDD red-phase (placeholder tokens when test-login endpoint not yet implemented)
+- **test-quality.md** — `live_*_api` fixtures use `pytest.skip()` (not fail) for service unavailability; `services_healthy` pattern replicated in API tier conftest
+
+### Post-Enhancement Checklist
+
+- [x] `tests/api/__init__.py` — package marker
+- [x] `tests/api/conftest.py` — `live_client_api`, `api_auth_token`, `cross_tenant_clients`
+- [x] `tests/README.md` — documentation for all test levels + canonical patterns
+- [x] `eusolicit_test_utils.auth_helpers` — `register_and_verify_with_role`, `create_company_pair`
+- [x] `eusolicit_test_utils.rbac` — full role/permission hierarchy + parametrize helpers
+- [x] `eusolicit_test_utils.__init__.py` — exports all new modules
+- [x] `e2e/support/helpers/rbac.helper.ts` — TypeScript RBAC utilities
+- [x] `e2e/support/helpers/index.ts` — RBAC re-exports
+- [x] `e2e/support/fixtures/rbac.fixture.ts` — role fixture + cross-tenant setup
+- [x] `e2e/support/fixtures/index.ts` — RBAC fixture merged
+
+### Quality Checks
+
+| Check | Status |
+|-------|--------|
+| ATDD red-phase support (placeholder tokens) | ✅ Both `rbac.fixture.ts` and `auth_helpers.py` degrade gracefully |
+| Auto-disposal of `APIRequestContext` | ✅ `rbac.fixture.ts` tracks + disposes all allocated contexts |
+| `pytest.skip()` on service unavailability | ✅ `live_client_api` and `live_admin_api` skip rather than fail |
+| JWT claim extraction (no signature verification) | ✅ Base64url decode in `rbac.fixture.ts` + `auth_helpers.py` |
+| Parametrize-ready RBAC cases | ✅ `read_access_cases()`, `write_access_cases()`, `manage_access_cases()` |
+| SQL-level pattern documented | ✅ `_SQL_PATTERN_DOCSTRING` in `auth_helpers.py` for TestClient tests |
+| No secrets in new files | ✅ All tokens are test-only placeholders |
+
+### Enhancement Run 3 Sign-Off
+
+**Completed by:** bmad-testarch-framework skill (autopilot)
+**Date:** 2026-04-09
+**Framework:** Playwright 1.50 (E2E) + pytest 8+ + pytest-asyncio (backend)
+**Notes:** Enhancement run 3 implements all canonical patterns from the post-Epic-2 project-context.md retrospective. The `tests/api/` tier is now fully scaffolded, the RBAC test infrastructure covers the 5-tier role hierarchy and entity-permission matrix, and cross-tenant isolation helpers are available in both TypeScript (E2E) and Python (pytest) layers.

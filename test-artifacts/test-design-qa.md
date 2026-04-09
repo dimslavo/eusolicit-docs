@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-07'
+lastSaved: '2026-04-09'
 workflowType: 'testarch-test-design'
 inputDocuments:
   - 'eusolicit-docs/EU_Solicit_PRD_v1.md'
@@ -14,31 +14,32 @@ inputDocuments:
 
 **Purpose:** Test execution recipe for QA team. Defines what to test, how to test it, and what QA needs from other teams.
 
-**Date:** 2026-04-07
+**Date:** 2026-04-09
 **Author:** TEA Master Test Architect
 **Status:** Draft
 **Project:** EU Solicit
+**Version:** v5 (2026-04-09) — expanded to 92 test scenarios; added R-016 (locale routing) and R-017 (token refresh race) to risk table and P1 coverage; corrected KraftData entity count to 29; incorporated epic-level learnings from E01/E02/E03
 
-**Related:** See Architecture doc (test-design-architecture.md) for testability concerns, architectural blockers, and risk mitigation plans.
+**Related:** See Architecture doc (test-design-architecture.md) for testability concerns, architectural blockers, risk mitigation plans, and assumptions.
 
 ---
 
 ## Executive Summary
 
-**Scope:** Full-platform system-level test design for EU Solicit — 5 backend services (FastAPI/Celery), Next.js 14 frontend, KraftData AI integration (22 agents/teams/workflows), Stripe billing, calendar sync, data pipeline.
+**Scope:** Full-platform system-level test design for EU Solicit — 5 backend services (FastAPI/Celery), Next.js 14 frontend, KraftData AI integration (29 entities: 27 agents, 1 team, 1 workflow; 7 vector stores), Stripe billing (trials, add-ons, EU VAT, usage metering), Google Calendar + Outlook sync, data pipeline crawlers (AOP, TED, EU Grant portals), proposal collaboration + task orchestration + approval workflows, entity-level RBAC, ESPD auto-fill, submission guides, analytics dashboards + reporting.
 
 **Risk Summary:**
 
-- Total Risks: 15 (5 high-priority ≥6, 6 medium, 4 low)
-- Critical Categories: TECH (KraftData dependency), SEC (multi-tenant isolation, RBAC, SSE saturation), BUS (billing complexity)
+- Total Risks: 17 (5 high-priority ≥6, 8 medium, 4 low)
+- Critical Categories: TECH (KraftData SPOF, Redis Streams DLQ), SEC (multi-tenant isolation, entity RBAC, token security), BUS (billing lifecycle), PERF (SSE saturation, PostgreSQL FTS)
 
 **Coverage Summary:**
 
-- P0 tests: ~18 (auth, billing, data isolation, core AI flows)
-- P1 tests: ~25 (opportunity discovery, proposal lifecycle, collaboration, alerts)
-- P2 tests: ~30 (edge cases, analytics, admin features, calendar sync)
-- P3 tests: ~15 (exploratory, performance benchmarks, i18n)
-- **Total: ~88 tests (~6–9 weeks with 1 QA)**
+- P0 tests: ~20 (auth, billing, data isolation, core AI flows, service health)
+- P1 tests: ~27 (opportunity discovery, proposal lifecycle, collaboration, alerts, calendar, locale routing, token refresh)
+- P2 tests: ~30 (edge cases, analytics, admin features, calendar edge cases, compliance, ESPD, submission guides)
+- P3 tests: ~15 (E2E persona journeys, k6 performance benchmarks, i18n, white-label)
+- **Total: ~92 tests (~6–9 weeks with 1 QA, ~3–5 weeks with 2 QAs)**
 
 ---
 
@@ -46,13 +47,15 @@ inputDocuments:
 
 | Item | Reasoning | Mitigation |
 |------|-----------|------------|
-| Electronic bid submission | Out of MVP scope per PRD Section 7 | Platform provides submission guides; users submit externally |
-| Microsoft OAuth2 login | Deferred post-MVP per ADR 1.8 | Google OAuth2 + email/password covered |
-| E-procurement portal connectors | Post-MVP per Requirements Brief Section 11 | Crawlers only; no direct portal integration |
-| ERP/CRM integrations | Post-MVP per Requirements Brief Section 11 | No Salesforce/SAP/HubSpot testing |
-| Digital signatures (eIDAS) | Post-MVP per ADR 1.8 | Document export as PDF/DOCX tested instead |
-| Elasticsearch faceted search | Post-MVP per Architecture Section 4.3 | PostgreSQL FTS tested |
-| KraftData agent output quality | Owned by KraftData via eval-runs | EU Solicit tests integration contract, not AI output quality |
+| Electronic bid submission | Out of MVP scope per PRD §3 / ADR 1.8 | Platform provides submission guides; users submit externally via portal |
+| Microsoft OAuth2 login | Deferred post-MVP per ADR 1.8 | Google OAuth2 + email/password covered; authlib infra ready for post-MVP |
+| E-procurement portal connectors | Post-MVP per Requirements Brief §11 | Crawlers only; no direct portal integration; `SubmissionPort` interface defined |
+| ERP/CRM integrations | Post-MVP per Requirements Brief §11 | No Salesforce/SAP/HubSpot/1C testing |
+| Digital signatures (eIDAS) | Post-MVP per ADR 1.8 | Document export as PDF/DOCX tested instead; `SignatureProviderPort` interface defined |
+| Elasticsearch faceted search | Post-MVP per Architecture §4.3 | PostgreSQL FTS tested; Elasticsearch migration path tested when introduced |
+| KraftData agent output quality | Owned by KraftData via eval-runs | EU Solicit tests integration contract and mock-mode correctness, not AI output quality |
+| Reporting Template Generator (grant winners) | Enterprise feature; post-MVP usage | Basic export path tested; post-award template generation deferred |
+| Consultant marketplace | Post-MVP per Requirements Brief §11 | Company profiles vault exists; marketplace feature deferred |
 
 ---
 
@@ -64,77 +67,75 @@ inputDocuments:
 
 **Source:** See Architecture doc "Quick Guide" for detailed mitigation plans
 
-1. **Test Data Seeding API (TB-01)** — Backend Lead — Pre-implementation
-   - QA needs: `POST /api/test-data/seed` with support for users, companies, subscriptions (all tiers + trial states), opportunities, proposals, tasks, and approval workflows
-   - Blocks: All integration and E2E tests
+1. **Test Data Seeding API (TB-01)** — Backend Lead — Sprint 3
+   - QA needs: `POST /api/test-data/seed` supporting: users (all 5 entity roles, all 5 company roles), companies (free/starter/professional/enterprise/trial states), opportunities (various CPV codes, regions BG/EU, budget ranges, statuses), proposals (with versions, collaborators, section locks, comments), tasks (with DAG dependencies and templates), approval workflows (multi-stage configurable sequences)
+   - QA needs: `DELETE /api/test-data/cleanup` with transaction rollback or cascaded delete for test isolation
+   - Blocks: All integration and E2E tests; without this, every test requires full registration → profile → subscription setup chain (~5 min per test)
 
-2. **KraftData Mock Service (TB-02)** — Backend Lead — Pre-implementation
-   - QA needs: AI Gateway mock mode returning deterministic fixture responses for all 22 agent types (summaries, proposals, compliance checks, scoring)
-   - Blocks: All AI feature tests (proposal generation, scoring simulator, compliance validator, document parser)
+2. **KraftData Mock Service (TB-02)** — Backend Lead — Sprint 3
+   - QA needs: AI Gateway mock mode activated via env flag (`AI_GATEWAY_MOCK=true`) returning deterministic fixture responses for all 29 entity types (27 agents, 1 team, 1 workflow)
+   - Mock must support: synchronous agent responses, SSE streaming responses (Proposal Generator Workflow), configurable per-agent-type delay simulation, failure injection (for circuit-breaker tests), and agent-type-specific response schemas matching production contracts
+   - Blocks: All AI feature tests — proposal generation (SSE), document analysis, compliance checking, scoring simulation, bid/no-bid decision, analytics agents; without mock, all AI paths require live KraftData = non-deterministic, slow, CI-unavailable
 
-3. **Stripe Test Configuration (TB-03)** — Backend Lead — Pre-implementation
-   - QA needs: Stripe test-mode keys, webhook simulation (Stripe CLI), test clocks for trial lifecycle
-   - Blocks: All billing tests (subscription creation, trial expiry, add-on purchases, VAT)
+3. **Stripe Test Configuration (TB-03)** — Backend Lead — Sprint 4
+   - QA needs: Stripe test-mode API keys configured in all test environments; `stripe listen --forward-to` setup documented and runnable in CI; Stripe test clock API enabled on test account; webhook endpoint verification key
+   - Covers: subscription creation (checkout.session.completed), trial lifecycle (trial_will_end → expiry → downgrade to Free), add-on Checkout Sessions (mode=payment), payment failure (payment_intent.payment_failed), subscription cancellation, EU VAT (Stripe Tax test mode with VIES mock)
+   - Blocks: All billing tests — P0-005 through P0-007 cannot run; trial/add-on/VAT edge case coverage blocked
 
 ### QA Infrastructure Setup (Pre-Implementation)
 
-1. **Test Data Factories** — QA
-   - User factory (all roles: admin, bid_manager, technical_writer, financial_analyst, legal_reviewer, read_only)
-   - Company factory (all tiers: free, starter, professional, enterprise, trial)
-   - Opportunity factory (various statuses, CPV codes, regions, budgets)
-   - Proposal factory (with versions, collaborators, comments, section locks)
-   - Auto-cleanup fixtures for parallel safety
+1. **Test Data Factories** — QA (Sprint 3)
+   - `UserFactory` — all 5 entity roles (bid_manager, technical_writer, financial_analyst, legal_reviewer, read_only) + platform_admin; faker-randomized email/name
+   - `CompanyFactory` — all 4 tiers (free, starter, professional, enterprise) + trial state; includes `tax_id` for VAT tests
+   - `OpportunityFactory` — various CPV codes, regions (BG, EU), budget ranges (< €500K, €500K–€5M, > €5M), statuses (open, closing_soon, closed, awarded); source (aop, ted, eu_grants)
+   - `ProposalFactory` — with versions, collaborators (multi-role), section locks, comments; includes `proposal_section_locks` for locking tests
+   - `TaskFactory` — with DAG dependencies; includes templates per opportunity type
+   - `ApprovalWorkflowFactory` — configurable stage sequences; includes decisions
+   - Auto-cleanup fixtures using pytest's `yield` fixture pattern with `DELETE /api/test-data/cleanup` in teardown; parallel-safe using unique `company_id` per test
+   - `ContentBlockFactory` — various categories, tags, approval states
 
-2. **Test Environments** — QA/DevOps
-   - Local: Docker Compose with all 5 services + PostgreSQL + Redis + MinIO + ClamAV
-   - CI/CD: Kubernetes namespace per PR with ephemeral databases
-   - Staging: Shared environment with Stripe test mode + KraftData sandbox
+2. **Test Environments** — QA/DevOps (Sprint 2)
+   - **Local:** Docker Compose with all 5 services + PostgreSQL 16 + Redis 7 + MinIO + ClamAV; `.env.test` with `AI_GATEWAY_MOCK=true` + Stripe test keys + `DEBUG_AUTH=true` for JWT override in tests
+   - **CI/CD:** GitHub Actions with service containers (PostgreSQL + Redis + MinIO); Stripe CLI webhook forwarding via `stripe listen --forward-to $APP_URL/api/v1/webhooks/stripe`; AI Gateway mock mode ON
+   - **Staging:** Shared Kubernetes namespace; Stripe test mode + KraftData sandbox; smoke tests only (not full regression)
 
-**Example factory pattern:**
+**Example factory + Playwright API test pattern:**
 
 ```python
-# tests/factories.py
-import factory
-from faker import Faker
+# tests/conftest.py (pytest/backend)
+import pytest
+import httpx
 
-fake = Faker()
-
-class UserFactory(factory.Factory):
-    class Meta:
-        model = dict
-
-    email = factory.LazyFunction(fake.email)
-    name = factory.LazyFunction(fake.name)
-    role = "user"
-    company_id = factory.LazyFunction(fake.uuid4)
-
-class CompanyFactory(factory.Factory):
-    class Meta:
-        model = dict
-
-    name = factory.LazyFunction(fake.company)
-    tier = "professional"
-    tax_id = factory.LazyFunction(lambda: f"BG{fake.random_number(digits=9)}")
+@pytest.fixture
+async def company_professional(test_client):
+    """Create a Professional-tier company and clean up after test."""
+    resp = await test_client.post('/api/test-data/seed', json={
+        'company': {'tier': 'professional', 'tax_id': 'BG123456789'},
+        'users': [{'role': 'bid_manager'}, {'role': 'technical_writer'}],
+    })
+    data = resp.json()
+    yield data
+    await test_client.delete(f"/api/test-data/cleanup/{data['company']['id']}")
 ```
 
 ```typescript
-// tests/e2e/fixtures.ts — example P0 API test
+// tests/e2e/fixtures.ts (Playwright/E2E)
 import { test, expect } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 
-test('@P0 @API user registration returns 201', async ({ request }) => {
-  const userData = {
-    email: faker.internet.email(),
-    password: 'TestPass123!',
-    company_name: faker.company.name(),
-  };
+test('@P0 @API @Security cross-tenant isolation: company A cannot read company B data', async ({ request }) => {
+  // Seed two companies
+  const companyA = await request.post('/api/test-data/seed', { data: { company: { tier: 'professional' } } });
+  const companyB = await request.post('/api/test-data/seed', { data: { company: { tier: 'professional' } } });
 
-  const response = await request.post('/api/v1/auth/register', { data: userData });
-  expect(response.status()).toBe(201);
+  const tokenA = (await companyA.json()).users[0].jwt;
+  const proposalB_id = (await companyB.json()).proposals[0].id;
 
-  const body = await response.json();
-  expect(body.user.email).toBe(userData.email);
-  expect(body.token).toBeTruthy();
+  // Company A's token should NOT access Company B's proposal
+  const response = await request.get(`/api/v1/proposals/${proposalB_id}`, {
+    headers: { Authorization: `Bearer ${tokenA}` }
+  });
+  expect(response.status()).toBe(404); // Not 403, to prevent enumeration
 });
 ```
 
@@ -142,48 +143,57 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 ## Risk Assessment
 
-**Note:** Full risk details and mitigation plans in Architecture doc. This section summarises risks relevant to QA test planning.
+**Note:** Full risk details and mitigation plans in Architecture doc (test-design-architecture.md).
 
 ### High-Priority Risks (Score ≥6)
 
 | Risk ID | Category | Description | Score | QA Test Coverage |
 |---------|----------|-------------|-------|-----------------|
-| **R-001** | TECH | KraftData single point of failure | **9** | Test with mock mode ON and OFF; verify graceful degradation UX when circuit breaker opens |
-| **R-002** | SEC | Multi-tenant data isolation | **6** | Cross-tenant access tests: Company A cannot see Company B data at every endpoint |
-| **R-003** | PERF | SSE stream saturation | **6** | k6 load test: concurrent SSE + REST under sustained load |
-| **R-004** | BUS | Stripe billing complexity | **6** | Full lifecycle: free → trial → paid → cancel; add-on purchases; VAT edge cases |
-| **R-006** | SEC | Entity-level RBAC enforcement | **6** | Permission matrix: all 5 roles × all entity types × all permission levels |
+| **R-001** | TECH | KraftData single point of failure (29 AI entities) | **9** | Mock mode: all 29 entity types respond deterministically; chaos test: KraftData unreachable → circuit opens → graceful 503 with cached result; no 500s permitted |
+| **R-002** | SEC | Multi-tenant data isolation (shared PostgreSQL, RBAC) | **6** | Cross-tenant API sweep: Company A JWT cannot access Company B data at any of 10+ endpoints; DB role permission denial tests at PostgreSQL level |
+| **R-003** | PERF | SSE stream saturation (AI Gateway concurrent connections) | **6** | k6 load test: 100 concurrent SSE + 100 concurrent REST → REST p95 < 200ms; per-tenant SSE limit (429 response on 4th connection) |
+| **R-004** | BUS | Stripe billing complexity (trials, add-ons, EU VAT) | **6** | Full lifecycle: registration → trial → expiry → Free downgrade; add-on Checkout → webhook → feature unlock; all 5 webhook event types; B2B/B2C VAT; Enterprise invoicing |
+| **R-006** | SEC | Entity-level RBAC (two-tier permission model edge cases) | **6** | Permission matrix: 5 roles × 2 entity types × 4 permission levels; cross-proposal isolation; grant/revoke atomicity; ceiling enforcement (read_only cannot be granted edit) |
 
 ### Medium/Low-Priority Risks
 
 | Risk ID | Category | Description | Score | QA Test Coverage |
 |---------|----------|-------------|-------|-----------------|
-| R-005 | DATA | Data pipeline staleness | 4 | Verify stale-data UX when pipeline is down |
-| R-007 | TECH | Redis Streams delivery | 4 | Event flow integration tests across all 7 streams |
-| R-008 | PERF | PostgreSQL shared instance bottleneck | 4 | k6 search/listing load test with 10K+ opportunities |
-| R-009 | OPS | Calendar sync OAuth | 4 | OAuth mock + token refresh + revocation tests |
-| R-010 | SEC | File upload ClamAV | 3 | Upload clean file (201) + infected file (422) |
-| R-012 | BUS | Tier gating accuracy | 4 | Parametrized tier boundary tests (region/CPV/budget) |
-| R-015 | SEC | Proposal collaboration locking | 4 | Concurrent edit race condition tests |
+| R-005 | DATA | Data pipeline staleness | 4 | Verify stale-data UX indicator displayed when pipeline circuit breaker open; no 500s served |
+| R-007 | TECH | Redis Streams DLQ gaps | 4 | Event flow tests: publish event to each of 7 streams → assert consumer group acknowledgement → verify downstream effect; DLQ depth = 0 after processing |
+| R-008 | PERF | PostgreSQL shared instance bottleneck | 4 | k6: opportunity search with 10K+ seeded records; FTS p95 < 200ms; concurrent analytics + search → no contention; materialized view refresh within window |
+| R-009 | OPS | Calendar sync OAuth token lifecycle | 4 | OAuth mock: token refresh cycle (access token expires → refresh token used → new access token); revocation: token revoked → sync stops gracefully; no orphaned sync jobs |
+| R-010 | SEC | ClamAV file scanning | 3 | Upload EICAR test file → expect 422 (malware detected); upload clean PDF → expect 201; ClamAV health-check passes before upload tests begin |
+| R-012 | BUS | Tier gating accuracy | 4 | Parametrized: Free (name/deadline/location/type/status only) vs. Starter/Professional/Enterprise (full data, AI features, region limits); usage meter limits enforced per tier |
+| R-015 | SEC | Proposal section locking race | 4 | Concurrent lock acquisition (2 users, same section, same instant) → only 1 acquires lock; TTL boundary test (lock expires → section becomes available); 423 response with lock holder identity |
+| **R-016** ★NEW | TECH | Frontend locale middleware routing (BG/EN) | 4 | Playwright: all platform routes accessible in both locales; cookie-based locale override; Accept-Language fallback; no redirect loops; deep links resolve to correct locale |
+| **R-017** ★NEW | SEC | JWT refresh race condition at frontend | 4 | Playwright: open 2 browser tabs → both make authenticated requests → single token refresh triggered (not two); no user logout; both requests complete successfully after refresh |
+| R-011 | DATA | Document retention lifecycle | 2 | Integration test: create document → advance time past retention window → verify soft-delete → advance 30 days → verify S3 purge; audit log immutable throughout |
+| R-013 | TECH | i18n coverage (BG + EN) | 2 | CI: i18n key coverage check (no missing keys in either locale); smoke test in BG locale (key pages render without missing-key errors); AI output language matches user preference setting |
+| R-014 | OPS | White-label subdomain isolation | 2 | Enterprise tenant white-label subdomain: correct logo/brand/colors rendered; no bleed from other tenants' white-label config |
 
 ---
 
 ## Entry Criteria
 
-- [ ] All requirements and assumptions agreed upon by QA, Dev, PM
-- [ ] Test environments provisioned (Docker Compose local + CI namespace)
-- [ ] Test data factories implemented (user, company, opportunity, proposal)
-- [ ] Pre-implementation blockers resolved (TB-01, TB-02, TB-03)
-- [ ] AI Gateway mock mode operational
-- [ ] Stripe test mode configured with webhook forwarding
+- [ ] All requirements and acceptance criteria agreed upon by QA, Dev, PM
+- [ ] Test environments provisioned (Docker Compose local + CI namespace + staging)
+- [ ] Test data factories implemented (User, Company, Opportunity, Proposal, Task, ApprovalWorkflow, ContentBlock)
+- [ ] TB-01 (Seeding API) delivered and functional
+- [ ] TB-02 (KraftData mock) operational for all 29 entity types (or Playwright `route()` stub fallback)
+- [ ] TB-03 (Stripe test mode) configured with webhook forwarding
+- [ ] Docker Compose test profile starts all 5 services + PostgreSQL + Redis + MinIO + ClamAV
+- [ ] GitHub Actions CI matrix runs all 5 service tests in parallel
 
 ## Exit Criteria
 
 - [ ] All P0 tests passing (100%)
-- [ ] All P1 tests passing (≥95% or failures triaged and accepted)
-- [ ] No open P0/P1 severity bugs
-- [ ] Cross-tenant isolation validated
-- [ ] Performance baselines met (p95 < 200ms REST, < 500ms SSE TTFB)
+- [ ] All P1 tests passing (≥95%, or failures triaged and accepted by QA Lead + PM)
+- [ ] No open P0/P1 severity bugs (or all accepted as known risk with owner)
+- [ ] Cross-tenant isolation validated (0 cross-company data leaks)
+- [ ] Performance baselines met: REST p95 < 200ms, SSE TTFB < 500ms, FTS on 10K+ records p95 < 200ms
+- [ ] All 5 Stripe webhook event types tested and handlers verified
+- [ ] Entity RBAC permission matrix coverage: all 5 roles × 2 entity types × 4 permission levels
 
 ---
 
@@ -197,62 +207,66 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 | Test ID | Requirement | Test Level | Risk Link | Notes |
 |---------|-------------|------------|-----------|-------|
-| **P0-001** | User registration (email/password) | API | R-002 | Validate company creation + Professional trial subscription initialised |
-| **P0-002** | Google OAuth2 login | API + E2E | R-002 | OAuth flow + JWT issuance + session creation |
-| **P0-003** | JWT RS256 validation — expired token rejected | API | R-006 | 401 on expired/invalid/missing token |
-| **P0-004** | JWT RS256 validation — insufficient permissions | API | R-006 | 403 on role mismatch |
-| **P0-005** | Entity-level RBAC — company role ceiling enforcement | API | R-006 | bid_manager cannot escalate to admin at entity level |
-| **P0-006** | Entity-level RBAC — cross-proposal isolation | API | R-002, R-006 | User with edit on Proposal A receives 403 on Proposal B |
-| **P0-007** | Cross-tenant data isolation — Company A vs Company B | API | R-002 | Full endpoint sweep: opportunities, proposals, tasks, analytics |
-| **P0-008** | Free-tier limited view — only name, deadline, location, type, status | API | R-012 | Verify gated fields return null/omitted for free users |
-| **P0-009** | Paid-tier access boundaries — region/CPV/budget enforcement | API | R-012 | Starter: BG only, 1 CPV sector, ≤€500K |
-| **P0-010** | Stripe Checkout — subscription creation | API | R-004 | Webhook: checkout.session.completed → subscription active |
-| **P0-011** | Trial lifecycle — 14-day Professional, no CC, downgrade on expiry | API | R-004 | Stripe test clock: advance 15 days → tier = Free |
-| **P0-012** | Usage metering — AI summary limit enforcement | API | R-004, R-012 | Starter at 10/10 → 429 with upgrade prompt |
-| **P0-013** | AI summary generation — streaming SSE response | API + E2E | R-001 | Via AI Gateway mock; verify SSE stream + usage counter increment |
-| **P0-014** | Proposal draft generation — multi-agent workflow streaming | API | R-001 | Via AI Gateway mock; verify proposal version created |
-| **P0-015** | Compliance validator — framework-specific validation | API | R-001 | Via AI Gateway mock; verify checklist output |
-| **P0-016** | Document upload — ClamAV virus scan + S3 storage | API | R-010 | Upload clean file (201) + infected file (422) |
-| **P0-017** | Opportunity search with filters — CPV, region, budget, deadline | API | — | Full-text search + filter combination |
-| **P0-018** | Audit trail — immutable log for all platform actions | API | R-002 | Verify audit_log entries on create/update/delete |
+| **P0-001** | User registration (email/password) | API | R-002 | Validate: company created, Professional trial subscription initialised, `trial_start` set, JWT RS256 issued |
+| **P0-002** | User login + JWT issuance | API | R-002 | Valid credentials → 200 + JWT; invalid password → 401; revoked token → 401 |
+| **P0-003** | JWT verification across services | API | R-002 | Valid JWT on Client API, Admin API (with platform_admin role); expired JWT → 401; tampered JWT → 401 |
+| **P0-004** | Google OAuth2 social login | API | R-002 | OAuth2 flow mock (authlib stub): new user → company created + trial; existing user → login; state CSRF validated |
+| **P0-005** | Subscription creation via Stripe Checkout | API | R-004 | Checkout Session created → `checkout.session.completed` webhook → subscription active; tier updated |
+| **P0-006** | Trial lifecycle: Professional → Free downgrade on expiry | API | R-004 | Stripe test clock: registration → 14-day trial → advance clock past expiry → `customer.subscription.updated` (past_due) → Client API webhook handler → tier = Free; features gated |
+| **P0-007** | Per-bid add-on purchase | API | R-004 | Checkout Session (mode=payment) → `checkout.session.completed` → `add_on_purchases` record created → feature unlocked for specific opportunity (not others) |
+| **P0-008** | Cross-tenant data isolation: opportunities | API | R-002 | Company A JWT cannot retrieve Company B opportunities, proposals, tasks, analytics, documents at any endpoint; response = 404 (not 403, prevent enumeration) |
+| **P0-009** | Cross-tenant data isolation: proposals | API | R-002 | As above for proposals; entity permission grants are company-scoped; no cross-company leakage |
+| **P0-010** | Admin API VPN/IP restriction | API | R-002 | Request from non-VPN IP → 403/blocked at ingress; `platform_admin` role required; regular JWT rejected |
+| **P0-011** | Entity-level RBAC: bid_manager on Proposal A, read_only on Proposal B | API | R-006 | bid_manager actions (edit, assign collaborators) succeed on A; blocked on B; no role bleed |
+| **P0-012** | Entity RBAC: company role ceiling enforcement | API | R-006 | User with `read_only` company role cannot be granted `edit` entity permission; API returns 422 |
+| **P0-013** | AI Gateway: circuit breaker opens after 5 failures | API | R-001 | Mock 5 consecutive KraftData failures → circuit opens → subsequent requests return 503 with graceful message; after 30s retry → circuit closes |
+| **P0-014** | Proposal generation via KraftData (mock mode) | API | R-001 | `POST /workflows/proposal-generator/run-stream` with `AI_GATEWAY_MOCK=true` → deterministic SSE stream; all chunks received; final result stored |
+| **P0-015** | AI Gateway: graceful degradation UX when circuit open | E2E | R-001 | With circuit open: AI summary button shows "AI features temporarily unavailable"; cached result displayed if available; no 500 error page |
+| **P0-016** | Tier gating: Free user gets limited opportunity view | API | R-012 | Free JWT → opportunity detail returns `OpportunityFreeResponse` (name, deadline, location, type, status only); `OpportunityFullResponse` fields absent |
+| **P0-017** | Tier gating: Starter user gets full BG opportunity + AI summary | API | R-012 | Starter JWT → full BG opportunity detail; AI summary generation returns usage meter INCR; over-limit → 429 with upgrade prompt |
+| **P0-018** | All 5 service health checks pass | API | R-001 | `GET /health` returns 200 on all 5 services (client-api, admin-api, ai-gateway, data-pipeline, notification); DB + Redis connectivity verified |
+| **P0-019** | DB role isolation: service cannot write to another service's schema | API | R-002 | As `client_api_role`: INSERT into `pipeline` schema → permission denied; as `pipeline_role`: INSERT into `client` schema → permission denied; all 5 × non-owned schema combinations |
+| **P0-020** | Usage metering: atomic INCR + limit enforcement | API | R-012 | Increment usage counter to limit → 429 on next call; DECR on failed request (no phantom usage); concurrent INCR is atomic (no double-count) |
 
-**Total P0:** ~18 tests
+**Total P0:** ~20 tests
 
 ---
 
 ### P1 (High)
 
-**Criteria:** Important features + Medium risk (3–5) + Common workflows + Workaround exists but difficult
+**Criteria:** Important features + Medium/high risk + Common workflows + Workaround exists but costly
 
 | Test ID | Requirement | Test Level | Risk Link | Notes |
 |---------|-------------|------------|-----------|-------|
-| **P1-001** | Opportunity listing — paginated, sorted, tier-gated | API | R-012 | Verify pagination, sort, and tier-appropriate response shape |
-| **P1-002** | Opportunity detail — full documentation for paid tiers | API + E2E | R-012 | All fields present for Professional tier |
-| **P1-003** | Smart matching — relevance score against company profile | API | R-001 | Via AI Gateway mock; verify 0-100 score returned |
-| **P1-004** | Email alert configuration — CPV, region, budget, frequency | API | — | Save preferences + verify preference_updated event published |
-| **P1-005** | Email digest delivery — matching opportunities in digest | API | R-007 | Via notification service; verify SendGrid call |
-| **P1-006** | Proposal versioning — create, update, rollback | API | — | Version history preserved; diff capability |
-| **P1-007** | Proposal rich text editing — Tiptap content save/load | E2E | — | Content persists across page reload |
-| **P1-008** | Proposal export — PDF and DOCX generation | API | — | Verify file download + content integrity |
-| **P1-009** | Per-proposal role assignment — all 5 entity roles | API | R-006 | Assign role → verify access scoping |
-| **P1-010** | Section locking — pessimistic lock acquire/release/TTL expiry | API | R-015 | Lock, verify 423 for other user, wait TTL, verify auto-released |
-| **P1-011** | Proposal comments — create, resolve, carry forward across versions | API | — | Comment anchored to section + version |
-| **P1-012** | Task orchestration — create, assign, dependencies (DAG validation) | API | — | Circular dependency rejected; overdue detection |
-| **P1-013** | Approval workflows — stage sequence, sign-off, rejection | API | — | technical → legal → management flow |
-| **P1-014** | Bid/no-bid decision — structured scoring + AI recommendation | API | R-001 | Via AI Gateway mock; override logged in audit trail |
-| **P1-015** | Bid outcome recording + preparation time logging | API | — | Won/lost/withdrawn + hours/costs |
-| **P1-016** | Content blocks library — CRUD, tagging, versioning | API | — | Create block → use in proposal → verify insertion |
-| **P1-017** | ESPD auto-fill — company profile → ESPD form mapping | API | — | Structured form populated from company data |
-| **P1-018** | Submission guides — portal-specific step-by-step instructions | API | — | Guide linked to opportunity; steps accessible |
-| **P1-019** | Subscription upgrade/downgrade — Stripe Customer Portal | API | R-004 | Webhook: subscription_updated → tier change |
-| **P1-020** | Per-bid add-on purchase — one-time Stripe Checkout | API | R-004 | checkout.session.completed → add-on unlocked for specific opportunity |
-| **P1-021** | EU VAT calculation — B2B reverse charge + B2C with VAT | API | R-004 | Verify tax_id validation + correct VAT on invoice |
-| **P1-022** | Company profile management — credentials, team members | API | — | CRUD + team member invitation |
-| **P1-023** | Data pipeline — crawl trigger → normalize → enrich → upsert | API | R-005 | Via AI Gateway mock; verify opportunity created in pipeline schema |
-| **P1-024** | Document parser — extract requirements from tender package | API | R-001 | Via AI Gateway mock; verify structured extraction |
-| **P1-025** | Rate limiting — per-user, per-IP enforcement | API | R-008 | Exceed limit → 429 with Retry-After header |
+| **P1-001** | Opportunity search: filter by CPV, region, budget, deadline | API | R-008, R-012 | Multiple filter combinations; FTS on title/description; pagination correct; tier-gated field visibility per filter result |
+| **P1-002** | Smart matching: relevance score computed against company profile | API | R-001 | Mock Relevance Scoring Agent → deterministic score returned; score displayed on listing and detail |
+| **P1-003** | Document upload: PDF/DOCX accepted; ZIP accepted; file >100MB rejected | API | — | 201 on valid upload; S3 storage confirmed; ClamAV scan triggered; 413 on oversized file |
+| **P1-004** | Document upload: ClamAV malware detection | API | R-010 | Upload EICAR test file → 422 with malware error; upload clean PDF → 201 |
+| **P1-005** | Alert preferences: create/update/delete preference | API | — | CRUD operations on alert preferences; preference stored; `alert_preference.updated` event published to Redis Streams |
+| **P1-006** | Alert digest: email sent matching user preferences | Integration | R-007 | Seed opportunity matching user CPV/region preferences → publish `opportunities.ingested` event → Notification Service consumes → `generate_alerts` task runs → SendGrid mock called with correct recipient + matching opportunity |
+| **P1-007** | Proposal collaboration: assign bid_manager role to user | API | R-006 | `proposal_collaborators` record created; JWT of assigned user now has bid_manager access; grantor identity logged |
+| **P1-008** | Proposal section locking: acquire, display, TTL expiry | API | R-015 | User A acquires lock on section X; User B attempts edit → 423 with lock holder name; lock expires after 15 min inactivity → section available |
+| **P1-009** | Proposal section locking: concurrent acquisition | API | R-015 | Simultaneous lock requests from User A and User B → exactly 1 succeeds; 423 returned to the other; no double-lock |
+| **P1-010** | Task orchestration: create task with DAG dependencies | API | — | Task with `finish_to_start` dependency on another task; dependent task cannot move to `in_progress` until prerequisite is `completed`; transition blocked returns 422 |
+| **P1-011** | Task assignment notification via Redis Streams | Integration | R-007 | Assign task → `task.assigned` event published → Notification Service consumes → email sent to assignee |
+| **P1-012** | Approval workflow: multi-stage sign-off sequence | API | — | Configure 3-stage workflow (Technical → Legal → Management); stage 1 approved → stage 2 unlocked; stage 2 rejected → proposal returned to editor; decision logged in `approval_decisions` |
+| **P1-013** | iCal feed: deadlines exported for tracked opportunities | API | — | `GET /api/v1/calendar/ical` returns valid iCal format; each tracked opportunity appears as event with correct deadline |
+| **P1-014** | Google Calendar sync: connect + first sync | Integration | R-009 | OAuth mock: Google OAuth2 flow → `calendar.connected` event → Notification Svc consumes → `sync_calendars` task → Google Calendar API mock called with correct events; `calendar_events` records created |
+| **P1-015** | Google Calendar sync: token refresh + revocation | Integration | R-009 | Access token expires → Celery Beat task uses refresh token → new access token obtained; revoke refresh token → sync stops; no orphaned sync jobs |
+| **P1-016** | Redis Streams event delivery: `opportunities.ingested` end-to-end | Integration | R-007 | Data Pipeline publishes `opportunities.ingested` → `notification-svc` consumer group ACKs; `client-api` consumer group invalidates opportunity cache; verify both groups process event; DLQ depth = 0 |
+| **P1-017** | Redis Streams event delivery: `subscription.changed` tier cache | Integration | R-007 | Client API publishes `subscription.changed` → all services consuming `eu-solicit:subscriptions` receive and update tier cache; verify tier gate enforces new tier on next request |
+| **P1-018** | Stripe EU VAT: B2B reverse charge | API | R-004 | Company with valid EU VAT number (BG123456789) → Stripe Tax → 0% VAT applied; invoice includes reverse charge note "Article 196 Council Directive 2006/112/EC" |
+| **P1-019** | Stripe EU VAT: B2C with local VAT rate | API | R-004 | Company without VAT number in EU country → Stripe Tax → local VAT rate applied; invoice includes gross + net amounts + VAT amount |
+| **P1-020** | Trial: one trial per company (second registration blocked) | API | R-004 | Register user under Company A (trial started); register second user under Company A → trial NOT started again; `subscriptions.trial_start IS NOT NULL` gate enforced |
+| **P1-021** | Compliance framework: CRUD + assignment to opportunity | API | — | Admin creates framework; assigns to opportunity; Client API applies framework validation; `compliance_framework.assigned` event published → Data Pipeline + AI Gateway consume |
+| **P1-022** | ESPD auto-fill: profile management + form generation | API | R-001 | ESPD profile CRUD; mock ESPD Auto-Fill Agent → structured form returned; company profile data mapped to ESPD sections |
+| **P1-023** | Content blocks: CRUD + approval + tagging | API | — | Create content block with category + tags; submit for approval; approve → `is_approved = true`; block available for inclusion in Proposal Generator via RAG |
+| **P1-024** | Frontend locale routing: all platform routes in BG and EN | E2E | R-016 | Playwright: navigate all primary routes in `/bg/` and `/en/`; no 404s; cookie-based locale switch; Accept-Language fallback |
+| **P1-025** | Frontend locale routing: deep link to BG locale resolves correctly | E2E | R-016 | Direct URL to `/bg/opportunities/[id]` → correct BG locale rendered; no redirect loop; title/nav in Bulgarian |
+| **P1-026** | JWT refresh race: concurrent tabs issue single refresh | E2E | R-017 | Playwright: 2 browser tabs; expire access token; both tabs make authenticated requests → single refresh call in network log; both requests complete after refresh; user stays logged in |
+| **P1-027** | Submission guides: auto-generated + displayed on opportunity detail | API | — | Data Pipeline ingests opportunity → Submission Guide Agent mock → `submission_guides` record created; Client API serves read-only to user on opportunity detail |
 
-**Total P1:** ~25 tests
+**Total P1:** ~27 tests
 
 ---
 
@@ -262,36 +276,36 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 | Test ID | Requirement | Test Level | Risk Link | Notes |
 |---------|-------------|------------|-----------|-------|
-| **P2-001** | Competitor tracking — award data aggregation | API | — | Via AI Gateway mock |
-| **P2-002** | Pipeline forecasting — predicted opportunities | API | — | Via AI Gateway mock |
-| **P2-003** | Scoring simulator — per-criterion scorecard | API | R-001 | Via AI Gateway mock |
-| **P2-004** | Pricing assistant — competitive pricing suggestion | API | R-001 | Via AI Gateway mock |
-| **P2-005** | Grant eligibility matcher | API | R-001 | Via AI Gateway mock |
-| **P2-006** | Budget builder — EU cost category rules | API | R-001 | Via AI Gateway mock |
-| **P2-007** | Logframe generator | API | R-001 | Via AI Gateway mock |
-| **P2-008** | Consortium finder | API | R-001 | Via AI Gateway mock |
-| **P2-009** | iCal feed generation — all tiers | API | — | Subscribe URL → valid iCal content |
-| **P2-010** | Google Calendar sync — two-way | API | R-009 | OAuth mock + event creation/update/delete |
-| **P2-011** | Microsoft Outlook sync — two-way | API | R-009 | OAuth mock + event creation/update/delete |
-| **P2-012** | Market intelligence dashboard | API + E2E | — | Sector analytics data display |
-| **P2-013** | ROI tracker — preparation cost vs. contract value | API | — | Calculation correctness |
-| **P2-014** | Team performance metrics | API | — | Per-user win rate, avg prep time |
-| **P2-015** | Usage dashboard — current period vs. limits | API + E2E | R-012 | Correct counts displayed for all paid tiers |
-| **P2-016** | Report export — PDF/DOCX scheduled/on-demand | API | — | File download + content |
-| **P2-017** | Admin — compliance framework CRUD + assignment | API | — | Create framework → assign to opportunity |
-| **P2-018** | Admin — crawler management (schedule, trigger, history) | API | — | Trigger manual crawl → verify run record |
-| **P2-019** | Admin — tenant management (view companies, subscriptions) | API | — | List/filter tenants |
-| **P2-020** | Admin — audit log viewer (search, filter, export) | API | — | Search by user, action, entity |
-| **P2-021** | Admin — white-label config (subdomain, logo, colours, email) | API | R-014 | Enterprise tenant only |
-| **P2-022** | Admin — platform analytics (signup funnel, churn) | API | — | Metrics data accuracy |
-| **P2-023** | Document retention — soft delete + S3 purge after grace period | API | R-011 | Celery Beat task execution |
-| **P2-024** | Clause risk flagging — high-risk clause identification | API | R-001 | Via AI Gateway mock |
-| **P2-025** | Requirement checklist builder — auto-generated compliance checklist | API | R-001 | Via AI Gateway mock |
-| **P2-026** | Redis Streams event flow — opportunities.ingested → Notification Svc | API | R-007 | Event published → consumed → alert generated |
-| **P2-027** | Trial expiry reminder — email 3 days before end | API | R-004 | Stripe webhook: trial_will_end → email sent |
-| **P2-028** | Approval notifications — email on request + decision | API | R-007 | Event → email delivery |
-| **P2-029** | Task notifications — email on assignment + overdue | API | R-007 | Event → email delivery |
-| **P2-030** | Enterprise API — OpenAPI spec auto-generated + accessible | API | — | Verify spec endpoint accessible for Enterprise tier |
+| **P2-001** | Opportunity search: no results → empty state displayed | E2E | — | Search with zero-match CPV code → empty state component shown, no error |
+| **P2-002** | Opportunity search: FTS performance with 10K+ records | API | R-008 | k6 spike test: 50 concurrent searches → p95 < 200ms; full-text search index utilised (EXPLAIN confirms) |
+| **P2-003** | Document export: proposal as PDF | API | — | `POST /api/v1/proposals/{id}/export?format=pdf` → 200 with PDF content-type; `python-docx + reportlab` pipeline executed |
+| **P2-004** | Document export: proposal as DOCX | API | — | Same flow, `format=docx`; DOCX file headers correct; section content present |
+| **P2-005** | Bid/no-bid decision: AI scorecard + manual override | API | R-001 | Mock Bid/No-Bid Decision Agent → scorecard returned; user overrides AI recommendation; override logged in `bid_decisions` |
+| **P2-006** | Bid outcome tracking: won/lost/withdrawn + evaluator feedback | API | — | Record outcome; feedback stored; outcome feeds ROI tracker materialized view on next refresh |
+| **P2-007** | Preparation time logging for ROI tracker | API | — | Log hours + cost per proposal; aggregate visible in ROI tracker dashboard API endpoint |
+| **P2-008** | Analytics: materialized view refresh (ROI tracker) | Integration | R-008 | Celery Beat `refresh_materialized_views` task runs; `roi_tracker` view updated; API returns fresh data after refresh |
+| **P2-009** | Analytics: usage dashboard (Redis → materialized view) | Integration | — | Usage INCR in Redis; hourly materialized view refresh; usage dashboard API returns current period totals |
+| **P2-010** | Report generation: on-demand PDF report | API | — | `POST /api/v1/analytics/reports` → Notification Svc `generate_reports` task → PDF generated; download URL returned |
+| **P2-011** | Report generation: scheduled weekly report | Integration | — | Celery Beat triggers weekly report generation; SendGrid mock called with attached PDF report |
+| **P2-012** | Admin: tenant management — view and manage company subscription | API | — | `GET /admin/api/v1/tenants` → company list with tier + usage; admin can force-downgrade a tenant's tier |
+| **P2-013** | Admin: crawler management — view history + trigger manual run | API | — | `GET /admin/api/v1/crawlers` → run history; `POST /admin/api/v1/crawlers/aop/trigger` → KraftData mock AOP Crawler Agent invoked |
+| **P2-014** | Admin: audit log viewer — searchable by user/action/entity | API | — | Audit log entries created for all P0 actions; `GET /admin/api/v1/audit?user_id=X` → filtered results; audit log is append-only (no DELETE possible) |
+| **P2-015** | Compliance: framework auto-suggestion based on opportunity metadata | API | R-001 | Mock Framework Suggestion Agent → suggestion returned for opportunity (country + funding type); admin confirms or overrides |
+| **P2-016** | ESPD profile: multiple profiles per company (consortium) | API | — | Create two ESPD profiles per company (Default + Joint Venture); select correct profile for ESPD auto-fill submission |
+| **P2-017** | Company profile: `tax_id` stored + synced to Stripe Customer | API | R-004 | Update `companies.tax_id` → Stripe Customer `customer.tax_ids` updated via Stripe API; next invoice includes VAT ID |
+| **P2-018** | White-label: subdomain + logo + brand colours for Enterprise tenant | E2E | R-014 | `GET https://client-name.eusolicit.com` → frontend renders with client-name logo, brand colours; no EU Solicit branding; other tenant's white-label config not visible |
+| **P2-019** | Document retention: soft-delete + S3 purge lifecycle | Integration | R-011 | Create document; advance time past retention window (2 years after opportunity close); Celery Beat task soft-deletes; advance 30 days → S3 purge triggered; audit log entry immutable throughout |
+| **P2-020** | Calendar sync: Outlook (Microsoft Graph API) connect + sync | Integration | R-009 | Same as P1-014 but for Microsoft Graph API; `microsoft_graph.py` client called; OAuth mock for Microsoft |
+| **P2-021** | Calendar: iCal feed updates when opportunity status changes | API | — | Opportunity status changes → iCal feed regenerated; calendar client re-fetches → updated event |
+| **P2-022** | Proposal comments: threaded + version-scoped + carry-forward | API | — | Add comment to Section A, Version 1; create Version 2 → unresolved comment carries forward to Version 2; resolved comment archived |
+| **P2-023** | Task template: create template + apply to new opportunity | API | — | Create task template (tender type, relative deadlines); apply to opportunity with known submission deadline → tasks created with computed absolute deadlines |
+| **P2-024** | Approval notification: sent on stage request + decision | Integration | R-007 | Approval requested → `approval.requested` event → Notification Svc → email to required-role approver; decision logged → `approval.decided` event → email to proposal team |
+| **P2-025** | Stripe Customer Portal: upgrade, downgrade, cancel, update payment method | E2E | R-004 | Navigate to Customer Portal via Stripe-generated URL; verify self-service flows render correctly (Stripe-hosted, so UI smoke test only; API-level subscription state verified) |
+| **P2-026** | Usage gate: 429 on limit exceeded + upgrade prompt | API | R-012 | Increment AI summary counter to Starter limit (e.g., 20/month) → 21st request → 429 with `{ "upgrade_required": true, "tier": "starter", "limit": 20 }` |
+| **P2-027** | Enterprise API: OpenAPI spec auto-generated + accessible | API | — | `GET /api/v1/openapi.json` returns valid OpenAPI 3.x spec; Enterprise JWT required; endpoints documented match implemented routes |
+| **P2-028** | Competitor tracking: publicly available award data aggregated | API | R-001 | Mock Competitor Analysis Agent → competitor records ingested; `GET /api/v1/analytics/competitor` returns aggregated data for Professional+ tier |
+| **P2-029** | Pipeline forecasting: predicted tenders on dashboard | API | R-001 | Mock Pipeline Forecasting Agent → forecast data stored; `GET /api/v1/analytics/forecast` returns Professional+ tier forecast |
+| **P2-030** | Proposal version control: diff capability + rollback | API | — | Create v1 → v2 with changes; `GET /api/v1/proposals/{id}/versions/{v1_id}/diff/{v2_id}` → structured diff; rollback to v1 → proposal reverts |
 
 **Total P2:** ~30 tests
 
@@ -299,25 +313,25 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 ### P3 (Low)
 
-**Criteria:** Nice-to-have + Exploratory + Performance benchmarks
+**Criteria:** Nice-to-have + Exploratory + Performance benchmarks + Documentation validation
 
 | Test ID | Requirement | Test Level | Notes |
 |---------|-------------|------------|-------|
-| **P3-001** | i18n — Bulgarian language toggle | E2E | UI text renders in Bulgarian |
-| **P3-002** | i18n — AI outputs in user's preferred language | API | Via AI Gateway mock |
-| **P3-003** | Free discovery → upgrade conversion flow | E2E | Full Journey 1 (Maria persona) |
-| **P3-004** | Starter monitoring → AI summary flow | E2E | Full Journey 2 (Georgi persona) |
-| **P3-005** | Professional proposal lifecycle flow | E2E | Full Journey 3 (Elena persona) |
-| **P3-006** | Enterprise multi-client management flow | E2E | Full Journey 4 (Nikolai persona) |
-| **P3-007** | SEO — public landing pages SSR with metadata | E2E | Verify SSR content in page source |
-| **P3-008** | Onboarding wizard — company profile, CPV prefs, region | E2E | First-login experience |
-| **P3-009** | k6: API latency — p95 < 200ms for REST endpoints | Perf | 100 concurrent users, 5-min sustained |
-| **P3-010** | k6: SSE TTFB — p95 < 500ms for streaming | Perf | 50 concurrent SSE streams |
-| **P3-011** | k6: Opportunity search under load — 10K+ tenders | Perf | Full-text search + filters |
-| **P3-012** | k6: Concurrent proposal generation — 20 simultaneous streams | Perf | AI Gateway SSE saturation point |
-| **P3-013** | Lessons learned agent — post-bid analysis | API | Via AI Gateway mock |
-| **P3-014** | Regulation tracker — regulatory change detection | API | Via AI Gateway mock |
-| **P3-015** | Reporting template generator — post-award templates | API | Via AI Gateway mock |
+| **P3-001** | E2E journey: Free Explorer (Maria) — browse tenders, see upgrade prompt | E2E | Full persona flow: register → free tier → browse opportunities (limited view) → AI summary blocked → upgrade prompt displayed |
+| **P3-002** | E2E journey: Starter User (Georgi) — monitor BG tenders, use AI summary | E2E | Register → trial → add alert for BG CPV → opportunity appears in listing → AI summary generated (mock) → alert email triggered |
+| **P3-003** | E2E journey: Professional User (Elena) — full proposal lifecycle | E2E | Professional tier → discover opportunity → AI summary → create proposal → assign collaborator → task DAG → bid/no-bid → generate proposal (SSE mock) → export PDF |
+| **P3-004** | E2E journey: Enterprise User (Nikolai) — white-label + Enterprise API | E2E | Enterprise tier → white-label config → access via subdomain → Enterprise API token → API returns full data + OpenAPI spec |
+| **P3-005** | E2E journey: Platform Admin — manage compliance + tenants | E2E | Admin login (VPN mock) → create compliance framework → assign to opportunity → view tenant list → view audit log |
+| **P3-006** | k6 performance: REST API p95 latency under sustained load | Performance | 50 concurrent users for 5 min; `GET /api/v1/opportunities` p95 < 200ms; `GET /api/v1/proposals/{id}` p95 < 200ms |
+| **P3-007** | k6 performance: SSE TTFB under concurrent load | Performance | 20 concurrent SSE streams (Proposal Generator mock); TTFB p95 < 500ms; stream completes without timeout |
+| **P3-008** | k6 performance: opportunity FTS with 10K+ records | Performance | Seed 10K opportunities; FTS search p95 < 200ms; 50 concurrent searches; PostgreSQL index confirmed |
+| **P3-009** | k6 performance: Stripe webhook processing throughput | Performance | Simulate 100 concurrent `checkout.session.completed` webhooks; all processed; no queue backup; p95 < 200ms handler time |
+| **P3-010** | i18n: BG locale — all primary pages render without missing-key errors | E2E | Playwright: navigate all primary routes with BG locale; no `[missing translation: ...]` rendered; no console errors for missing keys |
+| **P3-011** | i18n: AI output language matches user preference | API | Set user preference to Bulgarian → Executive Summary Agent mock returns BG output; set to English → EN output |
+| **P3-012** | i18n: BG locale — all form validation messages in Bulgarian | E2E | Submit forms with invalid data while BG locale active; error messages appear in Bulgarian |
+| **P3-013** | Chaos: Data Pipeline down — Client API serves existing data | Chaos | Stop Data Pipeline service; `GET /api/v1/opportunities` continues to serve (stale but not 503); stale-data indicator visible in UI |
+| **P3-014** | Chaos: Notification Service down — alert preferences still saved | Chaos | Stop Notification Service; update alert preferences → `alert_preference.updated` event published to Redis Streams → event sits in stream until service recovers → on restart, events processed; no events lost (DLQ validates) |
+| **P3-015** | White-label subdomain: brand isolation between Enterprise tenants | E2E | Enterprise Tenant A has logo A; Enterprise Tenant B has logo B; `client-a.eusolicit.com` shows only logo A; `client-b.eusolicit.com` shows only logo B |
 
 **Total P3:** ~15 tests
 
@@ -325,57 +339,65 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 ## Execution Strategy
 
-**Philosophy:** Run everything in PRs unless there's significant infrastructure overhead. Playwright with parallelisation handles 100s of tests in ~10–15 min.
-
-**Organised by TOOL TYPE:**
+**Philosophy:** Run all functional tests in PRs via Playwright + pytest parallelization. Defer only infrastructure-expensive tests to nightly/weekly.
 
 ### Every PR: Playwright + pytest Tests (~10–15 min)
 
-**All functional tests** (from any priority level):
+**All functional tests** (P0 + P1 + P2 functional):
 
-- All E2E, API, and integration tests using Playwright + pytest
-- Parallelised across 4 shards (Playwright) and pytest-xdist workers
-- Total: ~73 functional tests (P0–P3 excluding k6 perf tests)
+- Playwright API tests: ~65 tests parallelized across 4 shards
+- pytest backend unit/integration: ~20 tests per service in parallel matrix (5 services)
+- Total: ~85 tests in ~10–15 min
+- Tags: `@P0 @API @Security @Integration` available for selective re-run
 
-**Why run in PRs:** Fast feedback; no expensive infrastructure needed.
+```bash
+# Run P0 only (security gate):
+npx playwright test --grep @P0
 
-### Nightly: k6 Performance Tests (~30–60 min)
+# Run P0 + P1 (standard PR gate):
+npx playwright test --grep "@P0|@P1"
 
-**All performance tests** (P3-009 through P3-012):
+# Run all Playwright tests:
+npx playwright test
 
-- Load, stress, and spike tests against staging environment
-- Total: ~4 k6 test scenarios
+# Backend pytest:
+pytest services/client-api/tests/ services/admin-api/tests/ -n auto
+```
 
-**Why defer to nightly:** Requires dedicated staging environment + k6 cloud runner + 30+ min runtime.
+### Nightly: k6 Performance Tests (~30–45 min)
 
-### Weekly: Chaos & Long-Running (~hours)
+**All performance tests** (P3-006 through P3-009):
 
-- KraftData unavailability simulation (circuit breaker validation)
-- Database failover (if configured post-MVP)
-- Redis Streams recovery after broker restart
-- Document retention lifecycle (end-to-end S3 purge validation)
+- k6 scenarios: opportunity FTS (10K records), REST load, SSE concurrent, Stripe webhook throughput
+- Runs against staging environment with Stripe test mode
 
-**Why defer to weekly:** Very long-running; requires infrastructure fault injection.
+### Weekly: Chaos + Long-Running (~2–4 hours)
+
+**Special infrastructure tests** (P3-013, P3-014):
+
+- Data Pipeline failure: requires K8s pod kill, not available in Docker Compose
+- Notification Service recovery: requires DLQ drain validation after service restart
+- Runs against staging Kubernetes namespace
 
 ---
 
 ## QA Effort Estimate
 
-**QA test development effort only** (excludes DevOps, Backend, Data Eng work):
+**QA test development effort** (excludes DevOps, Backend infrastructure, Stripe/KraftData integration setup):
 
 | Priority | Count | Effort Range | Notes |
-|----------|-------|-------------|-------|
-| P0 | ~18 | ~2–3 weeks | Complex setup: auth flows, billing lifecycle, multi-tenant isolation, AI mock integration |
-| P1 | ~25 | ~2–3 weeks | Standard API/integration: proposal lifecycle, collaboration, notifications |
-| P2 | ~30 | ~1–2 weeks | Straightforward API tests: admin features, edge cases, event flow |
-| P3 | ~15 | ~3–5 days | E2E user journeys + k6 performance scripts |
-| **Total** | **~88** | **~6–9 weeks** | **1 QA engineer, full-time** |
+|----------|-------|--------------|-------|
+| P0 | ~20 | ~25–40 hours | Complex security + billing + circuit-breaker scenarios; multi-step setup |
+| P1 | ~27 | ~30–50 hours | Integration flows (Redis Streams, OAuth); concurrent scenarios; locale/token tests |
+| P2 | ~30 | ~25–45 hours | Edge cases, secondary admin features, calendar/retention/export |
+| P3 | ~15 | ~10–20 hours | Persona journeys + performance configs + chaos orchestration |
+| **Total** | **~92** | **~90–155 hours** (~6–9 weeks, 1 QA) | Includes design, implementation, CI integration, debugging |
 
 **Assumptions:**
-- Includes test design, implementation, debugging, CI integration
-- Excludes ongoing maintenance (~10% effort)
-- Test infrastructure (factories, fixtures, mock services) ready before test development begins
-- Effort decreases to ~3–5 weeks with 2 QA engineers working in parallel
+- Includes test design, implementation, debugging, CI pipeline integration
+- Excludes ongoing maintenance (~10% ongoing)
+- Assumes test infrastructure (factories, seeding API, KraftData mock) ready by Sprint 3
+- Assumes 2 QAs: reduce to ~3–5 weeks (parallel P0+P1 / P2+P3 split)
 
 ---
 
@@ -383,165 +405,132 @@ test('@P0 @API user registration returns 201', async ({ request }) => {
 
 | Work Item | Owner | Target Sprint | Dependencies/Notes |
 |-----------|-------|--------------|-------------------|
-| Test data seeding API | Backend | Sprint 3 | TB-01; blocks all QA test development |
-| AI Gateway mock mode | Backend | Sprint 3 | TB-02; blocks all AI feature tests |
-| Stripe test configuration | Backend | Sprint 4 | TB-03; blocks billing tests |
-| Test data factories (Python + TS) | QA | Sprint 4 | Depends on seeding API |
-| Docker Compose test environment | QA/DevOps | Sprint 3 | All 5 services + deps |
-| P0 test implementation | QA | Sprint 5–6 | Depends on factories + mocks |
-| P1 test implementation | QA | Sprint 7–8 | Depends on P0 baseline |
-| P2/P3 test implementation | QA | Sprint 9–10 | Ongoing alongside feature dev |
-| k6 performance scripts | QA | Sprint 10 | Requires stable staging environment |
+| Test data seeding API (TB-01) | Backend Lead | Sprint 3 | Blocks all integration + E2E tests; must support all entity types |
+| KraftData mock service (TB-02) | Backend Lead | Sprint 3 | Blocks all AI feature tests; must cover all 29 entity types |
+| Stripe test mode + webhook CLI (TB-03) | Backend Lead | Sprint 4 | Blocks all billing tests; Stripe CLI must run in CI |
+| QA test data factories | QA | Sprint 3 | Required for parallel-safe test isolation |
+| Redis Streams DLQ | Backend Lead | Sprint 5 | Required for event flow tests (P1-016, P1-017) |
+| Playwright route() KraftData stubs | QA | Sprint 3 | Contingency if TB-02 delayed; covers SSE mock at HTTP level |
+| CI matrix: 5-service parallel pytest | DevOps/QA | Sprint 2 | Required for PR gate; each service tested independently |
+| k6 staging pipeline | DevOps/QA | Sprint 8 | Required for performance tests (P3-006 through P3-009) |
 
 ---
 
 ## Tooling & Access
 
 | Tool or Service | Purpose | Access Required | Status |
-|----------------|---------|-----------------|--------|
-| Playwright | E2E + API testing | npm install | Ready |
-| pytest + pytest-asyncio | Unit + integration testing | pip install | Ready |
-| k6 | Performance/load testing | CLI install + k6 Cloud account | Pending |
-| Stripe CLI | Webhook simulation + test clocks | Stripe account access | Pending |
-| KraftData Sandbox | AI agent testing (when not using mocks) | API key for dev environment | Pending |
-| SendGrid | Email delivery testing | Test API key | Pending |
-| MinIO | Local S3-compatible storage | Docker Compose | Ready |
-| ClamAV | Virus scan testing | Docker sidecar | Ready |
+|----------------|---------|----------------|--------|
+| Playwright (latest) | E2E + API tests | npm install | Ready (E01/E02/E03 tests existing) |
+| pytest + pytest-asyncio | Backend unit/integration | pip install | Ready (existing test infra) |
+| k6 | Performance testing | k6 binary in CI | Pending (staging pipeline) |
+| Stripe CLI | Webhook simulation in CI | `stripe listen` binary | Pending (TB-03) |
+| faker (JS + Python) | Test data generation | npm/pip install | Ready |
+| SendGrid sandbox | Email delivery testing | SendGrid account flag | Pending |
+| Google OAuth2 test app | Calendar sync testing | Google Cloud Console | Pending |
+| Microsoft Graph test app | Outlook sync testing | Azure AD Console | Pending |
 
 ---
 
 ## Interworking & Regression
 
 | Service/Component | Impact | Regression Scope | Validation Steps |
-|-------------------|--------|-----------------|-----------------|
-| **Client API** | Primary test target — all user-facing features | Full P0 + P1 suite | All Playwright + pytest tests pass |
-| **AI Gateway** | Integration point for all AI features | Agent execution + SSE proxy tests | Mock mode tests + circuit breaker validation |
-| **Data Pipeline** | Opportunity data freshness | Crawl → normalize → upsert flow | Pipeline integration tests with mock agents |
-| **Notification Service** | Alert delivery + calendar sync | Event consumption → email/calendar tests | Redis Streams event flow validation (7 streams) |
-| **Admin API** | Compliance frameworks + tenant management | Admin-specific API tests | VPN-restricted endpoint access validation |
+|------------------|--------|-----------------|-----------------|
+| **Client API** | Core revenue surface; all user-facing features | P0-001 through P0-020 + P1-001 through P1-027 | Full PR gate suite passes; no regression on auth/billing/RBAC |
+| **Admin API** | Platform operations; VPN-restricted | P0-010 + P2-012 through P2-015 | Admin auth + CRUD operations pass; VPN restriction enforced |
+| **AI Gateway** | All AI features; KraftData integration | P0-013 through P0-015 + P1-022 | Circuit breaker opens/closes correctly; mock mode deterministic |
+| **Data Pipeline** | Opportunity data freshness; crawl orchestration | P1-016 + P2-013 | `opportunities.ingested` event flow intact; no new opportunities lost |
+| **Notification Service** | Alerts, calendar sync, billing notifications | P1-006 + P1-011 + P1-014 | All outbound delivery paths intact; Redis Streams consumer groups ACK events |
+| **eusolicit-common** | Auth + middleware shared across all services | P0-002 + P0-003 | JWT verification consistent across all 5 services |
+| **eusolicit-models** | DTO contracts between services | P1-016 + P1-017 | Event schema changes do not break cross-service consumers |
 
-**Regression strategy:** Every PR runs full Playwright + pytest suite (~10–15 min). Cross-service integration tests run against Docker Compose environment. Breaking changes detected by Pydantic DTO validation across service boundaries.
+**Regression test strategy:**
+- Epic completion gate: P0 + P1 tests for impacted services must all pass before epic sign-off
+- Schema changes: run DB role isolation tests (P0-019) on every Alembic migration
+- KraftData agent registry changes: re-run all P0/P1 AI tests with updated mock fixtures
+- Stripe webhook handler changes: re-run P0-005 through P0-007 + P2-017 + P2-025
 
 ---
 
 ## Appendix A: Code Examples & Tagging
 
-**Playwright Tags for Selective Execution:**
+**Playwright test tag conventions:**
 
 ```typescript
-import { test, expect } from '@playwright/test';
-import { faker } from '@faker-js/faker';
+// P0 cross-tenant isolation test
+test('@P0 @API @Security Company A cannot access Company B proposal', async ({ request }) => {
+  const seedA = await request.post('/api/test-data/seed', { data: { company: { tier: 'professional' }, proposals: [{}] } });
+  const seedB = await request.post('/api/test-data/seed', { data: { company: { tier: 'professional' }, proposals: [{}] } });
+  const { jwt: tokenA } = (await seedA.json()).users[0];
+  const { id: proposalB } = (await seedB.json()).proposals[0];
 
-// P0 critical — authentication
-test('@P0 @API @Auth user registration creates company and subscription', async ({ request }) => {
-  const userData = {
-    email: faker.internet.email(),
-    password: 'SecurePass123!',
-    company_name: faker.company.name(),
-  };
+  const response = await request.get(`/api/v1/proposals/${proposalB}`, {
+    headers: { Authorization: `Bearer ${tokenA}` }
+  });
+  expect(response.status()).toBe(404);
 
-  const response = await request.post('/api/v1/auth/register', { data: userData });
-  expect(response.status()).toBe(201);
-
-  const body = await response.json();
-  expect(body.user.email).toBe(userData.email);
-  expect(body.company).toBeTruthy();
-  expect(body.subscription.tier).toBe('professional'); // 14-day trial
-  expect(body.subscription.trial_end).toBeTruthy();
-  expect(body.token).toBeTruthy();
+  // Cleanup
+  await request.delete(`/api/test-data/cleanup/${(await seedA.json()).company.id}`);
+  await request.delete(`/api/test-data/cleanup/${(await seedB.json()).company.id}`);
 });
 
-// P0 critical — cross-tenant isolation
-test('@P0 @API @Security company A cannot access company B proposals', async ({ request }) => {
-  const companyA = await seedCompany(request, { tier: 'professional' });
-  const companyB = await seedCompany(request, { tier: 'professional' });
-  const proposal = await seedProposal(request, { company_id: companyB.id });
-  const tokenA = await getAuthToken(request, companyA.user.email);
+// P1 Redis Streams event delivery test
+test('@P1 @Integration opportunities.ingested event triggers alert matching', async ({ request }) => {
+  // Seed user with alert preference matching AOP CPV 72000000
+  const { jwt, alert_preference_id } = (await (await request.post('/api/test-data/seed', {
+    data: { company: { tier: 'starter' }, alert_preferences: [{ cpv_codes: ['72000000'], regions: ['BG'] }] }
+  })).json()).users[0];
 
-  const response = await request.get(`/api/v1/proposals/${proposal.id}`, {
-    headers: { Authorization: `Bearer ${tokenA}` },
-  });
+  // Trigger ingestion event (mock Data Pipeline → Redis Streams)
+  await request.post('/api/test-data/trigger-event', { data: {
+    stream: 'eu-solicit:opportunities',
+    event: 'opportunities.ingested',
+    payload: { opportunity_ids: ['test-opp-1'], source: 'aop' }
+  }});
 
-  expect(response.status()).toBe(403);
-});
-
-// P1 — billing lifecycle
-test('@P1 @API @Billing trial expiry downgrades to free tier', async ({ request }) => {
-  const company = await seedCompany(request, { tier: 'professional', trial: true });
-
-  await simulateStripeWebhook(request, 'customer.subscription.updated', {
-    subscription_id: company.stripe_subscription_id,
-    status: 'past_due',
-  });
-
-  const response = await request.get(`/api/v1/companies/${company.id}/subscription`);
-  const subscription = await response.json();
-  expect(subscription.tier).toBe('free');
+  // Poll for alert log entry (max 5s)
+  await expect.poll(async () => {
+    const r = await request.get(`/api/v1/alerts/log?preference_id=${alert_preference_id}`, {
+      headers: { Authorization: `Bearer ${jwt}` }
+    });
+    return (await r.json()).items.length;
+  }, { timeout: 5000 }).toBeGreaterThan(0);
 });
 ```
 
-**pytest Tags for Backend:**
-
-```python
-# tests/api/test_auth.py
-import pytest
-from httpx import AsyncClient
-
-@pytest.mark.p0
-@pytest.mark.auth
-async def test_expired_jwt_returns_401(client: AsyncClient, expired_token: str):
-    response = await client.get(
-        "/api/v1/opportunities",
-        headers={"Authorization": f"Bearer {expired_token}"},
-    )
-    assert response.status_code == 401
-    assert "expired" in response.json()["detail"].lower()
-
-@pytest.mark.p0
-@pytest.mark.security
-async def test_cross_tenant_isolation(
-    client: AsyncClient,
-    company_a_token: str,
-    company_b_proposal_id: str,
-):
-    response = await client.get(
-        f"/api/v1/proposals/{company_b_proposal_id}",
-        headers={"Authorization": f"Bearer {company_a_token}"},
-    )
-    assert response.status_code == 403
-```
-
-**Run by tag:**
+**Run commands:**
 
 ```bash
-# Playwright — run by priority
-npx playwright test --grep @P0
-npx playwright test --grep "@P0|@P1"
+# P0 security gate (CI):
+npx playwright test --grep @P0 --reporter=github
 
-# Playwright — run by domain
-npx playwright test --grep @Auth
-npx playwright test --grep @Billing
+# P0 + P1 PR gate (full):
+npx playwright test --grep "@P0|@P1" --workers=4
 
-# pytest — run by priority
-pytest -m p0
-pytest -m "p0 or p1"
+# All tests:
+npx playwright test --workers=4
 
-# pytest — run by domain
-pytest -m auth
-pytest -m security
+# Backend service tests (parallel):
+pytest services/client-api/tests/ -n auto --dist=worksteal
+pytest services/admin-api/tests/ -n auto
+pytest services/ai-gateway/tests/ -n auto
+
+# Performance (nightly):
+k6 run tests/performance/opportunity-search.js --vus=50 --duration=5m
 ```
 
 ---
 
 ## Appendix B: Knowledge Base References
 
-- **Risk Governance:** `risk-governance.md` — Risk scoring methodology (P × I, thresholds ≥6)
-- **ADR Quality Readiness:** `adr-quality-readiness-checklist.md` — 8-category, 29-criteria testability framework
-- **Test Levels Framework:** `test-levels-framework.md` — E2E vs API vs Unit selection rules
-- **Test Quality:** `test-quality.md` — Definition of Done (no hard waits, <300 lines, <1.5 min, self-cleaning)
+- **Risk Governance**: `risk-governance.md` — P×I scoring methodology; gate decisions; mitigation tracking
+- **Test Priorities Matrix**: `test-priorities-matrix.md` — P0–P3 criteria and classification rules
+- **Test Levels Framework**: `test-levels-framework.md` — E2E vs API vs Unit selection decision matrix
+- **Test Quality**: `test-quality.md` — Definition of Done (no hard waits, <300 lines per test file, <1.5 min per test)
+- **Architecture Doc**: `test-design-architecture.md` — Risk mitigation plans, testability gaps, blocker details
+- **Handoff Doc**: `test-design/eu-solicit-handoff.md` — BMAD epic/story integration guidance
 
 ---
 
-**Generated by:** BMad TEA Agent
-**Workflow:** `bmad-testarch-test-design`
-**Version:** 4.1 (BMad v6) — Updated 2026-04-07: corrected risk classification (R-003 HIGH, R-006 HIGH), updated agent count to 22
+**Generated by:** BMad TEA Agent  
+**Workflow:** `bmad-testarch-test-design`  
+**Version:** v5 (2026-04-09) — system-level regeneration with full Architecture v4 context

@@ -1,7 +1,7 @@
 ---
 project_name: 'EU Solicit'
-date: '2026-04-07'
-last_updated_by: 'retrospective-epic-2'
+date: '2026-04-09'
+last_updated_by: 'retrospective-epic-3'
 ---
 
 # Project Context for AI Agents
@@ -18,8 +18,13 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 - **Cache/Events:** Redis 7 via redis-py (Redis Streams, no Celery)
 - **Models:** Pydantic v2 with `BaseSettings` for config
 - **Linting:** ruff (I/E/W/F/UP rules), mypy (Python 3.12 target)
-- **Testing:** pytest + pytest-asyncio (asyncio_mode="auto"), pytest-cov, Factory Boy
-- **Frontend:** Next.js 14+ (TypeScript)
+- **Testing (backend):** pytest + pytest-asyncio (asyncio_mode="auto"), pytest-cov, Factory Boy
+- **Frontend:** Next.js 14 App Router, TypeScript strict, pnpm workspaces + Turborepo
+- **Frontend testing:** Vitest (unit/component), Playwright (E2E/browser)
+- **Frontend state:** Zustand (persist + devtools middleware), TanStack Query v5
+- **Frontend forms:** React Hook Form + Zod (`useZodForm`), shadcn/ui primitives
+- **Frontend i18n:** next-intl v3 (`app/[locale]/` route structure, `locales: ['bg', 'en']`, `defaultLocale: 'bg'`)
+- **UI components:** shadcn/ui in `packages/ui` (46+ components, barrel-exported)
 - **Infra:** Docker Compose (local), Helm 3, Terraform >= 1.5, GitHub Actions CI
 - **Logging:** structlog (JSON production, pretty-print dev)
 
@@ -60,27 +65,45 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 17. **Markers:** `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.smoke`, `@pytest.mark.slow`, `@pytest.mark.cross_service`.
 18. **Test isolation:** Per-test transaction rollback for DB, flush for Redis. No shared mutable state.
 
+### Frontend Architecture
+
+19. **All UI components live in `packages/ui`.** Never create app-local components that duplicate shared functionality. Add to `packages/ui/src/components/` and barrel-export via `packages/ui/src/index.ts`.
+20. **Use `<AppShell>` for the authenticated layout.** Both client and admin apps use the shared `<AppShell>` component with sidebar/topbar/children slots. Never rebuild the shell in a feature component.
+21. **Data fetching must use `<QueryGuard>`.** All list/table/detail views wrap TanStack Query state with `<QueryGuard isLoading={...} isError={...} isEmpty={...}>`. No ad-hoc `if (isLoading) return <Spinner />` patterns.
+22. **Forms use `useZodForm(schema)` + `<FormField>`.** Never use `useForm()` directly. Define the Zod schema in `lib/schemas/`, call `useZodForm(schema)`, and compose `<FormField>` for every input. This wires RHF + zodResolver + inline error display + BG/EN translations automatically.
+23. **Auth guard is dual-layer.** Protected routes use `<AuthGuard>` in `app/[locale]/(protected)/layout.tsx` (client-side; shows full-page spinner until `onFinishHydration()`) AND `middleware.ts` (server-side; checks `eusolicit-session` cookie, 307 redirect). Never protect a route with only one layer.
+24. **AuthGuard has a 5-second hydration timeout.** If `onFinishHydration()` does not fire within 5 seconds (corrupt localStorage), treat as unauthenticated and redirect to `/login`. Prevents permanent spinner.
+25. **Zustand persist keys are namespaced per app.** Use `eusolicit-client-auth-store` and `eusolicit-admin-auth-store` (not a shared key). Prevents cross-app localStorage collision if apps are deployed on the same origin.
+26. **`apiClient` uses a Promise singleton refresh-lock for 401s.** All concurrent 401 responses queue until the first token refresh resolves, then retry with the new token. Never call `POST /auth/refresh` more than once per concurrent 401 burst — this triggers E02's token family revocation.
+27. **Add `x-request-id: crypto.randomUUID()` to every apiClient request.** This enables correlation between frontend errors and backend logs when observability is operational.
+28. **Locale routing uses `localePrefix: 'always'`** with `locales: ['bg', 'en']` and `defaultLocale: 'bg'`. All routes are prefixed: `/bg/dashboard`, `/en/dashboard`. Test that each entry path triggers ≤1 redirect hop using a `countRedirects()` utility in E2E tests.
+29. **All UI strings use `useTranslations()` / `getTranslations()` from next-intl.** Never hardcode display strings in components. All namespaces are: `common`, `nav`, `auth`, `forms`, `errors`, `wizard`. BG/EN message files must have identical key sets — enforced by the key-parity check test.
+30. **Shell components are server-compatible wrappers.** `<AppShell>`, `<Sidebar>`, `<TopBar>` are server components. Only the interactive leaves (`<SidebarToggle>`, `<UserAvatarMenu>`, `<LanguageSelector>`) carry `'use client'`. Keep this boundary discipline in all feature components.
+31. **Wizard state persists in Zustand across page reload.** The `wizardStore` uses `persist` middleware. If `user?.companyId` is undefined at wizard submission, show a validation error — never fall back to a hardcoded stub ID.
+
 ### Authentication & Security
 
-19. **JWT middleware validates only RS256 signature + expiry by default.** Add `audience` and `issuer` claims to `jwt.decode()` calls if multiple services share the same RSA key pair.
-20. **`User.is_active` must be checked in every authentication query.** Both `login()` and `refresh_token()` must filter `User.is_active == True`. Deactivated users must not receive new tokens.
-21. **Wrap `bcrypt.hashpw` in `run_in_executor`.** `bcrypt` at cost=12 takes 200–400ms and blocks the async event loop. Use `await loop.run_in_executor(None, bcrypt.hashpw, ...)` in every password-setting flow.
-22. **All password fields must have `max_length=128`.** Prevents bcrypt HashDoS. Applies to `LoginRequest`, `RegisterRequest`, `PasswordResetConfirmRequest`, `AcceptInviteRequest`, and any future password field.
-23. **Rate limiter must fail-open on Redis `ConnectionError`.** Catch the exception, log it as structured warning, and continue processing. Redis outage must not block authentication.
-24. **Refresh token rotation requires pessimistic locking.** Use `SELECT ... FOR UPDATE` on the refresh token row to prevent concurrent rotation from forking the token family.
-25. **Every company-scoped endpoint must include a cross-tenant negative test.** `Company A credentials → Company B resource → 403`. No exceptions.
+32. **JWT middleware validates only RS256 signature + expiry by default.** Add `audience` and `issuer` claims to `jwt.decode()` calls if multiple services share the same RSA key pair.
+33. **`User.is_active` must be checked in every authentication query.** Both `login()` and `refresh_token()` must filter `User.is_active == True`. Deactivated users must not receive new tokens.
+34. **Wrap `bcrypt.hashpw` in `run_in_executor`.** `bcrypt` at cost=12 takes 200–400ms and blocks the async event loop. Use `await loop.run_in_executor(None, bcrypt.hashpw, ...)` in every password-setting flow.
+35. **All password fields must have `max_length=128`.** Prevents bcrypt HashDoS. Applies to `LoginRequest`, `RegisterRequest`, `PasswordResetConfirmRequest`, `AcceptInviteRequest`, and any future password field.
+36. **Rate limiter must fail-open on Redis `ConnectionError`.** Catch the exception, log it as structured warning, and continue processing. Redis outage must not block authentication.
+37. **Refresh token rotation requires pessimistic locking.** Use `SELECT ... FOR UPDATE` on the refresh token row to prevent concurrent rotation from forking the token family.
+38. **Every company-scoped endpoint must include a cross-tenant negative test.** `Company A credentials → Company B resource → 403`. No exceptions.
+39. **OAuth callback must validate the `state` parameter against a session-stored nonce.** Missing or mismatched `state` is a CSRF failure — reject with 400, do not default to empty string. Required before any stub replacement with a real OAuth provider.
+40. **`dangerouslySetInnerHTML` usage requires an explicit security review comment.** Any component rendering user-generated content with `dangerouslySetInnerHTML` must include a comment explaining the sanitization applied. Flag in all code reviews from E07 (proposals) onwards.
 
 ### RBAC
 
-26. **RBAC uses two-tier enforcement:** company role ceiling (5 levels: admin > bid_manager > contributor > reviewer > read_only) + entity-level permissions (read/write/manage). The role ceiling is always the upper bound; entity permission cannot exceed it.
-27. **Admin and bid_manager bypass entity-level permissions for their own company only.** The bypass check must verify `company_id` match before granting access.
-28. **`entity_permissions` rows must have UNIQUE constraint on `(user_id, company_id, entity_type, entity_id, permission)`.** Without it, duplicate rows cause `MultipleResultsFound` → 500. Enforce at application layer until DB migration adds the constraint.
+41. **RBAC uses two-tier enforcement:** company role ceiling (5 levels: admin > bid_manager > contributor > reviewer > read_only) + entity-level permissions (read/write/manage). The role ceiling is always the upper bound; entity permission cannot exceed it.
+42. **Admin and bid_manager bypass entity-level permissions for their own company only.** The bypass check must verify `company_id` match before granting access.
+43. **`entity_permissions` rows must have UNIQUE constraint on `(user_id, company_id, entity_type, entity_id, permission)`.** Without it, duplicate rows cause `MultipleResultsFound` → 500. Enforce at application layer until DB migration adds the constraint.
 
 ### Audit Trail
 
-29. **All mutations (POST/PUT/PATCH/DELETE) must write to `shared.audit_log`.** Capture `entity_type`, `entity_id`, `action_type`, `before` (None for creates), `after` (None for deletes), `user_id`, `ip_address`.
-30. **Audit writes must be non-blocking.** Wrap in `try/except`; suppress failures silently (log, do not raise). A failed audit write must never return 500 to the client.
-31. **`ip_address` from `request.client.host` is proxy IP behind a reverse proxy.** Future work: read from `X-Forwarded-For` header with proxy whitelist validation.
+44. **All mutations (POST/PUT/PATCH/DELETE) must write to `shared.audit_log`.** Capture `entity_type`, `entity_id`, `action_type`, `before` (None for creates), `after` (None for deletes), `user_id`, `ip_address`.
+45. **Audit writes must be non-blocking.** Wrap in `try/except`; suppress failures silently (log, do not raise). A failed audit write must never return 500 to the client.
+46. **`ip_address` from `request.client.host` is proxy IP behind a reverse proxy.** Future work: read from `X-Forwarded-For` header with proxy whitelist validation.
 
 ---
 
@@ -121,6 +144,22 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 
 - **Contribute all mutations to the shared `shared.audit_log`.** New stories introducing POST/PUT/PATCH/DELETE endpoints must write audit entries. Audit writes are non-blocking (try/except).
 
+### From Epic 3 Retrospective
+
+- **`<QueryGuard>` is mandatory for list/table/detail views.** Every component that fetches data with TanStack Query must wrap its state transitions in `<QueryGuard>`. Ad-hoc `if (isLoading) return <Skeleton />` scattered through feature components is the anti-pattern this replaces.
+
+- **`useZodForm(schema)` + `<FormField>` is the only form construction pattern.** Define the Zod schema first, call `useZodForm(schema)`, compose `<FormField>` variants. This gives you zodResolver, inline animated error display, BG/EN i18n translation, and RHF controller wiring for free.
+
+- **All new feature UI goes into `packages/ui`.** Do not create app-local `components/` folders for shared elements. If a component is used by both client and admin apps, or might be in the future, it belongs in `packages/ui`.
+
+- **Locale routing changes must include a redirect count assertion.** Any PR touching `middleware.ts` or `i18n.ts` must include a Playwright test asserting ≤1 redirect hop for the affected routes, using the `countRedirects()` pattern from `locale-redirect.spec.ts`.
+
+- **Produce a Stub Removal Checklist alongside any stub implementation.** When a story introduces MSW mocks, hardcoded IDs (e.g., `stub-company-id`), or stub API responses, the story deliverables must include a checklist documenting every stub and which epic/story will replace it. This prevents silent integration failures.
+
+- **Dual-layer auth guard pattern is established — apply it without deviation.** `<AuthGuard>` (client-side spinner until hydration) + `middleware.ts` (server-side cookie check) is the standard. New routes in the `(protected)` group automatically inherit the client guard. Ensure `middleware.ts` matchers cover any new route paths.
+
+- **Toast notifications via `useToast()` from `packages/ui`.** Call `toast.success(title)`, `toast.error(title)`, `toast.info(title)` — not custom alert patterns. The toast system handles stacking, auto-dismiss timers, and portal rendering.
+
 ---
 
 ## Anti-Patterns (Don't Do This)
@@ -146,20 +185,32 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 - **Don't leave `_SKIP_REASON` constants or `@pytest.mark.skip` decorators in tests after GREEN phase.** Clean up RED-phase scaffolding before marking a story done.
 - **Don't defer NFR HIGH-priority items from one epic to the next without re-surfacing them.** The NFR report must include a "Carry-Forward from Previous Epic" section. Items not addressed become automatic CONCERNS in the new epic's assessment.
 
+### From Epic 3 Retrospective
+
+- **Don't use `user?.companyId ?? "some-stub-id"` in any component.** Stub fallback IDs silently send invalid data to real APIs at integration time. Always guard: `if (!user?.companyId) { showError(...); return; }`.
+- **Don't hardcode display strings in any UI component.** Every user-visible string — labels, placeholders, error messages, empty states, breadcrumbs — must use `useTranslations()` with a key from `bg.json`/`en.json`. Hardcoded strings break BG locale.
+- **Don't mark a frontend story done with incomplete TEA.** TEA automation is a hard gate, same as for backend stories. `tea_status: in-progress` blocks the epic retrospective.
+- **Don't skip the redirect count assertion when modifying locale routing.** Silent redirect loops are invisible in manual testing and only surface under load or with specific browser cookie states.
+- **Don't use ad-hoc conditional renders for loading/error/empty states.** This creates inconsistent UX and bypasses the unified `<QueryGuard>` + skeleton/error boundary/empty state system. Every data-fetching component uses `<QueryGuard>`.
+- **Don't share Zustand persist keys between client and admin apps.** `eusolicit-auth-store` must be `eusolicit-client-auth-store` and `eusolicit-admin-auth-store`. Same-origin deployment (behind a reverse proxy) would cause the admin app to read client user tokens.
+- **Don't fire multiple `POST /auth/refresh` calls concurrently.** E02's token family revocation logs the user out on second refresh. The `apiClient` singleton refresh-lock is the protection. Never bypass or replace it with a simpler retry pattern.
+
 ---
 
 ## Known Technical Debt
 
-Key items from deferred-work.md (96+ items across E01–E02 — see full list there):
+Key items from deferred-work.md (126+ items across E01–E03 — see full list there):
 
 | Category | Key Items | Priority | Source Epic |
 |----------|-----------|----------|------------|
-| **Security** | No `User.is_active` check in login+refresh; no JWT audience/issuer verification; bcrypt password truncation at 72 bytes; no `max_length` on password fields; concurrent token rotation race; Dockerfiles run as root; ports on 0.0.0.0; no Dependabot | **HIGH** | E01, E02 |
-| **Concurrency** | Token rotation race (no SELECT FOR UPDATE); accept_invite TOCTOU; last-admin TOCTOU; rate limiter INCR+EXPIRE non-atomicity; lost update on company CRUD; non-atomic DLQ move | **HIGH** | E01, E02 |
-| **Performance** | Blocking bcrypt on async event loop; redundant ESPD queries (_get_latest_or_none + _get_next_version); RBAC bypass 2-query path; no connect_timeout on Alembic engine | MEDIUM | E01, E02 |
-| **Observability** | No structlog in auth_service.py + security.py; no Prometheus /metrics endpoint; no Grafana/Loki stack | **HIGH** | E01, E02 |
-| **Data Integrity** | No UNIQUE on entity_permissions(user_id, company_id, entity_type, entity_id, permission); no UNIQUE on espd_profiles(company_id, version); email case not normalized; unbounded JSONB payload sizes | MEDIUM | E02 |
-| **Reliability** | Redis outage blocks all logins (rate limiter not fail-open); RSA key loss invalidates all JWTs; no key rotation mechanism | **HIGH** | E02 |
+| **Security** | No `User.is_active` check in login+refresh; no JWT audience/issuer verification; bcrypt password truncation; no `max_length` on password fields; concurrent token rotation race; Dockerfiles run as root; ports on 0.0.0.0; no Dependabot; no OAuth CSRF state validation; AuthGuard no hydration timeout; Zustand persist keys not namespaced per app | **HIGH** | E01, E02, E03 |
+| **Concurrency** | Token rotation race (no SELECT FOR UPDATE); accept_invite TOCTOU; last-admin TOCTOU; rate limiter INCR+EXPIRE non-atomicity; non-atomic DLQ move; multi-tab wizard sync | **HIGH** | E01, E02, E03 |
+| **Performance** | Blocking bcrypt on async event loop; no k6/Lighthouse performance baseline (3 epics); no code-split validation; CPV JSON bundle size unvalidated | MEDIUM | E01, E02, E03 |
+| **Observability** | No Prometheus /metrics endpoint; no frontend error reporting (Sentry); no structured logging in auth_service; no `x-request-id` correlation header; no Grafana/Loki stack; no pnpm audit in CI | **HIGH** | E01, E02, E03 |
+| **Data Integrity** | No UNIQUE on entity_permissions; no UNIQUE on espd_profiles(company_id, version); email case not normalized; `stub-company-id` fallback in wizard | MEDIUM | E02, E03 |
+| **Reliability** | Redis outage blocks all logins; RSA key loss invalidates all JWTs; no circuit breaker in apiClient for repeated 500/503 | **HIGH** | E02, E03 |
+| **Build/Tooling** | `turbo: latest` in package.json; `@typescript-eslint` v6 EOL; `pnpm engines` mismatch; `@/*` path alias points to non-existent `src/`; UI package no build step | MEDIUM | E03 |
+| **Integration Readiness** | OAuth callback AbortController missing; OAuth error params not surfaced; loginUser response validation; `stub-company-id` removal | **HIGH** | E03 |
 | **Code Quality** | `Mapped[sa.UUID]`/`Mapped[sa.DateTime]` annotations project-wide; global mypy ignore_missing_imports; fragile CI test filter | MEDIUM | E01, E02 |
 
 ---
@@ -234,4 +285,64 @@ admin (5) > bid_manager (4) > contributor (3) > reviewer (2) > read_only (1)
 
 ---
 
-**Last updated:** 2026-04-07 (Epic 2 Retrospective)
+---
+
+## Frontend Structure Reference
+
+```
+frontend/
+├── apps/
+│   ├── client/                    # Next.js 14 App Router — main user app (port 3000)
+│   │   ├── app/[locale]/
+│   │   │   ├── (auth)/            # Login, register, forgot-password (no AppShell)
+│   │   │   ├── (protected)/       # AuthGuard layout — dashboard, tenders, etc.
+│   │   │   ├── dev/               # /dev/components, /dev/form-test, /dev/api-test, /dev/toasts
+│   │   │   └── layout.tsx         # NextIntlClientProvider + QueryProvider root
+│   │   ├── messages/{bg,en}.json  # i18n translation files (6 namespaces)
+│   │   ├── i18n.ts                # getRequestConfig — locale detection
+│   │   └── middleware.ts          # next-intl locale routing + session cookie guard
+│   └── admin/                     # Next.js 14 App Router — admin app (port 3001)
+│       └── ...                    # Same structure as client
+└── packages/
+    ├── ui/                        # Shared component library
+    │   └── src/
+    │       ├── components/ui/     # 46+ shadcn/ui components
+    │       ├── components/        # AppShell, Sidebar, TopBar, QueryGuard, FormField, etc.
+    │       ├── stores/            # authStore, uiStore (Zustand + persist + devtools)
+    │       ├── lib/               # apiClient, useSSE, useZodForm, format utils
+    │       └── index.ts           # Barrel export (all public API)
+    └── config/                    # Shared tailwind.config.ts, tsconfig.json, .eslintrc.js
+```
+
+### Key Store API
+
+```typescript
+// authStore — persisted as 'eusolicit-client-auth-store' / 'eusolicit-admin-auth-store'
+const { user, token, isAuthenticated, login, logout, setTokens } = useAuthStore();
+
+// uiStore — sidebarCollapsed + locale persisted; toasts in-memory
+const { sidebarCollapsed, locale, addToast, removeToast } = useUIStore();
+
+// useToast() shorthand
+const { toast } = useToast();
+toast.success('Saved'); toast.error('Failed'); toast.info('Loading');
+```
+
+### Key Component API
+
+```typescript
+// Data fetching guard
+<QueryGuard isLoading={isLoading} isError={isError} isEmpty={!data?.length}>
+  <MyList data={data} />
+</QueryGuard>
+
+// Form pattern
+const form = useZodForm(mySchema);
+<FormField name="email" label={t('forms.email')} control={form.control}>
+  <Input type="email" />
+</FormField>
+```
+
+---
+
+**Last updated:** 2026-04-09 (Epic 3 Retrospective)
