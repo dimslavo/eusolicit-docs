@@ -18,7 +18,7 @@ inputDocuments:
 **Author:** TEA Master Test Architect
 **Status:** Draft
 **Project:** EU Solicit
-**Version:** v5 (2026-04-09) — expanded to 92 test scenarios; added R-016 (locale routing) and R-017 (token refresh race) to risk table and P1 coverage; corrected KraftData entity count to 29; incorporated epic-level learnings from E01/E02/E03
+**Version:** v6 (2026-04-09) — added R-018 (ESPD XML conformance, score 6) from E11 analysis; 2 new P1 scenarios (P1-028, P1-029); expanded to ~94 test scenarios
 
 **Related:** See Architecture doc (test-design-architecture.md) for testability concerns, architectural blockers, risk mitigation plans, and assumptions.
 
@@ -30,16 +30,16 @@ inputDocuments:
 
 **Risk Summary:**
 
-- Total Risks: 17 (5 high-priority ≥6, 8 medium, 4 low)
-- Critical Categories: TECH (KraftData SPOF, Redis Streams DLQ), SEC (multi-tenant isolation, entity RBAC, token security), BUS (billing lifecycle), PERF (SSE saturation, PostgreSQL FTS)
+- Total Risks: 18 (6 high-priority ≥6, 8 medium, 4 low)
+- Critical Categories: TECH (KraftData SPOF, Redis Streams DLQ, ESPD XML conformance), SEC (multi-tenant isolation, entity RBAC, token security), BUS (billing lifecycle), PERF (SSE saturation, PostgreSQL FTS)
 
 **Coverage Summary:**
 
 - P0 tests: ~20 (auth, billing, data isolation, core AI flows, service health)
-- P1 tests: ~27 (opportunity discovery, proposal lifecycle, collaboration, alerts, calendar, locale routing, token refresh)
+- P1 tests: ~29 (opportunity discovery, proposal lifecycle, collaboration, alerts, calendar, locale routing, token refresh, ESPD XML validation)
 - P2 tests: ~30 (edge cases, analytics, admin features, calendar edge cases, compliance, ESPD, submission guides)
 - P3 tests: ~15 (E2E persona journeys, k6 performance benchmarks, i18n, white-label)
-- **Total: ~92 tests (~6–9 weeks with 1 QA, ~3–5 weeks with 2 QAs)**
+- **Total: ~94 tests (~6–9 weeks with 1 QA, ~3–5 weeks with 2 QAs)**
 
 ---
 
@@ -154,6 +154,7 @@ test('@P0 @API @Security cross-tenant isolation: company A cannot read company B
 | **R-003** | PERF | SSE stream saturation (AI Gateway concurrent connections) | **6** | k6 load test: 100 concurrent SSE + 100 concurrent REST → REST p95 < 200ms; per-tenant SSE limit (429 response on 4th connection) |
 | **R-004** | BUS | Stripe billing complexity (trials, add-ons, EU VAT) | **6** | Full lifecycle: registration → trial → expiry → Free downgrade; add-on Checkout → webhook → feature unlock; all 5 webhook event types; B2B/B2C VAT; Enterprise invoicing |
 | **R-006** | SEC | Entity-level RBAC (two-tier permission model edge cases) | **6** | Permission matrix: 5 roles × 2 entity types × 4 permission levels; cross-proposal isolation; grant/revoke atomicity; ceiling enforcement (read_only cannot be granted edit) |
+| **R-018** ★NEW | TECH/BUS | ESPD XML conformance gap — ESPD Auto-Fill Agent produces JSONB data; no XSD validation layer exists; non-compliant XML causes procurement exclusion for end users | **6** | Export ESPD profile → validate XML against EU ESPD XSD v2.1+ (all 5 parts); incomplete profile → structured 422 with field-level errors; multiple profiles independently valid |
 
 ### Medium/Low-Priority Risks
 
@@ -265,8 +266,10 @@ test('@P0 @API @Security cross-tenant isolation: company A cannot read company B
 | **P1-025** | Frontend locale routing: deep link to BG locale resolves correctly | E2E | R-016 | Direct URL to `/bg/opportunities/[id]` → correct BG locale rendered; no redirect loop; title/nav in Bulgarian |
 | **P1-026** | JWT refresh race: concurrent tabs issue single refresh | E2E | R-017 | Playwright: 2 browser tabs; expire access token; both tabs make authenticated requests → single refresh call in network log; both requests complete after refresh; user stays logged in |
 | **P1-027** | Submission guides: auto-generated + displayed on opportunity detail | API | — | Data Pipeline ingests opportunity → Submission Guide Agent mock → `submission_guides` record created; Client API serves read-only to user on opportunity detail |
+| **P1-028** | ESPD XML export: generated XML validates against EU ESPD XSD v2.1+ | API | R-018 | Seed full ESPD profile (all 5 parts populated); `GET /api/v1/espd/{id}/export` → validate returned XML against pinned EU ESPD XSD v2.1+; 0 XSD validation errors; all required fields present |
+| **P1-029** | ESPD XML export: incomplete profile returns structured validation errors | API | R-018 | Seed ESPD profile with missing required exclusion grounds (Part III); export → 422 with field-level error list identifying missing fields; no raw 500 |
 
-**Total P1:** ~27 tests
+**Total P1:** ~29 tests
 
 ---
 
@@ -388,10 +391,10 @@ pytest services/client-api/tests/ services/admin-api/tests/ -n auto
 | Priority | Count | Effort Range | Notes |
 |----------|-------|--------------|-------|
 | P0 | ~20 | ~25–40 hours | Complex security + billing + circuit-breaker scenarios; multi-step setup |
-| P1 | ~27 | ~30–50 hours | Integration flows (Redis Streams, OAuth); concurrent scenarios; locale/token tests |
+| P1 | ~29 | ~32–54 hours | Integration flows (Redis Streams, OAuth); concurrent scenarios; locale/token tests; ESPD XML validation |
 | P2 | ~30 | ~25–45 hours | Edge cases, secondary admin features, calendar/retention/export |
 | P3 | ~15 | ~10–20 hours | Persona journeys + performance configs + chaos orchestration |
-| **Total** | **~92** | **~90–155 hours** (~6–9 weeks, 1 QA) | Includes design, implementation, CI integration, debugging |
+| **Total** | **~94** | **~92–159 hours** (~6–9 weeks, 1 QA) | Includes design, implementation, CI integration, debugging |
 
 **Assumptions:**
 - Includes test design, implementation, debugging, CI pipeline integration

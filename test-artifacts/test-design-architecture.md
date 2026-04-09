@@ -20,7 +20,7 @@ inputDocuments:
 **Project:** EU Solicit
 **PRD Reference:** EU_Solicit_PRD_v1.md
 **ADR Reference:** EU_Solicit_Solution_Architecture_v4.md (ADRs 1.1–1.15)
-**Version:** v3 (2026-04-09) — updated agent inventory count, new medium risks R-016/R-017 from epic-level learnings, risk register expanded to 17 risks
+**Version:** v4 (2026-04-09) — added R-018 (ESPD XML conformance, score 6) from E11 epic-level analysis; risk register expanded to 18 risks (6 high-priority)
 
 ---
 
@@ -44,8 +44,8 @@ inputDocuments:
 
 **Risk Summary:**
 
-- **Total risks:** 17 (5 high-priority ≥6, 8 medium, 4 low)
-- **Test effort:** ~92 scenarios (~6–9 weeks for 1 QA, ~3–5 weeks for 2 QAs)
+- **Total risks:** 18 (6 high-priority ≥6, 8 medium, 4 low)
+- **Test effort:** ~94 scenarios (~6–9 weeks for 1 QA, ~3–5 weeks for 2 QAs)
 
 ---
 
@@ -69,6 +69,8 @@ inputDocuments:
 
 3. **R-006: Entity-level RBAC enforcement** — Two-tier permission model: company role sets ceiling, entity permission (`entity_permissions` table) narrows per opportunity/proposal. Edge cases: bid_manager on Proposal A but read_only on Proposal B; user with technical_writer company role but no entity permission on a specific proposal; permission grants for deleted entities; collaborator role inheritance when proposal is duplicated. Recommend exhaustive permission matrix tests covering all combinations. **Owner:** Backend. **Phase:** Implementation.
 
+4. **R-018: ESPD XML conformance gap** — ESPD Auto-Fill Agent (#26) produces structured data stored as JSONB, but no XSD validation layer exists. Non-compliant ESPD XML = procurement exclusion for end users. Architecture must add XML serialisation + EU ESPD XSD v2.1+ validation before ESPD export endpoint goes live. **Owner:** Backend Lead. **Phase:** Implementation (Sprint 11).
+
 ### 📋 INFO ONLY — Solutions Provided
 
 - **Test strategy:** API-heavy (60% API, 25% E2E, 10% Unit, 5% Performance) — API-first architecture makes API testing the highest-value level; all business logic accessible via REST without UI coupling
@@ -83,7 +85,7 @@ inputDocuments:
 
 ### Risk Assessment
 
-**Total risks identified:** 17 (5 high-priority ≥6, 8 medium, 4 low)
+**Total risks identified:** 18 (6 high-priority ≥6, 8 medium, 4 low)
 
 #### High-Priority Risks (Score ≥6) — IMMEDIATE ATTENTION
 
@@ -94,6 +96,7 @@ inputDocuments:
 | **R-003** | PERF | SSE stream saturation — AI Gateway proxies long-lived SSE connections; connection pool starvation risk under concurrent load (Proposal Generator + Executive Summary simultaneous users) | 2 | 3 | **6** | Separate SSE connection pool + HPA SSE-count metric + per-tenant connection limit | Backend Lead | Implementation |
 | **R-004** | BUS | Stripe billing complexity — 4 flows (subscriptions, trials with no-CC, per-bid add-ons, EU VAT via Stripe Tax), usage metering, Enterprise custom invoicing, trial→Free downgrade on expiry | 2 | 3 | **6** | Stripe test clocks + webhook simulation + all lifecycle event paths covered | Backend Lead | Implementation |
 | **R-006** | SEC | Entity-level RBAC edge cases — two-tier model (company role ceiling + entity permission) with 5 roles, 2 entity types (opportunity, proposal), multiple permission levels; grant/revoke/inherit edge cases | 2 | 3 | **6** | Exhaustive permission matrix: all 5 roles × 2 entity types × 4 permission levels + edge cases | Backend | Implementation |
+| **R-018** ★NEW | TECH/BUS | ESPD XML conformance gap — ESPD Auto-Fill Agent (#26) produces structured data stored as JSONB (`espd_profiles.espd_data`), but no service validates generated XML against EU ESPD XSD v2.1+; non-compliant ESPD XML causes procurement exclusion for end users | 2 | 3 | **6** | Add ESPD XSD v2.1+ validation layer in Client API ESPD export endpoint; add E11 XSD gate to CI | Backend Lead | Implementation (Sprint 11) |
 
 #### Medium-Priority Risks (Score 3–5)
 
@@ -146,6 +149,11 @@ inputDocuments:
    - **Current problem:** Even if a DLQ is added, without monitoring per consumer group (`client-api`, `notification-svc`, `data-pipeline`, `ai-gateway`), dead letters accumulate silently.
    - **Required change:** Prometheus gauge `eusolicit_streams_dlq_depth{consumer_group}` + Grafana alert rule at depth > 0.
    - **Owner:** Backend Lead | **Timeline:** Implementation phase
+
+4. **ESPD XML validation layer**
+   - **Current problem:** ESPD Auto-Fill Agent (#26) produces structured field mappings returned as JSONB. The architecture does not document any XML serialization + XSD validation layer between `espd_profiles.espd_data` and the final ESPD XML export. Without XSD v2.1+ validation, the platform can export invalid ESPD documents that are silently rejected by EU procurement portals — directly undermining the core ESPD auto-fill value proposition.
+   - **Required change:** Add ESPD XML serialisation step in Client API's `/espd/{profile_id}/export` endpoint: (1) serialise JSONB → XML, (2) validate against downloaded EU ESPD XSD v2.1+, (3) return validation errors as structured API response (not raw 500). Download and pin the XSD to the service at build time.
+   - **Owner:** Backend Lead | **Timeline:** Implementation phase (Sprint 11)
 
 3. **Locale routing middleware test coverage**
    - **Current problem:** Next.js middleware locale routing (BG/EN) is untested at the system level; incorrect routing affects all platform users. Epic-level E03 analysis identified this as a high-risk area.
@@ -251,6 +259,20 @@ inputDocuments:
 
 ---
 
+#### R-018: ESPD XML Conformance Gap (Score: 6) — HIGH
+
+**Mitigation Strategy:**
+
+1. **ESPD XML serialisation layer**: Add a dedicated serialiser in Client API's ESPD domain module that converts `espd_profiles.espd_data` (JSONB) to EU ESPD XSD v2.1+-compliant XML. The serialiser must map all five ESPD parts: Part I (Information concerning the procurement procedure), Part II (Information concerning the economic operator), Part III (Exclusion grounds), Part IV (Selection criteria), Part V (Reduction of the number of qualified candidates).
+2. **XSD validation at export time**: On `GET /api/v1/espd/{profile_id}/export`, run the generated XML through `lxml.etree.XMLSchema` validation against the pinned EU ESPD XSD v2.1+. Return structured validation errors (`422 Unprocessable Entity` with field-level error list) instead of serving invalid XML.
+3. **Pin XSD at build time**: Download the official EU ESPD XSD from the EU Publications Office repository and include in the Docker image at build time. Do not fetch dynamically at runtime (availability risk). Version-pin the XSD filename.
+4. **CI gate**: Add ESPD XSD validation as a required CI gate for all tests that generate ESPD output. Use a shared `assert_valid_espd_xml()` helper in the test utilities package.
+
+**Owner:** Backend Lead | **Timeline:** Implementation phase (Sprint 11) | **Status:** Planned  
+**Verification:** API test with complete ESPD profile → export → validate against XSD → 0 validation errors; API test with incomplete profile → export → expect structured 422 with field-level errors
+
+---
+
 ### Assumptions and Dependencies
 
 #### Assumptions
@@ -290,10 +312,11 @@ inputDocuments:
 **Next Steps for Architecture Team:**
 
 1. Review Quick Guide (🚨/⚠️/📋) and prioritize blockers TB-01, TB-02, TB-03
-2. Assign owners and timelines for high-priority risks (R-001 through R-006)
-3. Confirm KraftData agent inventory (29 entities per Architecture §11.2) and ensure mock mode covers all types
+2. Assign owners and timelines for high-priority risks (R-001 through R-006, R-018)
+3. Confirm KraftData agent inventory (29 entities per Architecture §11.2) and ensure mock mode covers all types including 8 E11 agent types (Grant Eligibility, Budget Builder, Logframe Generator, Consortium Finder, Reporting Template, ESPD Auto-Fill, Framework Suggestion, Regulation Tracker)
 4. Design and implement Redis Streams DLQ before Sprint 5
 5. Validate locale routing middleware test strategy with Frontend Lead (R-016)
+6. Design and implement ESPD XML serialisation + XSD validation layer before Sprint 11 (R-018)
 
 **Next Steps for QA Team:**
 

@@ -1,6 +1,6 @@
 ---
-stepsCompleted: ['step-01-preflight', 'step-02-select-framework', 'step-03-scaffold-framework', 'step-04-docs-and-scripts', 'step-05-validate-and-summary', 'step-03-enhance-run-2', 'step-05-validate-enhance-run-2', 'step-03-enhance-run-3', 'step-05-validate-enhance-run-3']
-lastStep: 'step-05-validate-enhance-run-3'
+stepsCompleted: ['step-01-preflight', 'step-02-select-framework', 'step-03-scaffold-framework', 'step-04-docs-and-scripts', 'step-05-validate-and-summary', 'step-03-enhance-run-2', 'step-05-validate-enhance-run-2', 'step-03-enhance-run-3', 'step-05-validate-enhance-run-3', 'step-03-enhance-run-4', 'step-05-validate-enhance-run-4', 'step-03-enhance-run-5', 'step-05-validate-enhance-run-5']
+lastStep: 'step-05-validate-enhance-run-5'
 lastSaved: '2026-04-09'
 ---
 
@@ -502,3 +502,179 @@ cross-tenant isolation. This run fills the remaining gaps against the updated pa
 **Date:** 2026-04-09
 **Framework:** Playwright 1.50 (E2E) + pytest 8+ + pytest-asyncio (backend)
 **Notes:** Enhancement run 3 implements all canonical patterns from the post-Epic-2 project-context.md retrospective. The `tests/api/` tier is now fully scaffolded, the RBAC test infrastructure covers the 5-tier role hierarchy and entity-permission matrix, and cross-tenant isolation helpers are available in both TypeScript (E2E) and Python (pytest) layers.
+
+---
+
+## Enhancement Run 4 — 2026-04-09 (post-Epic-3 frontend + Epic 11 prep)
+
+### Context
+
+Run triggered post-Epic-3 retrospective. Epic 3 completed the Next.js frontend (AppShell, i18n,
+setup wizard, forms, auth guard). `project-context.md` was updated with:
+- Rule 28: locale routing must include a redirect-count assertion (`countRedirects()`)
+- Rule 31: wizard state persists in Zustand (`eusolicit-wizard-store`)
+- Rules 20-30: frontend architecture patterns (AppShell, QueryGuard, useZodForm, auth guard)
+
+Epic 11 (ESPD Management) is now active — compliance framework and ESPD profile factories needed.
+
+### Gaps Identified & Resolved
+
+**TypeScript / Playwright E2E:**
+
+| Gap | Resolution |
+|-----|------------|
+| `countRedirects()` defined inline in `locale-redirect.spec.ts` — project-context.md rule 28 requires a shared utility | Created `e2e/support/helpers/locale.helper.ts` with `countRedirects()`, `countLocaleRedirects()`, `gotoLocale()`, `assertLocaleUrl()`, `extractLocale()`, `localizePath()` |
+| No WizardPage POM — `wizard.spec.ts` exists but uses inline selectors; new epic stories will need it | Created `e2e/support/page-objects/wizard.page.ts` covering all 4 steps + state persistence check + `completeFullFlow()` composite |
+| No ShellPage POM — three shell specs exist (`app-shell-layout`, `responsive-layout`, `route-guards`) but no shared encapsulation | Created `e2e/support/page-objects/shell.page.ts` for sidebar, topbar, locale switching, responsive assertions |
+| No AdminDashboardPage POM — admin specs exist but no admin dashboard page object | Created `e2e/support/page-objects/admin-dashboard.page.ts` with stats, company table, search/filter |
+| No ESPD profile or compliance framework TypeScript factories for Epic 11 | Added `createESPDProfile()` and `createComplianceFramework()` to `e2e/support/factories/index.ts` |
+| `factory.fixture.ts` missing new Epic 11 factories | Updated to expose `espdProfile` and `complianceFramework` factory functions |
+| `e2e/support/page-objects/index.ts` not exporting new POMs | Updated barrel export with `WizardPage`, `ShellPage`, `AdminDashboardPage` + type exports |
+| `e2e/support/helpers/index.ts` not exporting locale helpers | Updated barrel export with all locale helper functions and types |
+
+### Files Created (4)
+
+| File | Purpose |
+|------|---------|
+| `e2e/support/helpers/locale.helper.ts` | `countRedirects()` shared utility + full locale routing helper suite |
+| `e2e/support/page-objects/wizard.page.ts` | 4-step setup wizard POM (Story 3.9 / project-context.md rule 31) |
+| `e2e/support/page-objects/shell.page.ts` | AppShell layout POM (sidebar, topbar, locale, responsive) |
+| `e2e/support/page-objects/admin-dashboard.page.ts` | Admin app dashboard POM (stats, companies table, nav) |
+
+### Files Updated (4)
+
+| File | Change |
+|------|--------|
+| `e2e/support/factories/index.ts` | Added `ESPDProfile`, `ComplianceFramework` types + `createESPDProfile()`, `createComplianceFramework()` factories |
+| `e2e/support/fixtures/factory.fixture.ts` | Exposed `espdProfile` and `complianceFramework` factories in fixture object |
+| `e2e/support/page-objects/index.ts` | Added exports for `WizardPage`, `ShellPage`, `AdminDashboardPage` + type exports |
+| `e2e/support/helpers/index.ts` | Added locale helper exports + `Locale`/`RedirectResult` type re-exports |
+
+### Knowledge Base Patterns Applied
+
+- **network-first.md** — `WizardPage.complete()` uses `waitForResponse` before asserting redirect to dashboard
+- **fixture-architecture.md** — New POMs follow pure-function style with `Page` injection; no inheritance
+- **data-factories.md** — `createESPDProfile()` and `createComplianceFramework()` use faker with `Partial<T>` overrides and parallel-safe unique values
+- **playwright-config.md** — `locale.helper.ts` uses `page.waitForURL()` for deterministic locale-switch waits
+- **test-quality.md** — `countRedirects()` uses response event listener + proper cleanup (removeListener in finally block)
+
+### Post-Enhancement Checklist
+
+- [x] `e2e/support/helpers/locale.helper.ts` — `countRedirects()`, `gotoLocale()`, `localizePath()` + locale types
+- [x] `e2e/support/page-objects/wizard.page.ts` — WizardPage (4 steps, state persistence, `completeFullFlow()`)
+- [x] `e2e/support/page-objects/shell.page.ts` — ShellPage (sidebar, topbar, locale, responsive, both apps)
+- [x] `e2e/support/page-objects/admin-dashboard.page.ts` — AdminDashboardPage (stats, search, navigation)
+- [x] `e2e/support/factories/index.ts` — `createESPDProfile()` + `createComplianceFramework()` added
+- [x] `e2e/support/fixtures/factory.fixture.ts` — `espdProfile` + `complianceFramework` in fixture
+- [x] `e2e/support/page-objects/index.ts` — all new POMs barrel-exported
+- [x] `e2e/support/helpers/index.ts` — locale helpers barrel-exported
+
+### Quality Checks
+
+| Check | Status |
+|-------|--------|
+| `countRedirects()` uses removeListener in finally block (no listener leak) | ✅ |
+| WizardPage.complete() uses waitForResponse (network-first pattern) | ✅ |
+| ShellPage supports both 'client' and 'admin' targets via constructor param | ✅ |
+| ESPD/compliance factories use faker with Partial<T> overrides (parallel-safe) | ✅ |
+| All new POMs use data-testid selector strategy | ✅ |
+| No hard waits (waitForTimeout) in new files | ✅ |
+| No secrets or hardcoded credentials | ✅ |
+| Barrel exports updated for all new files | ✅ |
+
+### Enhancement Run 4 Sign-Off
+
+**Completed by:** bmad-testarch-framework skill (autopilot)
+**Date:** 2026-04-09
+**Framework:** Playwright 1.50 (E2E) + pytest 8+ + pytest-asyncio (backend)
+**Notes:** Enhancement run 4 aligns the E2E test framework with post-Epic-3 patterns and prepares for Epic 11. The locale routing helper (`countRedirects()`) is now a first-class shared utility extracted from the inline spec definition. Three new page objects (WizardPage, ShellPage, AdminDashboardPage) cover the frontend components built in Epic 3. ESPD profile and compliance framework factories are added for Epic 11 ATDD readiness.
+
+---
+
+## Enhancement Run 5 — 2026-04-09 (full RBAC role fixtures + API completeness)
+
+### Context
+
+Run triggered post-Epic-11 / framework audit. Gaps identified:
+
+1. `tests/api/conftest.py` had only `api_auth_token` (member) and `api_admin_token` — missing the remaining 3 RBAC roles (`bid_manager`, `contributor`, `reviewer`, `read_only`) and their authenticated HTTP clients. Exhaustive RBAC matrix tests (project-context.md rules 38, 41–43) require all 5 role fixtures.
+2. `e2e/global-setup.ts` health-checked only the Frontend (client) and Client API. Admin app (`localhost:3001`) and Admin API (`localhost:8002`) were not verified, meaning admin-scoped test failures could be masked by silent startup issues.
+3. `e2e/support/helpers/api-client.ts` was missing `apiPut` and `apiPatch` — preventing fixture-level mutation helpers for PUT/PATCH endpoints without falling back to raw `fetch`.
+4. `tests/api/conftest.py` was missing `live_data_pipeline` and `live_notification` live service fixtures, leaving those services without health-skip guards in the API tier.
+
+### Gaps Identified & Resolved
+
+**Python / pytest (`tests/api/conftest.py`):**
+
+| Gap | Resolution |
+|-----|------------|
+| `api_bid_manager_token` missing | Added `@pytest_asyncio.fixture` using `_acquire_role_token(live_client_api, "bid_manager")` |
+| `api_contributor_token` missing | Added fixture for `contributor` role |
+| `api_reviewer_token` missing | Added fixture for `reviewer` role |
+| `api_read_only_token` missing | Added fixture for `read_only` role |
+| No per-role authenticated clients | Added `auth_admin_client`, `auth_bid_manager_client`, `auth_contributor_client`, `auth_reviewer_client`, `auth_read_only_client` |
+| No all-roles dict for parametrized tests | Added `auth_role_clients` fixture — dict of all 5 role `httpx.AsyncClient` objects with auto-disposal |
+| `live_data_pipeline` missing | Added health-skip fixture for Data Pipeline service |
+| `live_notification` missing | Added health-skip fixture for Notification service |
+| `_acquire_role_token` helper duplicated across token fixtures | Extracted shared `_acquire_role_token(client, role)` coroutine helper |
+
+**TypeScript / Playwright E2E:**
+
+| Gap | Resolution |
+|-----|------------|
+| `e2e/global-setup.ts` didn't check Admin app or Admin API | Added health checks for `ADMIN_BASE_URL` (localhost:3001) and `ADMIN_API_URL/healthz` (localhost:8002) |
+| `apiPut` missing from `api-client.ts` | Added `apiPut<T>(path, body, token?)` with full `buildHeaders` + JSON serialisation |
+| `apiPatch` missing from `api-client.ts` | Added `apiPatch<T>(path, body, token?)` matching PUT signature |
+| No `x-request-id` header in any fetch calls | Added `generateRequestId()` (uses `globalThis.crypto.randomUUID()` with `Date.now` fallback) and `buildHeaders()` helper injecting the header on every request |
+| `helpers/index.ts` barrel didn't export `apiPut`/`apiPatch` | Updated barrel to include `apiPut` and `apiPatch` |
+
+### Files Updated (6)
+
+| File | Change |
+|------|--------|
+| `tests/api/conftest.py` | Added `_acquire_role_token` helper + 4 role token fixtures + 5 role HTTP client fixtures + `auth_role_clients` dict + `live_data_pipeline` + `live_notification` |
+| `e2e/global-setup.ts` | Added `adminApiURL`/`adminBaseURL` env reads + 2 additional health check entries |
+| `e2e/support/helpers/api-client.ts` | Added `generateRequestId()`, `buildHeaders()`, refactored all methods to use `buildHeaders`, added `apiPut` + `apiPatch` |
+| `e2e/support/helpers/index.ts` | Added `apiPut` and `apiPatch` to barrel export |
+| `e2e/README.md` | Updated directory layout (reflects full fixture/helper/page-object inventory) and fixture architecture note |
+| `eusolicit-docs/test-artifacts/tests/README.md` | Updated API conftest fixtures table with all 19 fixtures |
+
+### Knowledge Base Patterns Applied
+
+- **fixture-architecture.md** — `auth_role_clients` follows auto-disposal pattern for all `httpx.AsyncClient` instances (try/finally teardown)
+- **test-quality.md** — `_acquire_role_token` uses `pytest.skip()` (not `pytest.fail()`) for unavailable test-login endpoint; infrastructure issues don't masquerade as test failures
+- **network-first.md** — `x-request-id` injection enables backend log correlation for network-first debugging (project-context.md rule 27)
+
+### Post-Enhancement Checklist
+
+- [x] `api_bid_manager_token` fixture
+- [x] `api_contributor_token` fixture
+- [x] `api_reviewer_token` fixture
+- [x] `api_read_only_token` fixture
+- [x] `auth_admin_client`, `auth_bid_manager_client`, `auth_contributor_client`, `auth_reviewer_client`, `auth_read_only_client`
+- [x] `auth_role_clients` dict fixture (all 5 roles, auto-dispose)
+- [x] `live_data_pipeline` fixture
+- [x] `live_notification` fixture
+- [x] `e2e/global-setup.ts` — Admin app + Admin API health checks
+- [x] `e2e/support/helpers/api-client.ts` — `apiPut` + `apiPatch` + `x-request-id`
+- [x] `e2e/support/helpers/index.ts` — `apiPut` + `apiPatch` barrel-exported
+- [x] `e2e/README.md` — updated directory layout
+- [x] `tests/README.md` — API conftest fixtures table updated
+
+### Quality Checks
+
+| Check | Status |
+|-------|--------|
+| `pytest.skip()` for service unavailability (not `pytest.fail()`) | ✅ `_acquire_role_token` and `live_*` fixtures |
+| Auto-disposal of httpx clients in `auth_role_clients` | ✅ try/finally in fixture teardown |
+| `x-request-id` injected on every E2E API request | ✅ `buildHeaders()` called by all 5 methods |
+| Portable `generateRequestId()` — works in Node 19+ and older runtimes | ✅ `globalThis.crypto.randomUUID()` with fallback |
+| No secrets or hardcoded credentials in new code | ✅ All tokens acquired from test-login or placeholder |
+| Role token fixtures documented in `tests/README.md` | ✅ |
+
+### Enhancement Run 5 Sign-Off
+
+**Completed by:** bmad-testarch-framework skill (autopilot)
+**Date:** 2026-04-09
+**Framework:** Playwright 1.50 (E2E) + pytest 8+ + pytest-asyncio (backend)
+**Notes:** Enhancement run 5 completes the RBAC test infrastructure for the live API tier. All 5 company roles now have dedicated token fixtures and authenticated HTTP clients in `tests/api/conftest.py`. The `auth_role_clients` dict fixture enables exhaustive role-matrix parametrize patterns without boilerplate. The E2E API client (`api-client.ts`) gains PUT/PATCH support and automatic `x-request-id` correlation headers, aligning with project-context.md rule 27. Global setup now health-checks both frontends and both API backends before any test runs.

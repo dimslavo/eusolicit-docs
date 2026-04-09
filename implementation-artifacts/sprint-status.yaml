@@ -2,8 +2,8 @@
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
 current_epic: 11
-current_story: 11-1-espd-profile-compliance-framework-db-schema-migrations
-last_updated: '2026-04-09'  # Epic 11 started — story 11-1 story file created
+current_story: 11-9-framework-assignment-auto-suggestion-api-admin
+last_updated: '2026-04-10'  # Story 11-8 done — all 40 tests pass, R3 patches verified in code
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -51,14 +51,14 @@ development_status:
   epic-9: backlog
   epic-10: backlog
   epic-11: in-progress
-  11-1-espd-profile-compliance-framework-db-schema-migrations: in-progress
-  11-2-espd-profile-crud-api: backlog
-  11-3-espd-auto-fill-agent-integration: backlog
-  11-4-grant-eligibility-agent-integration: backlog
-  11-5-budget-builder-agent-integration: backlog
-  11-6-consortium-finder-agent-integration: backlog
-  11-7-logframe-generator-reporting-template-agent-integrations: backlog
-  11-8-compliance-framework-crud-api-admin: backlog
+  11-1-espd-profile-compliance-framework-db-schema-migrations: done
+  11-2-espd-profile-crud-api: done
+  11-3-espd-auto-fill-agent-integration: done
+  11-4-grant-eligibility-agent-integration: done
+  11-5-budget-builder-agent-integration: done
+  11-6-consortium-finder-agent-integration: done
+  11-7-logframe-generator-reporting-template-agent-integrations: done
+  11-8-compliance-framework-crud-api-admin: done
   11-9-framework-assignment-auto-suggestion-api-admin: backlog
   11-10-regulation-tracker-agent-platform-settings-api-admin: backlog
   11-11-eu-grant-tools-frontend-page-eligibility-budget-panels: backlog
@@ -103,3 +103,10 @@ tea_status:
   3-10-loading-states-error-boundaries-empty-states: done
   3-11-toast-notification-system: in-progress
   3-12-client-side-route-guards-auth-redirects: done
+  11-1-espd-profile-compliance-framework-db-schema-migrations: done
+  11-2-espd-profile-crud-api: done
+  11-3-espd-auto-fill-agent-integration: done
+  11-4-grant-eligibility-agent-integration: done
+  11-5-budget-builder-agent-integration: done
+  11-6-consortium-finder-agent-integration: done
+  11-7-logframe-generator-reporting-template-agent-integrations: done

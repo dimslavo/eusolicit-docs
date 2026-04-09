@@ -3,7 +3,7 @@ stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-an
 lastStep: 'step-05-generate-output'
 lastSaved: '2026-04-09'
 workflowType: 'testarch-test-design'
-mode: 'epic-level'
+mode: 'system-level'
 lastEpic: 11
 inputDocuments:
   - 'eusolicit-docs/EU_Solicit_PRD_v1.md'
@@ -541,3 +541,30 @@ inputDocuments:
 - **Gate thresholds:** P0 = 100%, P1 ≥ 95%, SEC = 100%, ESPD XSD validation gate, agent error handling gate
 - **Open assumptions:** EU ESPD XSD v2.1+ publicly accessible; all 8 KraftData agent types pre-configured before staging E2E; TB-02 extended for all 8 new agent types; Celery Beat test trigger available
 - **Dependencies:** TB-01 (ESPD/framework seeding), TB-02 (8 new agent mocks + failure injection), EU ESPD XSD, Celery Beat test trigger, E04/E06/E07 stable
+
+---
+
+## System-Level: Regenerated 2026-04-09 (v4)
+
+**Reason:** Full system-level test design re-run incorporating E11 epic-level learnings. E11 analysis surfaced a system-level architectural gap (ESPD XML conformance) not present in prior system-level runs.
+
+**Changes from prior version (v3, 2026-04-09):**
+- **R-018 added: ESPD XML conformance (score 6, HIGH)** — ESPD Auto-Fill Agent (#26) produces structured JSONB data, but no XSD validation layer exists between `espd_profiles.espd_data` and exported ESPD XML. Non-compliant ESPD XML = procurement exclusion for end users. Architecture must add XML serialisation + EU ESPD XSD v2.1+ validation before export endpoint goes live.
+- **Risk register expanded to 18 risks** (previously 17): 6 high-priority (previously 5), 8 medium, 4 low
+- **Coverage updated to ~94 tests** (previously ~92): P0=20, P1=29, P2=30, P3=15 — 2 new P1 scenarios (P1-028: ESPD XML XSD validation; P1-029: incomplete profile returns structured 422)
+- **Handoff document v1.3**: R-018 added to Epic-Level Risk References (E11 quality gate); Risk-to-Story Mapping updated; TB-02 explicitly lists 8 E11 agent types; Phase Transition Quality Gates updated to reference 6 high-priority risks
+- **TB-02 clarification**: explicitly covers all 8 E11 KraftData agent types (Grant Eligibility, Budget Builder, Logframe Generator, Consortium Finder, Reporting Template, ESPD Auto-Fill, Framework Suggestion, Regulation Tracker)
+
+**Output files updated:**
+1. `eusolicit-docs/test-artifacts/test-design-architecture.md` — v4 (2026-04-09)
+2. `eusolicit-docs/test-artifacts/test-design-qa.md` — v6 (2026-04-09)
+3. `eusolicit-docs/test-artifacts/test-design/eu-solicit-handoff.md` — v1.3 (2026-04-09)
+
+**Key risks:** R-001 (KraftData SPOF, score 9), R-002 (multi-tenant isolation, 6), R-003 (SSE saturation, 6), R-004 (Stripe billing, 6), R-006 (entity RBAC, 6), R-018 (ESPD XML conformance, 6) ★NEW
+**New risk classification:** 6 high-priority (R-001, R-002, R-003, R-004, R-006, R-018)
+**Gate thresholds:** P0 = 100%, P1 ≥ 95%, coverage ≥ 80%, REST p95 < 200ms, SSE TTFB < 500ms, ESPD XSD validation gate
+**Open assumptions:** KraftData 29 entities pre-configured (including 8 E11 types); EU ESPD XSD v2.1+ publicly accessible and pinnable; Stripe Tax handles all EU VAT; OAuth test accounts available
+**Pre-implementation blockers:** 4 (TB-01 seeding API, TB-02 KraftData mock covering all 29 types, TB-03 Stripe test config, TB-04 Redis DLQ)
+
+**Execution mode:** Sequential
+**Validation:** Checked against checklist.md — all required sections populated; R-018 classified and mitigated; new P1 scenarios added; cross-document consistency verified.

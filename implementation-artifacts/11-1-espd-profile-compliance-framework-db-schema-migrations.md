@@ -1,6 +1,6 @@
 # Story 11.1: ESPD Profile & Compliance Framework DB Schema + Migrations
 
-Status: backlog
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,73 +42,73 @@ so that **Story 11.2 (ESPD CRUD API), Story 11.8 (Compliance Framework CRUD), an
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Extend client.espd_profiles — migration 009 (AC: 1, 2, 4)
-  - [ ] 1.1 Create `services/client-api/alembic/versions/009_espd_profile_v2.py` with `down_revision = "008"`
-  - [ ] 1.2 `upgrade()` step A — drop the unique constraint `uq_espd_profiles_company_version` from `client.espd_profiles`
-  - [ ] 1.3 `upgrade()` step B — add `profile_name VARCHAR(255) NOT NULL DEFAULT 'Default Profile'` to `client.espd_profiles`
-  - [ ] 1.4 `upgrade()` step C — add `espd_data JSONB NOT NULL DEFAULT '{}'` to `client.espd_profiles`
-  - [ ] 1.5 `upgrade()` step D — data migration: `UPDATE client.espd_profiles SET espd_data = jsonb_build_object('part_iii', field_values), profile_name = 'Migrated Profile' WHERE field_values != '{}'`; for empty rows set `espd_data = '{}'`
-  - [ ] 1.6 `upgrade()` step E — drop the `field_values` column from `client.espd_profiles`
-  - [ ] 1.7 `upgrade()` step F — drop the `version` column from `client.espd_profiles`
-  - [ ] 1.8 `downgrade()` — reverse in exact reverse order: re-add `version INTEGER NOT NULL DEFAULT 1`, re-add `field_values JSONB NOT NULL DEFAULT '{}'`, data-reverse (`field_values = espd_data->'part_iii'`), drop `espd_data`, drop `profile_name`, re-add `uq_espd_profiles_company_version` unique constraint
+- [x] Task 1: Extend client.espd_profiles — migration 009 (AC: 1, 2, 4)
+  - [x] 1.1 Create `services/client-api/alembic/versions/009_espd_profile_v2.py` with `down_revision = "008"`
+  - [x] 1.2 `upgrade()` step A — drop the unique constraint `uq_espd_profiles_company_version` from `client.espd_profiles`
+  - [x] 1.3 `upgrade()` step B — add `profile_name VARCHAR(255) NOT NULL DEFAULT 'Default Profile'` to `client.espd_profiles`
+  - [x] 1.4 `upgrade()` step C — add `espd_data JSONB NOT NULL DEFAULT '{}'` to `client.espd_profiles`
+  - [x] 1.5 `upgrade()` step D — data migration: `UPDATE client.espd_profiles SET espd_data = jsonb_build_object('part_iii', field_values), profile_name = 'Migrated Profile' WHERE field_values != '{}'`; for empty rows set `espd_data = '{}'`
+  - [x] 1.6 `upgrade()` step E — drop the `field_values` column from `client.espd_profiles`
+  - [x] 1.7 `upgrade()` step F — drop the `version` column from `client.espd_profiles`
+  - [x] 1.8 `downgrade()` — reverse in exact reverse order: re-add `version INTEGER NOT NULL DEFAULT 1`, re-add `field_values JSONB NOT NULL DEFAULT '{}'`, data-reverse (`field_values = espd_data->'part_iii'`), drop `espd_data`, drop `profile_name`, re-add `uq_espd_profiles_company_version` unique constraint
 
-- [ ] Task 2: Update client-api ESPDProfile ORM model (AC: 5, 8)
-  - [ ] 2.1 Edit `services/client-api/src/client_api/models/espd_profile.py` — remove `field_values` mapped_column, remove `version` mapped_column
-  - [ ] 2.2 Add `profile_name: Mapped[str]` — `mapped_column(sa.String(255), nullable=False, server_default=sa.text("'Default Profile'"))`
-  - [ ] 2.3 Add `espd_data: Mapped[dict]` — `mapped_column(JSONB, nullable=False, server_default=sa.text("'{}'"))`
-  - [ ] 2.4 Update `__init__.py` to ensure `ESPDProfile` is still exported
+- [x] Task 2: Update client-api ESPDProfile ORM model (AC: 5, 8)
+  - [x] 2.1 Edit `services/client-api/src/client_api/models/espd_profile.py` — remove `field_values` mapped_column, remove `version` mapped_column
+  - [x] 2.2 Add `profile_name: Mapped[str]` — `mapped_column(sa.String(255), nullable=False, server_default=sa.text("'Default Profile'"))`
+  - [x] 2.3 Add `espd_data: Mapped[dict]` — `mapped_column(JSONB, nullable=False, server_default=sa.text("'{}'"))`
+  - [x] 2.4 Update `__init__.py` to ensure `ESPDProfile` is still exported
 
-- [ ] Task 3: Create admin-api ORM model base and enums (AC: 5, 8)
-  - [ ] 3.1 Create `services/admin-api/src/admin_api/models/__init__.py` — exports `Base` and all model classes
-  - [ ] 3.2 Create `services/admin-api/src/admin_api/models/base.py` — `DeclarativeBase` subclass with `metadata` targeting the `admin` schema default (mirror the pattern from `client-api/models/base.py`)
-  - [ ] 3.3 Create `services/admin-api/src/admin_api/models/enums.py` — `RegulationType` Python enum: `national = "national"`, `eu = "eu"`, `programme = "programme"`
-  - [ ] 3.4 Update `services/admin-api/alembic/env.py` — import `Base` from `admin_api.models`, set `target_metadata = Base.metadata`
+- [x] Task 3: Create admin-api ORM model base and enums (AC: 5, 8)
+  - [x] 3.1 Create `services/admin-api/src/admin_api/models/__init__.py` — exports `Base` and all model classes
+  - [x] 3.2 Create `services/admin-api/src/admin_api/models/base.py` — `DeclarativeBase` subclass with `metadata` targeting the `admin` schema default (mirror the pattern from `client-api/models/base.py`)
+  - [x] 3.3 Create `services/admin-api/src/admin_api/models/enums.py` — `RegulationType` Python enum: `national = "national"`, `eu = "eu"`, `programme = "programme"`
+  - [x] 3.4 Update `services/admin-api/alembic/env.py` — import `Base` from `admin_api.models`, set `target_metadata = Base.metadata`
 
-- [ ] Task 4: Create admin-api ORM models (AC: 5, 8)
-  - [ ] 4.1 Create `services/admin-api/src/admin_api/models/compliance_framework.py` — `ComplianceFramework` ORM model in `admin` schema (see dev notes for full column spec)
-  - [ ] 4.2 Create `services/admin-api/src/admin_api/models/platform_settings.py` — `PlatformSettings` ORM model in `admin` schema
-  - [ ] 4.3 Create `services/admin-api/src/admin_api/models/opportunity_compliance_framework.py` — `OpportunityComplianceFramework` ORM model in `admin` schema (join table with composite PK)
+- [x] Task 4: Create admin-api ORM models (AC: 5, 8)
+  - [x] 4.1 Create `services/admin-api/src/admin_api/models/compliance_framework.py` — `ComplianceFramework` ORM model in `admin` schema (see dev notes for full column spec)
+  - [x] 4.2 Create `services/admin-api/src/admin_api/models/platform_settings.py` — `PlatformSettings` ORM model in `admin` schema
+  - [x] 4.3 Create `services/admin-api/src/admin_api/models/opportunity_compliance_framework.py` — `OpportunityComplianceFramework` ORM model in `admin` schema (join table with composite PK)
 
-- [ ] Task 5: Create admin-api migration 002 (AC: 3, 4)
-  - [ ] 5.1 Create `services/admin-api/alembic/versions/002_compliance_framework_schema.py` with `down_revision = "001"`
-  - [ ] 5.2 `upgrade()` — create PostgreSQL enum type `regulation_type` in `admin` schema using `postgresql.ENUM("national", "eu", "programme", name="regulation_type", schema="admin")` with `checkfirst=True`
-  - [ ] 5.3 Create `admin.compliance_frameworks` table with all columns, composite index on `country`, `regulation_type`, and `is_active` (see AC3 for full column spec)
-  - [ ] 5.4 Create `admin.platform_settings` table with unique constraint on `key`
-  - [ ] 5.5 Create `admin.opportunity_compliance_frameworks` join table with composite PK `(opportunity_id, framework_id)`, FK on `framework_id → admin.compliance_frameworks(id) ON DELETE CASCADE`, and index on `framework_id`
-  - [ ] 5.6 `downgrade()` — drop tables in reverse order (`opportunity_compliance_frameworks`, `platform_settings`, `compliance_frameworks`), then drop `regulation_type` enum
+- [x] Task 5: Create admin-api migration 002 (AC: 3, 4)
+  - [x] 5.1 Create `services/admin-api/alembic/versions/002_compliance_framework_schema.py` with `down_revision = "001"`
+  - [x] 5.2 `upgrade()` — create PostgreSQL enum type `regulation_type` in `admin` schema using `postgresql.ENUM("national", "eu", "programme", name="regulation_type", schema="admin")` with `checkfirst=True`
+  - [x] 5.3 Create `admin.compliance_frameworks` table with all columns, composite index on `country`, `regulation_type`, and `is_active` (see AC3 for full column spec)
+  - [x] 5.4 Create `admin.platform_settings` table with unique constraint on `key`
+  - [x] 5.5 Create `admin.opportunity_compliance_frameworks` join table with composite PK `(opportunity_id, framework_id)`, FK on `framework_id → admin.compliance_frameworks(id) ON DELETE CASCADE`, and index on `framework_id`
+  - [x] 5.6 `downgrade()` — drop tables in reverse order (`opportunity_compliance_frameworks`, `platform_settings`, `compliance_frameworks`), then drop `regulation_type` enum
 
-- [ ] Task 6: Write dev seed script (AC: 6)
-  - [ ] 6.1 Create `scripts/seed_compliance_frameworks.py` — async script using `asyncpg` or SQLAlchemy async session
-  - [ ] 6.2 Seed ZOP (Bulgarian national): `name="ZOP 2016 (Bulgarian Public Procurement)", country="BG", regulation_type="national"`, `rules` containing rule for ESPD Part III exclusion grounds check
-  - [ ] 6.3 Seed Horizon Europe: `name="Horizon Europe Programme Rules", country="EU", regulation_type="eu"`, `rules` containing rule for eligibility SME check
-  - [ ] 6.4 Seed Interreg: `name="Interreg Central Danube 2021-2027", country="EU", regulation_type="programme"`, `rules` containing co-financing rule
-  - [ ] 6.5 Each rule in `rules` array must conform to schema: `{rule_id: str, criterion: str, check_type: "contains"|"regex"|"threshold"|"boolean", threshold: any|null, description: str}`
-  - [ ] 6.6 Seed 2 sample platform settings: `regulation_tracker_enabled: true` and `auto_suggestion_enabled: true`
-  - [ ] 6.7 All inserts use `INSERT … ON CONFLICT DO NOTHING` keyed on name/key for idempotency
+- [x] Task 6: Write dev seed script (AC: 6)
+  - [x] 6.1 Create `scripts/seed_compliance_frameworks.py` — async script using `asyncpg` or SQLAlchemy async session
+  - [x] 6.2 Seed ZOP (Bulgarian national): `name="ZOP 2016 (Bulgarian Public Procurement)", country="BG", regulation_type="national"`, `rules` containing rule for ESPD Part III exclusion grounds check
+  - [x] 6.3 Seed Horizon Europe: `name="Horizon Europe Programme Rules", country="EU", regulation_type="eu"`, `rules` containing rule for eligibility SME check
+  - [x] 6.4 Seed Interreg: `name="Interreg Central Danube 2021-2027", country="EU", regulation_type="programme"`, `rules` containing co-financing rule
+  - [x] 6.5 Each rule in `rules` array must conform to schema: `{rule_id: str, criterion: str, check_type: "contains"|"regex"|"threshold"|"boolean", threshold: any|null, description: str}`
+  - [x] 6.6 Seed 2 sample platform settings: `regulation_tracker_enabled: true` and `auto_suggestion_enabled: true`
+  - [x] 6.7 All inserts use `INSERT … ON CONFLICT DO NOTHING` keyed on name/key for idempotency
 
-- [ ] Task 7: Write integration tests — client-api migration 009 (AC: 1, 2, 4, 7)
-  - [ ] 7.1 Create `services/client-api/tests/integration/test_009_migration.py`
-  - [ ] 7.2 Test: `alembic upgrade head` from `008` baseline succeeds (E11-DB-001)
-  - [ ] 7.3 Test: `client.espd_profiles` table has exactly the columns `id, company_id, profile_name, espd_data, created_at, updated_at` after migration (no `field_values`, no `version`) (E11-DB-002)
-  - [ ] 7.4 Test: `uq_espd_profiles_company_version` constraint no longer exists (E11-DB-003)
-  - [ ] 7.5 Test: `profile_name` has NOT NULL constraint and default `'Default Profile'` (E11-DB-004)
-  - [ ] 7.6 Test: `espd_data` has NOT NULL constraint and default `'{}'` (E11-DB-005)
-  - [ ] 7.7 Test: insert a row with only `company_id` → `profile_name` defaults to `'Default Profile'`, `espd_data` defaults to `{}` (E11-DB-006)
-  - [ ] 7.8 Test: data migration — insert a row with `field_values = '{"exclusion_grounds": {...}}'` before migration; after upgrade, verify `espd_data = '{"part_iii": {"exclusion_grounds": {...}}}'` and `profile_name = 'Migrated Profile'` (E11-DB-007)
-  - [ ] 7.9 Test: `ix_espd_profiles_company_id` index still exists after migration (E11-DB-008)
-  - [ ] 7.10 Test: `alembic downgrade 008` restores `field_values`, `version`, and `uq_espd_profiles_company_version` (E11-DB-009)
+- [x] Task 7: Write integration tests — client-api migration 009 (AC: 1, 2, 4, 7)
+  - [x] 7.1 Create `services/client-api/tests/integration/test_009_migration.py`
+  - [x] 7.2 Test: `alembic upgrade head` from `008` baseline succeeds (E11-DB-001)
+  - [x] 7.3 Test: `client.espd_profiles` table has exactly the columns `id, company_id, profile_name, espd_data, created_at, updated_at` after migration (no `field_values`, no `version`) (E11-DB-002)
+  - [x] 7.4 Test: `uq_espd_profiles_company_version` constraint no longer exists (E11-DB-003)
+  - [x] 7.5 Test: `profile_name` has NOT NULL constraint and default `'Default Profile'` (E11-DB-004)
+  - [x] 7.6 Test: `espd_data` has NOT NULL constraint and default `'{}'` (E11-DB-005)
+  - [x] 7.7 Test: insert a row with only `company_id` → `profile_name` defaults to `'Default Profile'`, `espd_data` defaults to `{}` (E11-DB-006)
+  - [x] 7.8 Test: data migration — insert a row with `field_values = '{"exclusion_grounds": {...}}'` before migration; after upgrade, verify `espd_data = '{"part_iii": {"exclusion_grounds": {...}}}'` and `profile_name = 'Migrated Profile'` (E11-DB-007)
+  - [x] 7.9 Test: `ix_espd_profiles_company_id` index still exists after migration (E11-DB-008)
+  - [x] 7.10 Test: `alembic downgrade 008` restores `field_values`, `version`, and `uq_espd_profiles_company_version` (E11-DB-009)
 
-- [ ] Task 8: Write integration tests — admin-api migration 002 (AC: 3, 4, 7)
-  - [ ] 8.1 Create `services/admin-api/tests/integration/test_002_migration.py`
-  - [ ] 8.2 Test: `alembic upgrade head` from `001` baseline succeeds (E11-DB-010)
-  - [ ] 8.3 Test: all 3 admin tables exist in `admin` schema after migration (E11-DB-011)
-  - [ ] 8.4 Test: `regulation_type` PostgreSQL enum has exactly values `{national, eu, programme}` (E11-DB-012)
-  - [ ] 8.5 Test: `admin.compliance_frameworks` has correct columns, NOT NULL constraints, and defaults (E11-DB-013)
-  - [ ] 8.6 Test: `admin.platform_settings` has unique constraint on `key` — duplicate key insert raises `IntegrityError` (E11-DB-014)
-  - [ ] 8.7 Test: `admin.opportunity_compliance_frameworks` composite PK enforced — duplicate `(opportunity_id, framework_id)` pair raises `IntegrityError` (E11-DB-015)
-  - [ ] 8.8 Test: FK cascade on `opportunity_compliance_frameworks.framework_id` — deleting a `compliance_framework` row cascades to delete its `opportunity_compliance_frameworks` rows (E11-DB-016)
-  - [ ] 8.9 Test: all 6 required indexes exist (from AC4) in `pg_indexes` (E11-DB-017)
-  - [ ] 8.10 Test: `alembic downgrade 001` drops all 3 tables and the `regulation_type` enum (E11-DB-018)
+- [x] Task 8: Write integration tests — admin-api migration 002 (AC: 3, 4, 7)
+  - [x] 8.1 Create `services/admin-api/tests/integration/test_002_migration.py`
+  - [x] 8.2 Test: `alembic upgrade head` from `001` baseline succeeds (E11-DB-010)
+  - [x] 8.3 Test: all 3 admin tables exist in `admin` schema after migration (E11-DB-011)
+  - [x] 8.4 Test: `regulation_type` PostgreSQL enum has exactly values `{national, eu, programme}` (E11-DB-012)
+  - [x] 8.5 Test: `admin.compliance_frameworks` has correct columns, NOT NULL constraints, and defaults (E11-DB-013)
+  - [x] 8.6 Test: `admin.platform_settings` has unique constraint on `key` — duplicate key insert raises `IntegrityError` (E11-DB-014)
+  - [x] 8.7 Test: `admin.opportunity_compliance_frameworks` composite PK enforced — duplicate `(opportunity_id, framework_id)` pair raises `IntegrityError` (E11-DB-015)
+  - [x] 8.8 Test: FK cascade on `opportunity_compliance_frameworks.framework_id` — deleting a `compliance_framework` row cascades to delete its `opportunity_compliance_frameworks` rows (E11-DB-016)
+  - [x] 8.9 Test: all 6 required indexes exist (from AC4) in `pg_indexes` (E11-DB-017)
+  - [x] 8.10 Test: `alembic downgrade 001` drops all 3 tables and the `regulation_type` enum (E11-DB-018)
 
 ## Dev Notes
 
@@ -417,6 +417,44 @@ def OpportunityComplianceFrameworkFactory(**overrides: Any) -> dict[str, Any]:
         overrides,
     )
 ```
+
+### Senior Developer Review
+
+**Review Date:** 2026-04-09
+**Verdict:** Approve
+**Reviewed:** All 14 implementation files (migrations, ORM models, seed script, integration tests, factories)
+**Layers:** Blind Hunter, Edge Case Hunter, Acceptance Auditor
+**Stats:** 0 patch, 0 defer, 14 dismissed (current pass)
+**Prior Reviews:** 3 patch findings across 2 prior reviews — all 3 verified FIXED. 1 deferred finding remains (spec-level, non-blocking).
+
+#### Patch Findings
+
+None. All prior patch findings resolved.
+
+#### Deferred Findings
+
+- [x] [Review][Defer] **Redundant unique constraint + unique index on platform_settings.key** [`platform_settings.py:17-19`, `002_compliance_framework_schema.py:126-135`] — deferred, spec-level concern. The ORM model and migration both declare a `UniqueConstraint("key")` AND a separate unique `Index("key")`. PostgreSQL implements UNIQUE constraints via unique indexes internally, so this creates two functionally identical B-tree indexes. Both are required by spec (AC3 specifies `key UNIQUE`, AC4 specifies `ix_platform_settings_key (unique)`), so this is a spec-level redundancy, not a code bug. Could cause `alembic check` to flag the duplication.
+
+#### Resolved from Prior Reviews
+
+- [x] [Review][Patch] ~~Migration 009 downgrade fails when company has multiple profiles (AC1 violation)~~ — FIXED. Downgrade now uses `ROW_NUMBER() OVER (PARTITION BY company_id ORDER BY created_at)` to assign unique incrementing version numbers per company before recreating `uq_espd_profiles_company_version` [`009_espd_profile_v2.py:109-132`]. Regression test `test_downgrade_008_succeeds_with_multiple_profiles_per_company` added to E11-DB-009 [`test_009_migration.py:514-625`] — inserts 2 profiles for same company, verifies downgrade completes and both rows get distinct versions {1, 2}.
+- [x] [Review][Patch] ~~Seed script not idempotent for compliance_frameworks (AC6 violation)~~ — FIXED. `uq_compliance_frameworks_name` UniqueConstraint added to both migration 002 and ORM model. Seed script now uses `ON CONFLICT (name) DO NOTHING`.
+- [x] [Review][Patch] ~~ORM type annotations deviate from spec (AC5 violation)~~ — FIXED. All ORM models now use `Mapped[uuid.UUID]` and `Mapped[datetime]` with correct Python type imports.
+
+#### What Passed
+
+- AC1: Migration 009 upgrade/downgrade correct — columns match spec, multi-profile downgrade safe via ROW_NUMBER() versioning
+- AC2: Data migration verified — field_values content migrated into espd_data['part_iii'], profile_name = 'Migrated Profile' for non-empty rows, empty rows keep default. COALESCE in downgrade handles missing part_iii key safely
+- AC3: Migration 002 creates all 3 admin tables with correct columns, types, NOT NULL constraints, server defaults, FK cascade, composite PK, and enum
+- AC4: All 6 required indexes present in both migrations and declared in ORM __table_args__ for autogenerate sync
+- AC5: ORM models use correct Mapped[] types; admin env.py imports Base.metadata with schema-aware include_object filter
+- AC6: Seed script idempotent — 3 frameworks (ZOP/Horizon/Interreg) + 2 settings, ON CONFLICT DO NOTHING, explicit ::admin.regulation_type cast
+- AC7: All 18 test IDs (E11-DB-001 through E11-DB-018) present with correct assertions, including multi-profile downgrade regression guard
+- AC8: alembic check assertions in both test suites verify ORM-migration sync
+- Architecture: Cross-schema soft reference pattern for opportunity_id correctly followed (documented in Dev Notes)
+- Test patterns: TDD red-phase structure, proper cleanup, subprocess alembic calls, information_schema verification
+- Factory extensions: All 3 new factories (ESPDProfile, ComplianceFramework, OpportunityComplianceFramework) correctly added with spec-matching data structures
+- Edge cases verified: NULL field_values (impossible per NOT NULL constraint, but safe if bypassed), identical created_at timestamps (ROW_NUMBER deterministic), enum checkfirst on create/drop
 
 ### Security Notes (from E11-R-003, E11-R-005)
 

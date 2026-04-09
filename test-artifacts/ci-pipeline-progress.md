@@ -4,6 +4,7 @@ lastStep: 'step-04-validate-and-summary'
 lastSaved: '2026-04-09'
 ---
 
+
 # CI/CD Pipeline Setup Progress
 
 ## Step 1: Preflight Checks
@@ -535,3 +536,117 @@ Added `test-api-ci` target:
 All 4 CI workflow files operational. API test tier (`tests/api/`) now has dedicated Docker
 Compose CI jobs in both `test.yml` (Stage 5) and `ci.yml` (expanded integration). YAML
 validation passed for all files. Docker Buildx caching configured for both jobs.
+
+---
+
+## Enhancement Run — 2026-04-09 (Cross-Service Tier + Admin URL Alignment)
+
+### Context
+
+Run triggered post-framework enhancement runs 4 and 5. Enhancement run 5 added:
+- Full RBAC role fixtures in `tests/api/conftest.py`
+- `live_data_pipeline` + `live_notification` live service fixtures
+- **Admin app + Admin API health checks in `e2e/global-setup.ts`** (requires `ADMIN_BASE_URL` env var)
+- `apiPut` / `apiPatch` + `x-request-id` in `e2e/support/helpers/api-client.ts`
+
+Enhancement run 4 added frontend POMs (WizardPage, ShellPage, AdminDashboardPage), ESPD/compliance
+factories, and locale helpers — all E2E framework only, no CI changes required.
+
+### Gap Analysis
+
+| Gap | Root Cause | Resolution |
+|-----|-----------|------------|
+| `ADMIN_BASE_URL` missing from `test-e2e` env | global-setup.ts didn't check admin app before run-5 | Added `ADMIN_BASE_URL: http://localhost:3001` to `test-e2e` job env |
+| `ADMIN_BASE_URL` missing from `burn-in` env | Same — global-setup runs before burn-in iterations | Added `ADMIN_BASE_URL: http://localhost:3001` to `burn-in` job env |
+| `ADMIN_API_URL` missing from `burn-in` env | burn-in env block was minimal (client-only) | Added `ADMIN_API_URL: http://localhost:8002` to `burn-in` job env |
+| `cross_service` marker not in any Docker Compose CI job | `tests/cross_service/` did not exist in prior CI runs | Added `pytest -m cross_service` step to `test.yml:test-api` and `ci.yml:integration` |
+
+### Changes Made
+
+#### `test.yml` — Three targeted updates
+
+**1. `test-e2e` job env block:**
+Added `ADMIN_BASE_URL: http://localhost:3001` → global-setup.ts now reads this when checking
+all 4 health endpoints (Client + Admin frontends, Client + Admin APIs).
+
+**2. `burn-in` job env block:**
+Added `ADMIN_BASE_URL: http://localhost:3001` and `ADMIN_API_URL: http://localhost:8002` →
+burn-in runs `npx playwright test --project=client-chromium`, which triggers global-setup first.
+Missing env vars caused silent defaults; explicit values remove ambiguity.
+
+**3. `test-api` job — new cross-service step (after "Run API tests"):**
+```yaml
+- name: Run cross-service integration tests
+  run: |
+    echo "🔗 Running cross-service integration tests (full stack required)..."
+    set +e
+    pytest -m cross_service -v --tb=short \
+      --junitxml=test-results/cross-service.xml
+    cs_exit=$?
+    set -e
+    if [ "$cs_exit" -eq 5 ]; then
+      echo "ℹ️  No cross-service tests collected yet (pytest exit 5 — marker filter returned empty set)"
+    elif [ "$cs_exit" -ne 0 ]; then
+      exit "$cs_exit"
+    else
+      echo "✅ Cross-service integration tests passed"
+    fi
+```
+- **Why here**: `test-api` already starts the full Docker Compose stack (postgres, redis, all 5 services) and runs migrations. Cross-service tests require the exact same environment — no redundant build/startup.
+- **Exit code 5 handling**: `pytest -m cross_service` returns exit 5 ("no tests collected") when no `cross_service`-marked files exist yet. Treating 5 as success means CI doesn't regress until actual tests are written.
+- **Artifact coverage**: Existing `Upload API test results` step uploads `test-results/` → covers `cross-service.xml` automatically.
+
+**4. Report summary messages updated:**
+API test failure/skip messages now mention `cross_service` tier explicitly, with local run guidance.
+
+#### `ci.yml` — One update to `integration` job
+
+Added cross-service step after "Run API tests" (same pattern, output file `cross-service-ci.xml`):
+- Full Docker stack already running in this job (same environment as test.yml:test-api)
+- Exit code 5 gracefully handled
+- Existing artifact upload covers the JUnit output
+
+### Validation Checklist
+
+| Check | Status |
+|-------|--------|
+| `test.yml` — Valid YAML | ✅ (python3 yaml.safe_load verified) |
+| `ci.yml` — Valid YAML | ✅ (python3 yaml.safe_load verified) |
+| `test.yml` — `test-e2e` has `ADMIN_BASE_URL` | ✅ |
+| `test.yml` — `burn-in` has `ADMIN_BASE_URL` + `ADMIN_API_URL` | ✅ |
+| `test.yml` — `test-api` has cross-service step | ✅ |
+| `test.yml` — cross-service uses `set +e` + `cs_exit` guard | ✅ |
+| `test.yml` — exit 5 handled (empty test set) | ✅ |
+| `test.yml` — report summary mentions cross-service tier | ✅ |
+| `ci.yml` — `integration` has cross-service step | ✅ |
+| `ci.yml` — exit 5 handled | ✅ |
+| Security: no `${{ inputs.* }}` in run: blocks | ✅ |
+| Security: new env vars are safe contexts (no user input) | ✅ |
+| Burn-in env complete (all URLs global-setup needs) | ✅ |
+| Cross-service JUnit XML → covered by existing artifact upload | ✅ |
+
+### Files Modified
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `.github/workflows/test.yml` | Updated (3 changes) | `ADMIN_BASE_URL` in test-e2e + burn-in; cross-service step in test-api; report messaging |
+| `.github/workflows/ci.yml` | Updated (1 change) | cross-service step in integration job |
+
+### Complete Test Tier Coverage in CI (2026-04-09 v2)
+
+| Test Tier | Marker | CI Job | Trigger |
+|-----------|--------|--------|---------|
+| Unit | `pytest -m unit` | test.yml:test-backend + ci.yml:check | Every PR + push |
+| Integration | `pytest -m integration` | test.yml:test-backend | Every PR + push |
+| API (live) | `pytest -m api` | test.yml:test-api + ci.yml:integration | Push to main only |
+| Cross-service | `pytest -m cross_service` | test.yml:test-api + ci.yml:integration | Push to main only |
+| E2E (Playwright) | `npx playwright test` | test.yml:test-e2e (4 shards) | Every PR + push |
+| Smoke | `pytest -m smoke` | deploy.yml:smoke-test (curl-based) | Push to main (post-deploy) |
+
+### Status: ✅ CI/CD Pipeline Updated — Cross-Service Tier Now Covered
+
+All test tiers except `smoke` (which runs as part of deploy health checks) have dedicated CI
+execution. The `cross_service` marker is now wired into both Docker Compose CI jobs — when
+cross-service test files are written, they will be automatically picked up without further CI
+changes. Environment alignment (ADMIN_BASE_URL / ADMIN_API_URL) ensures global-setup.ts health
+checks run cleanly in both the E2E and burn-in jobs.
