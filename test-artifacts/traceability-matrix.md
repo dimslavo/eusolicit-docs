@@ -6,31 +6,52 @@ stepsCompleted:
   - step-04-analyze-gaps
   - step-05-gate-decision
 lastStep: step-05-gate-decision
-lastSaved: '2026-04-09'
-epic: 3
-epicTitle: 'Frontend Shell & Design System'
-previousEpic: 2
-previousEpicFile: 'eusolicit-docs/test-artifacts/traceability-matrix.md'
-runVersion: 2
+lastSaved: '2026-04-11'
+epic: 11
+epicTitle: 'EU Grant Specialization & Compliance'
+workflowType: bmad-testarch-trace
+inputDocuments:
+  - eusolicit-docs/planning-artifacts/epic-11-grants-compliance.md
+  - eusolicit-docs/test-artifacts/test-design-epic-11.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-1-espd-profile-compliance-framework-db-schema-migrations.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-2-espd-profile-crud-api.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-3-espd-auto-fill-agent-integration.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-4-grant-eligibility-agent-integration.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-5-budget-builder-agent-integration.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-6-consortium-finder-agent-integration.md
+  - eusolicit-docs/test-artifacts/atdd-checklist-11-7-logframe-generator-reporting-template-agent-integrations.md
+tddPhase: RED (S11.01–S11.07 only)
 ---
 
 # Traceability Matrix & Quality Gate Report
 
-**Epic:** E03 — Frontend Shell & Design System
-**Generated:** 2026-04-09 (Run 2 — updated after `locale-redirect.spec.ts` added)
-**Scope:** 12 stories (S03.01 – S03.12), 52 epic-level test IDs (P0: 10 · P1: 18 · P2: 20 · P3: 4)
-**TDD Phase:** 🔴 RED — All 711 tests written; implementations not yet started (pre-implementation baseline)
-**Previous Epic:** E02 — Authentication & Identity (PASS, 2026-04-07)
+**Epic:** E11 — EU Grant Specialization & Compliance
+**Generated:** 2026-04-11
+**Scope:** 16 stories (S11.01–S11.16), 56 epic test IDs (P0: 10 · P1: 18 · P2: 20 · P3: 8)
+**TDD Phase:** 🔴 RED — S11.01–S11.07: 210 tests written (all skipped/RED); S11.08–S11.16: no tests written yet
+**Sprint:** 11–12 | **Points:** 55 | **Dependencies:** E04, E06, E07 | **Milestone:** MVP
 
 ---
 
-## TRACE_GATE: PASS
+## TRACE_GATE: FAIL
 
-**Rationale:** All gate criteria are now met. P0 coverage is 100% (10/10 FULL). The single P0 blocker from Run 1 — E03-P0-005 (locale redirect loop E2E assertion) — has been resolved: `e2e/specs/shell/locale-redirect.spec.ts` was added with 4 Playwright tests that use `countRedirects()` to assert ≤1 redirect hop for `/` → `/bg/`, `/dashboard` → `/bg/dashboard`, and verify no prefix duplication for `/bg/dashboard` and `/en/dashboard`. S03.07 AC10 is upgraded from PARTIAL to FULL. P1 coverage remains 94.4% (17/18 FULL; ≥90% PASS target met). Overall FULL coverage is 88.5% (46/52; ≥80% minimum met). Remaining PARTIAL items — E03-P1-014 (toast hover-pause browser E2E) and E03-P2-017 (toast hover-pause E2E) — are deferred to the `automate` workflow phase and do not block the gate at the achieved P1 coverage level. All 4 P3 tests (dark mode, animation timing, performance) are intentionally deferred.
+**Rationale:** P0 coverage is 40% FULL (required: 100%). Two P0 requirements — E11-P0-006
+(Compliance Framework admin auth) and E11-P0-007 (Framework Suggestion admin auth) — have **zero**
+test coverage. Three additional P0 requirements (E11-P0-008, E11-P0-009, E11-P0-010) cover only
+6 of 8 required agent types (Framework Suggestion Agent and Regulation Tracker Agent have no tests).
+P1 FULL coverage is 44.4% (required: ≥80% minimum). Nine of 18 P1 test IDs (all admin-side
+scenarios from S11.08–S11.10) are completely uncovered. Overall FULL coverage is 30.4% (minimum:
+80%). Stories S11.08–S11.16 (9 stories = backend admin, all 5 frontend stories, and E2E story)
+have no ATDD checklists.
 
-> **⚠️ TDD Baseline Notice:** All 711 tests are in `test.skip()` / `it.skip()` state (except 6 passing AC1 regression guards in S3.11). Zero tests currently pass against the production implementation. This is the expected pre-implementation state. Gate measures whether every acceptance criterion has a corresponding test — all P0 and P1 criteria are now fully or partially covered above their respective gate thresholds.
+> **📋 TDD Baseline Context:** All 210 existing tests (S11.01–S11.07) are in 🔴 RED phase —
+> tests are written but implementations not yet started. The gate measures traceability coverage
+> (whether every acceptance criterion maps to at least one test), not execution pass/fail.
+> Stories S11.08–S11.16 need ATDD checklists written before this gate can improve.
 
-> **✅ To reach GREEN:** Implement Epic 3 stories; unblock tests sequentially following the story order. Re-run this gate after implementation completes to confirm test results match the TDD assertions.
+> **✅ To reach PASS:** Run `bmad-testarch-atdd` for S11.08 (Compliance Framework CRUD Admin),
+> S11.09 (Framework Assignment & Auto-Suggestion), S11.10 (Regulation Tracker & Platform Settings),
+> S11.11–S11.15 (all frontend stories), and S11.16 (E2E Integration). Then re-run this gate.
 
 ---
 
@@ -38,479 +59,589 @@ runVersion: 2
 
 | Dimension | FULL | PARTIAL | NONE | Total | % FULL | % Covered |
 |-----------|-----:|--------:|-----:|------:|-------:|----------:|
-| **P0** | 10 | 0 | 0 | 10 | **100%** | 100% |
-| **P1** | 17 | 1 | 0 | 18 | **94.4%** | 100% |
-| **P2** | 19 | 1 | 0 | 20 | **95%** | 100% |
-| **P3** | 0 | 0 | 4 | 4 | **0%** | 0% |
-| **Overall** | **46** | **2** | **4** | **52** | **88.5%** | **92.3%** |
+| **P0**    |  4   |    4    |  2   |  10   | **40%**  | 80%     |
+| **P1**    |  8   |    1    |  9   |  18   | **44.4%**| 50%     |
+| **P2**    |  5   |    0    | 15   |  20   | **25%**  | 25%     |
+| **P3**    |  0   |    1    |  7   |   8   | **0%**   | 12.5%   |
+| **Overall** | **17** | **6** | **33** | **56** | **30.4%** | **41.1%** |
 
 ### Gate Criteria Evaluation
 
 | Criterion | Required | Actual | Status |
 |-----------|----------|--------|--------|
-| P0 FULL coverage | 100% | 100% | ✅ MET |
-| P1 FULL coverage (PASS target) | ≥ 90% | 94.4% | ✅ MET |
-| P1 FULL coverage (minimum) | ≥ 80% | 94.4% | ✅ MET |
-| Overall FULL coverage | ≥ 80% | 88.5% | ✅ MET |
-
-### Change Summary vs Run 1
-
-| Metric | Run 1 | Run 2 | Δ |
-|--------|-------|-------|---|
-| P0 FULL | 9/10 (90%) | **10/10 (100%)** | +1 ✅ |
-| Overall FULL | 45/52 (86.5%) | **46/52 (88.5%)** | +1 |
-| PARTIAL | 3 | **2** | -1 |
-| Gate | ❌ FAIL | **✅ PASS** | CLEARED |
-| New test files | — | `locale-redirect.spec.ts` (+4 tests) | +4 |
-| Total tests | 707 | **711** | +4 |
+| P0 FULL coverage | 100% | 40% | ❌ NOT MET — 2 P0 tests with zero coverage; 4 P0 partially covered |
+| P1 FULL coverage (PASS target) | ≥ 90% | 44.4% | ❌ NOT MET |
+| P1 FULL coverage (minimum) | ≥ 80% | 44.4% | ❌ NOT MET |
+| Overall FULL coverage | ≥ 80% | 30.4% | ❌ NOT MET |
 
 ### Test Volume by Story
 
 | Story | Title | Tests Written | TDD Phase | Test File(s) |
 |-------|-------|-------------:|-----------|--------------|
-| S03.01 | Next.js 14 Monorepo Scaffold | 44 | 🔴 SKIP | `frontend-monorepo-scaffold.api.spec.ts` |
-| S03.02 | Tailwind Design Token Preset & shadcn/ui Theming | 48 | 🔴 SKIP | `design-system-setup.api.spec.ts`, `design-system-smoke.spec.ts` |
-| S03.03 | App Shell Layout — Sidebar, Top Bar, Content Area | 42 | 🔴 SKIP | `app-shell-layout.spec.ts`, `app-shell-layout.admin.spec.ts` |
-| S03.04 | Responsive Layout Strategy | 26 | 🔴 SKIP | `responsive-layout.spec.ts`, `responsive-layout.admin.spec.ts` |
-| S03.05 | Zustand Stores & TanStack Query Setup | 32 | 🔴 SKIP | `auth-store.test.ts`, `ui-store.test.ts`, `api-client.test.ts`, `useSSE.test.ts`, `api-test-page.spec.ts` |
-| S03.06 | React Hook Form + Zod Validation Patterns | 27 | 🔴 SKIP | `useZodForm.test.ts`, `FormField.test.tsx`, `form-test-page.spec.ts` |
-| S03.07 | i18n Setup with next-intl (BG + EN) | **65** | 🔴 SKIP | 7 unit files + `locale-redirect.spec.ts` (+4 tests) |
-| S03.08 | Authentication Pages | 74 | 🔴 SKIP | `auth-pages.spec.ts`, `auth-pages-s3-8.test.ts` |
-| S03.09 | Company Profile Setup Wizard | 94 | 🔴 SKIP | `wizard.spec.ts`, `wizard-s3-9.test.ts` |
-| S03.10 | Loading States, Error Boundaries & Empty States | 155 | 🔴 SKIP | `loading-states-s3-10.test.ts` |
-| S03.11 | Toast Notification System | 66 | 🔴 60 FAIL / ✅ 6 PASS | `toast-s3-11.test.ts` |
-| S03.12 | Client-Side Route Guards & Auth Redirects | 38 | 🔴 SKIP | `route-guards.spec.ts`, `route-guards.admin.spec.ts` |
-| **Total** | | **711** | **All RED** | 24 test files |
+| S11.01 | ESPD Profile & Compliance Framework DB Schema + Migrations | 39 | 🔴 RED | `test_009_migration.py`, `admin-api/test_002_migration.py` |
+| S11.02 | ESPD Profile CRUD API | 41 | 🔴 RED | `test_espd_profile.py` |
+| S11.03 | ESPD Auto-Fill Agent Integration | 27 | 🔴 RED | `test_espd_autofill_export.py` |
+| S11.04 | Grant Eligibility Agent Integration | 15 | 🔴 RED | `test_grant_eligibility.py` |
+| S11.05 | Budget Builder Agent Integration | 27 | 🔴 RED | `test_budget_builder.py` |
+| S11.06 | Consortium Finder Agent Integration | 26 | 🔴 RED | `test_consortium_finder.py` |
+| S11.07 | Logframe Generator & Reporting Template | 35 | 🔴 RED | `test_logframe_generator.py`, `test_reporting_template.py` |
+| S11.08 | Compliance Framework CRUD API (Admin) | **0** | ⚫ NO TESTS | — |
+| S11.09 | Framework Assignment & Auto-Suggestion API (Admin) | **0** | ⚫ NO TESTS | — |
+| S11.10 | Regulation Tracker Agent & Platform Settings API (Admin) | **0** | ⚫ NO TESTS | — |
+| S11.11 | EU Grant Tools Frontend — Eligibility & Budget Panels | **0** | ⚫ NO TESTS | — |
+| S11.12 | EU Grant Tools Frontend — Consortium Finder & Logframe Panels | **0** | ⚫ NO TESTS | — |
+| S11.13 | ESPD Profile Management & Auto-Fill Frontend | **0** | ⚫ NO TESTS | — |
+| S11.14 | Compliance Admin — Framework Management Frontend | **0** | ⚫ NO TESTS | — |
+| S11.15 | Compliance Admin — Assignment, Suggestions & Regulation Tracker Frontend | **0** | ⚫ NO TESTS | — |
+| S11.16 | E2E Integration Testing & Agent Error Handling Hardening | **0** | ⚫ NO TESTS | — |
+| **Total** | | **210** | **S11.01–07 RED; S11.08–16 none** | 9 test files |
 
 ---
 
-## 2. Story-Level Acceptance Criteria Traceability
+## 2. Epic-Level Acceptance Criteria Traceability
 
-### S03.01 — Next.js 14 Monorepo Scaffold
+*The 13 Epic-level acceptance criteria from `epic-11-grants-compliance.md`.*
+
+| # | Epic AC | Tests | Level | Priority | Coverage |
+|---|---------|-------|-------|----------|----------|
+| AC-E1 | Grant Eligibility Agent maps company profile → matched programmes with eligibility scores | S11.04: `TestAC1AC2HappyPath` (5 tests), `TestAC3ResponseParsing` (4 tests), `TestAC4AgentErrorHandling` (3 tests) | API | P0/P1 | **FULL** |
+| AC-E2 | Budget Builder Agent generates EU-compliant budget with cost categories, overhead, co-financing | S11.05: `TestAC1AC2HappyPath` (4 tests), `TestAC3ResponseParsing` (4 tests), `TestAC4ArithmeticValidation` (4 tests), `TestAC5ConsortiumBudget` (4 tests) | API | P0/P1 | **FULL** |
+| AC-E3 | Consortium Finder Agent searches Consortium Partners Store and returns ranked partner suggestions | S11.06: `TestAC1AC2HappyPath` (5 tests), `TestAC3AC5ResponseParsing` (6 tests), `TestAC6GracefulDegradation` (4 tests) | API | P1 | **FULL** |
+| AC-E4 | Logframe Generator Agent produces logical frameworks, work packages, Gantt chart data, deliverables | S11.07 logframe: `TestAC1AC2HappyPath` (4 tests), `TestAC3AC4ResponseParsing` (7 tests) | API | P1 | **FULL** |
+| AC-E5 | Reporting Template Generator Agent pre-fills periodic report templates from awarded project data | S11.07 reporting: `TestAC7AC8HappyPath` (5 tests), `TestAC11DOCX` (4 tests) | API | P1 | **FULL** |
+| AC-E6 | ESPD profiles can be created, edited, listed, and deleted with structured data mapped to ESPD XML schema (Parts II-V) | S11.01: schema migration tests (E11-DB-001 to E11-DB-009); S11.02: all CRUD tests (AC1–AC5, AC9) | DB + API | P1 | **FULL** |
+| AC-E7 | ESPD Auto-Fill Agent maps company profile data to ESPD fields → pre-filled ESPD downloadable as XML and PDF | S11.03: `TestAC1AutoFillHappyPath` (4), `TestAC5ExportXml` (5), `TestAC7ExportPdf` (3) | API | P0 | **PARTIAL** *(XSD full validation weekly only; structural tests present)* |
+| AC-E8 | Admins can create, edit, activate/deactivate, and delete compliance frameworks with structured validation rules | **No ATDD checklist for S11.08** | — | P0/P1 | **NONE** |
+| AC-E9 | Admins can assign one or more compliance frameworks per opportunity, supporting hybrid national+EU scenarios | **No ATDD checklist for S11.09** | — | P1 | **NONE** |
+| AC-E10 | Framework Suggestion Agent auto-suggests applicable frameworks; admins confirm or override | **No ATDD checklist for S11.09** | — | P0/P1 | **NONE** |
+| AC-E11 | Regulation Tracker Agent runs on Celery Beat schedule, surfaces regulatory changes; admins acknowledge/dismiss | **No ATDD checklist for S11.10** | — | P1 | **NONE** |
+| AC-E12 | All agent calls go through AI Gateway with proper error handling, loading states, and timeout management | S11.03–S11.07: error handling for ESPD Auto-Fill, Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template (6 agents). Framework Suggestion + Regulation Tracker: **NOT COVERED** | API | P0 | **PARTIAL** *(6/8 agents)* |
+| AC-E13 | Frontend provides dedicated pages for grant tools, ESPD management, and compliance administration | **No ATDD checklists for S11.11–S11.15** | — | P2 | **NONE** |
+
+---
+
+## 3. Story-Level Acceptance Criteria Traceability
+
+### S11.01 — ESPD Profile & Compliance Framework DB Schema + Migrations
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `apps/client` and `apps/admin` contain Next.js 14 App Router projects (`app/` dir, metadata, `lang="bg"`, `next.config.ts`, `transpilePackages`) | `[P0] AC1 — App Router Directory Structure` (8 tests); `[P1] AC1 — Turborepo Root Files` (5 tests) | Build/CI | P0/P1 | **FULL** |
-| AC2 | `packages/ui` shared component library with `index.ts` barrel + Button export | `[P0] AC2 — packages/ui Library` (5 tests); `[P2] AC2 — Workspace deps` (1 test) | Build/CI | P0/P2 | **FULL** |
-| AC3 | `packages/config` exports shared `tailwind.config.ts`, `tsconfig.json`, `.eslintrc.js` | `[P0] AC3 — packages/config` (4 tests); `[P1] AC3 — Prettier + ESLint` (2 tests) | Build/CI | P0/P1 | **FULL** |
-| AC4 | `pnpm dev --filter client` starts on port 3000 | `[P1] AC4/AC5 — Port Config` (5 tests) | Build/CI | P1 | **FULL** |
-| AC5 | `pnpm dev --filter admin` starts on port 3001 | `[P1] AC4/AC5 — Port Config` (5 tests) | Build/CI | P1 | **FULL** |
-| AC6 | `pnpm build` at root succeeds — both apps exit 0 (E03-P0-001) | `[P0] AC6 — Build Gate` (5 tests including TS + ESLint checks) | Build/CI | P0 | **FULL** |
-| AC7 (AC8 in story) | TypeScript strict mode + ESLint + Prettier configured and passing | `[P2] AC7 — TypeScript Strict` (6 tests); `[P1] AC8 — ESLint + Prettier lint` (3 tests) | Build/CI | P1/P2 | **FULL** |
+| AC1 | Migration 009 runs from 008 baseline; espd_profiles restructured with profile_name + espd_data | E11-DB-001 → E11-DB-009 (client-api): `TestE11DB001MigrationLifecycle` (3), `TestE11DB007DataMigration` (2), `TestE11DB009Downgrade` (1), `TestE11DB002TableColumnStructure` (4), `TestE11DB003UniqueConstraintRemoval` (1), `TestE11DB004And005ColumnConstraints` (2), `TestE11DB006ServerDefaultBehavior` (1) | Integration | P0/P1 | **FULL** |
+| AC2 | Data migration: field_values → espd_data['part_iii'], profile_name = 'Migrated Profile' | `TestE11DB007DataMigration`: `test_field_values_migrated_to_espd_data_part_iii`, `test_empty_field_values_row_gets_empty_espd_data` | Integration | P0 | **FULL** |
+| AC3 | Admin-api migration 002: creates compliance_frameworks, platform_settings, opportunity_compliance_frameworks | E11-DB-010 → E11-DB-018 (admin-api): all 10 test classes, 22 test functions | Integration | P0 | **FULL** |
+| AC4 | All required indexes present in pg_indexes; ix_espd_profiles_company_id retained | E11-DB-008 (client-api), E11-DB-017 (admin-api): 8 tests | Integration | P0 | **FULL** |
+| AC5 | ORM model files created in admin-api | `test_orm_models_directory_created` (E11-DB-010 class) | Integration | P1 | **FULL** |
+| AC6–7 | *(implicit in AC1–AC3: column constraints, NOT NULL, defaults, FK cascade)* | E11-DB-004, E11-DB-005, E11-DB-016 | Integration | P0 | **FULL** |
+| AC8 | `alembic check` shows no pending changes (ORM ↔ DB sync) | `test_alembic_check_shows_no_pending_changes` (both services) | Integration | P1 | **FULL** |
 
-**Story 3.1 AC Coverage: 7/7 ACs = 100% · Epic Test IDs: E03-P0-001 (AC6), E03-P2-001 (AC2), E03-P2-020 (AC7)**
+**Story Coverage:** 8/8 ACs → **FULL** | 39 tests total (P0: 26, P1: 13)
 
 ---
 
-### S03.02 — Tailwind Design Token Preset & shadcn/ui Theming
+### S11.02 — ESPD Profile CRUD API
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | Tailwind preset: slate neutrals, indigo-600, semantic colours, fonts, shadows, `darkMode: ["class"]`, CSS-var colour mapping | `[P0] AC1 — Tailwind Design Token Preset` (4 tests); `[P1] AC1 — Semantic Colours, Fonts, Shadows, Plugin` (8 tests) | Build/CI | P0/P1 | **FULL** |
-| AC2 | CSS variables for `--primary` through `--ring` in `:root` and `.dark`; HSL component format; `--radius`; fonts in layouts | `[P0] AC2 — CSS Variables in globals.css` (4 tests); `[P1] AC2 — CSS Variables Scoped in @layer base` (4 tests); `[P2] AC2 — CSS Design Tokens Applied in Browser` (3 smoke tests) | Build/CI + E2E | P0/P1/P2 | **FULL** |
-| AC3 | 19 shadcn/ui components in `packages/ui/src/components/ui/`; barrel exports; old `Button.tsx` removed; `cn()` util | `[P0] AC3 — shadcn/ui Component Files Exist` (5 tests); `[P1] AC3 — Barrel Export and Dependencies` (4 tests); `[P2] AC3 — App-Level shadcn/ui Configuration` (3 tests) | Build/CI | P0/P1/P2 | **FULL** |
-| AC4 | `/dev/components` page renders all components with labels and variant previews | `[P2] AC4 — /dev/components Page File` (3 filesystem tests); `[P2] AC4 — /dev/components Component Gallery` (5 browser smoke tests) | E2E | P2 | **FULL** |
-| AC5 | Both apps import `<Button>` from `packages/ui`; `pnpm build` exits 0 (E03-P0-001) | `[P0] AC5 — pnpm Build Gate` (3 tests); `[P2] AC5 — TypeScript Strict Mode` (2 tests) | Build/CI | P0/P2 | **FULL** |
+| AC1 | `POST /espd-profiles` → HTTP 201; company_id from JWT; admin/bid_manager only; others → 403 | `TestAC1CreateEspdProfile` (7 tests) + `TestAC9RoleEnforcement` (post variants) | API | P1/P0 | **FULL** |
+| AC2 | `GET /espd-profiles` → HTTP 200; all company profiles ordered by created_at DESC | `TestAC2ListEspdProfiles` (4 tests) | API | P1 | **FULL** |
+| AC3 | `GET /espd-profiles/{id}` → 200 (own) or 404 (cross-company); no 403 | `TestAC3GetEspdProfile` (3 tests) | API | P1 | **FULL** |
+| AC4 | `PATCH /espd-profiles/{id}` → 200; profile_name replaced; espd_data merged at Part level; 404 if cross-company | `TestAC4PatchEspdProfile` (6 tests) | API | P1 | **FULL** |
+| AC5 | `DELETE /espd-profiles/{id}` → 204; 404 if cross-company | `TestAC5DeleteEspdProfile` (3 tests) | API | P1 | **FULL** |
+| AC6 | Company-scoped RLS: all ops derive company_id from JWT; cross-company → 404 (not 403) | `TestAC6CrossCompanyRLS` (5 tests): GET/PATCH/DELETE cross-company → 404 | API | P0 | **FULL** |
+| AC7 | espd_data PATCH merge: Part-level (part_ii–part_v); absent Parts left unchanged | `test_patch_espd_data_part_level_merge` | API | P2 | **FULL** |
+| AC8 | espd_data validation: dict required; each Part key must be dict or absent; non-dict → 422 | `TestAC1CreateEspdProfile`: `test_post_invalid_part_type_returns_422` | API | P1 | **FULL** |
+| AC9 | Unauthenticated → 401; low-privilege roles → 403 on write; GET accessible to all | `TestAC9RoleEnforcement` (5 methods, 13 parametrized cases) | API | P0 | **FULL** |
 
-**Story 3.2 AC Coverage: 5/5 ACs = 100% · Epic Test IDs: E03-P0-001 (AC5), E03-P2-001 (AC3+AC5), E03-P2-002 (AC4), E03-P2-003 (AC1+AC2), E03-P2-020 (AC5)**
+**Story Coverage:** 9/9 ACs → **FULL** | 41 tests total (P0 security: 3 RLS + auth tests)
 
 ---
 
-### S03.03 — App Shell Layout (Sidebar, Top Bar, Content Area)
+### S11.03 — ESPD Auto-Fill Agent Integration
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `<AppShell>` with sidebar/topbar/children slots exported from `@eusolicit/ui` | T01, T02, A07 | E2E | P0 | **FULL** |
-| AC2 | NavItem active highlight (indigo-50 bg, indigo-600 text); nav item hrefs; inactive state | T06, T07, T08, T09, A12, A13 | E2E | P0/P1 | **FULL** |
-| AC3 | Sidebar toggle: 256px ↔ 64px with 200ms transition; labels hidden when collapsed | T10–T14, A08 | E2E | P1 | **FULL** |
-| AC4 | TopBar sticky 64px; breadcrumbs left; bell + language selector + avatar right | T18–T22 | E2E | P0/P1 | **FULL** |
-| AC5 | Avatar dropdown: name, email, Profile, Settings, Separator, Sign out | T23, T24, T25 | E2E | P2 | **FULL** |
-| AC6 | Notifications bell + unread count badge (static placeholder "3") | T26, T27, T28, T29 | E2E | P2 | **FULL** |
-| AC7 | Content area scrolls independently; sidebar and topbar fixed | T04 | E2E | P1 | **FULL** |
-| AC8 | Client sidebar items: Dashboard, Tenders, Offers, Documents, Team, Settings | T03, T05 | E2E | P0 | **FULL** |
-| AC9 | Admin sidebar items: Dashboard, Companies, Tenders, Users, Reports, Settings | A01–A06, A12, A13 | E2E | P0 | **FULL** |
-| AC10 | Zustand `uiStore` wired; `sidebarCollapsed` persisted to localStorage; hydration-safe | T15–T17, A09–A11 | E2E | P1 | **FULL** |
-| AC11 | `pnpm build` exits 0 (CI gate — E03-P0-001) | _(existing CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /espd-profiles/{id}/auto-fill` → 200; snapshot_profile_id, source_profile_id, espd_data, changed_fields | `TestAC1AutoFillHappyPath` (4 tests) | API | P0 | **FULL** |
+| AC2 | Snapshot profile created with name "Auto-fill snapshot: …"; original profile unchanged | `test_autofill_creates_new_snapshot_profile_in_db` (2 tests) | API | P1 | **FULL** |
+| AC3 | Gateway payload includes espd_data, opportunity_id, company_id; X-Caller-Service header | `TestAC3GatewayPayload` (2 tests) | API | P1 | **FULL** |
+| AC4 | Gateway timeout / 5xx → 503 AGENT_UNAVAILABLE; no snapshot on failure | `TestAC4AgentErrorHandling` (4 tests) | API | P0 | **FULL** |
+| AC5 | `POST /espd-profiles/{id}/export` validates format=xml\|pdf; missing/invalid → 422 | `TestExportFormatValidation` (2 tests) | API | P1 | **FULL** |
+| AC6 | XML export: `<ESPDResponse xmlns="urn:X-eusolicit:espd:schema:v1">`; Parts mapped; well-formed | `TestAC5ExportXml` (5 tests): well-formed, root namespace, all Parts present | API | P0 | **PARTIAL** *(structural tests pass; full XSD lxml conformance deferred to weekly job per test-design exit criteria)* |
+| AC7 | PDF export: non-empty body starting with %PDF-; correct Content-Disposition | `TestAC7ExportPdf` (3 tests) | API | P1 | **FULL** |
+| AC8 | Company-scoped RLS on both endpoints; cross-company → 404 | `TestAC8CrossCompanyRLS` (2 tests) | API | P0 | **FULL** |
+| AC9 | Unauthenticated → 401; contributor/reviewer/read_only → 403 | `TestAC9Authorization` (4 methods, 8 with parametrize) | API | P0 | **FULL** |
+| AC10 | Empty espd_data ({}) → 422 with "no data to auto-fill" | `TestAC10EmptyEspdValidation` (1 test) | API | P1 | **FULL** |
 
-**Story 3.3 AC Coverage: 11/11 ACs = 100% · Epic Test IDs: E03-P0-009 (AC1/AC2/AC4/AC8), E03-P0-010 (AC9), E03-P1-010 (AC3/AC10), E03-P2-004 (AC5), E03-P2-005 (AC6)**
+**Story Coverage:** 9/10 ACs FULL, 1/10 PARTIAL (AC6 XSD conformance) | 27 tests total
 
 ---
 
-### S03.04 — Responsive Layout Strategy
+### S11.04 — Grant Eligibility Agent Integration
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | Desktop (≥1280px): full sidebar visible; user toggle respected; hamburger hidden | T01, T02, T03 | E2E | P1 | **FULL** |
-| AC2 | Tablet (768–1279px): auto-collapses on entry; expand possible; auto-collapses on route change | T04, T05, T06 | E2E | P1 | **FULL** |
-| AC3 | Mobile (<768px): sidebar hidden; BottomNav shows first 5 items | T07, T08, A03, A04 | E2E | P1 | **FULL** |
-| AC4 | BottomNav: fixed, 64px, safe-area-aware, bg-white, border-t; main gets `pb-16` | T09, T10, T11, T14 | E2E | P1 | **FULL** |
-| AC5 | BottomNav: active indigo-600, inactive slate-500 | T12, T13 | E2E | P1 | **FULL** |
-| AC6 | Hamburger in TopBar opens Sheet overlay; Sheet closes on route change | T15–T18, A05 | E2E | P2 | **FULL** |
-| AC7 | No content reflow; no hydration errors; `ml-0` on mobile | T19, T20 | E2E | P2 | **FULL** |
-| AC8 | Admin app implements responsive behaviour (tablet collapse, mobile BottomNav, Sheet) | A01–A06 | E2E | P1/P2 | **FULL** |
-| AC9 | `pnpm build` exits 0 (CI gate — E03-P0-001) | _(existing CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /grants/eligibility-check` accepts optional filters; loads company; returns 200 | `test_eligibility_check_returns_200_with_response_structure` | API | P0 | **FULL** |
+| AC2 | Agent payload: company_profile + filters + X-Caller-Service + 30s timeout; no client retry | `test_eligibility_check_agent_payload_*` (4 tests), `test_eligibility_check_x_caller_service_header_sent` | API | P0 | **FULL** |
+| AC3 | Response parsed into GrantEligibilityResponse (matched programmes with eligibility_score, programme_name, call_reference, requirements_summary, gap_analysis) | `TestAC3ResponseParsing` (4 tests): full-match, partial-match, no-match, missing key default | API | P1 | **FULL** |
+| AC4 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE; no raw error forwarded | `TestAC4AgentErrorHandling` (3 tests): timeout, HTTP 500, HTTP 503 | API | P0 | **FULL** |
+| AC5 | Company not found → 404 | `test_company_not_found_returns_404` | API | P1 | **FULL** |
+| AC6 | Unauthenticated → 401; all roles permitted | `TestAC6Authorization` (2 tests) | API | P0 | **FULL** |
+| AC7 | No client-side filtering; null when absent; verbatim forwarding | `test_eligibility_check_with_programme_type_filter`, `test_eligibility_check_with_funding_range_filter` | API | P1 | **FULL** |
 
-**Story 3.4 AC Coverage: 9/9 ACs = 100% · Epic Test IDs: E03-P1-011 (AC1/AC2/AC3/AC8), E03-P2-006 (AC6), E03-P2-007 (AC2/AC8)**
+**Story Coverage:** 7/7 ACs → **FULL** | 15 tests total (P0: 9, P1: 6)
 
 ---
 
-### S03.05 — Zustand Stores & TanStack Query Setup
+### S11.05 — Budget Builder Agent Integration
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `authStore`: user, token, refreshToken, isAuthenticated, login(), logout(), setUser(), setTokens(); persisted to localStorage as `"eusolicit-auth-store"` | `auth-store.test.ts` T01–T07 | Unit | P1 | **FULL** |
-| AC2 | `uiStore`: sidebarCollapsed, theme, locale, toasts[]; addToast(), removeToast(); partialize persists only `sidebarCollapsed` + `locale` | `ui-store.test.ts` T01–T10 | Unit | P1 | **FULL** |
-| AC3 | TanStack Query `QueryClient` with `staleTime: 30s`, `gcTime: 5min`, `retry: 1` wrapped in app root | `api-test-page.spec.ts` T02 (indirect validation) | E2E | P1 | **FULL** |
-| AC4 | `apiClient`: Bearer token attached; 401 dedup (3 concurrent → 1 refresh); refresh failure → logout; `_retry` infinite-loop guard | `api-client.test.ts` T01–T06 | Unit | P0/P1 | **FULL** |
-| AC5 | `useSSE(url)`: EventSource.close() on unmount; status transitions; JSON parse; error event; null guard | `useSSE.test.ts` T01–T05 | Unit | P2 | **FULL** |
-| AC6 | `useHealthCheck` hits `GET /health`; `/dev/api-test` shows loading/success/error states | `api-test-page.spec.ts` T01–T04 | E2E | P1 | **FULL** |
-| AC7 | `pnpm build` + `pnpm type-check` exit 0 (CI gate) | _(existing CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /grants/budget-builder` accepts JSON body; returns 200 + BudgetBuilderResponse | `TestAC1AC2HappyPath` (4 tests) + `TestAC2OptionalParams` validation tests | API | P0 | **FULL** |
+| AC2 | Agent payload: all required fields + X-Caller-Service + company_id string; optional params forwarded | `test_budget_builder_agent_payload_has_required_fields`, `test_budget_builder_x_caller_service_header_sent`, `test_budget_builder_with_all_optional_params` | API | P0 | **FULL** |
+| AC3 | Response parsed: cost_categories, overhead_calculation, co_financing_split, per_partner_breakdown | `TestAC3ResponseParsing` (4 tests) | API | P1 | **FULL** |
+| AC4 | Budget arithmetic validation: line items, co-financing, overhead consistency | `TestAC4ArithmeticValidation` (4 tests): valid passes, 3 inconsistent → 422 | API | P0 | **FULL** |
+| AC5 | Per-partner breakdown required when consortium_size > 1; null accepted when solo | `TestAC5ConsortiumBudget` (4 tests) | API | P1 | **FULL** |
+| AC6 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC6AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
+| AC7 | Unauthenticated → 401; all roles permitted | `TestAC7Authorization` (2 tests) | API | P0 | **FULL** |
+| AC8 | Stateless: no DB writes | Implicit via fixture teardown (no session.flush); covered architecturally | API | P2 | **FULL** |
 
-**Story 3.5 AC Coverage: 7/7 ACs = 100% · Epic Test IDs: E03-P0-007 (AC4/T03), E03-P0-008 (AC4/T04-T05), E03-P1-001 (AC1/T06-T07), E03-P1-002 (AC2/T09-T10), E03-P1-012 (AC6), E03-P2-008 (AC5/T01)**
+**Story Coverage:** 8/8 ACs → **FULL** | 27 tests total (P0: 12, P1: 8, P2: 7)
 
 ---
 
-### S03.06 — React Hook Form + Zod Validation Patterns
+### S11.06 — Consortium Finder Agent Integration
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `useZodForm(schema)`: returns typed UseFormReturn with zodResolver; `mode: "onBlur"` default; options forwarded | `useZodForm.test.ts` T01–T06 | Unit | P2 | **FULL** |
-| AC2 | shadcn form primitives in `packages/ui/src/components/ui/form.tsx`; `FormFieldInternal` NOT barrel-exported | _(CI gate: TypeScript build validates non-export)_ | Build/CI | P0 | **FULL** |
-| AC3 | `<FormField>` renders: label, input slot, error message (text-destructive), description; render-prop children override; disabled forwarded | `FormField.test.tsx` T01–T05, T14, T15 | Component | P1 | **FULL** |
-| AC4 | `<FormField>` type variants: text, email, password, textarea, select, checkbox, radio, date, file | `FormField.test.tsx` T02, T06–T13 | Component | P2 | **FULL** |
-| AC5 | Error animation: `transition-all duration-200 ease-in-out overflow-hidden` always present on FormMessage | `FormField.test.tsx` T05; `form-test-page.spec.ts` T06 | Component + E2E | P1/P2 | **FULL** |
-| AC6 | `/dev/form-test`: demo form with Zod validation; inline errors on blur + submit; success banner + toast on valid submit | `form-test-page.spec.ts` T01–T06 | E2E | P1/P2 | **FULL** |
-| AC7 | All exports resolve; `pnpm build` + `pnpm type-check` exit 0 (CI gate) | _(existing CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /grants/consortium-finder` accepts required/optional fields; returns 200 | `TestAC1AC2HappyPath` (happy path tests) + `TestAC1InputValidation` (6 tests) | API | P0 | **FULL** |
+| AC2 | Agent payload structure + X-Caller-Service header + timeout | `test_consortium_finder_agent_payload_has_required_fields`, `test_consortium_finder_x_caller_service_header_sent`, `test_consortium_finder_forwards_*` (2 tests) | API | P0 | **FULL** |
+| AC3 | ConsortiumFinderResponse structure: partners, total_results, page, page_size | `TestAC3AC5ResponseParsing`: `test_partners_have_required_fields`, `test_total_results_and_page_size_match_partner_count` | API | P1 | **FULL** |
+| AC4 | Single-page contract: page always 1, page_size == len(partners) | `test_total_results_and_page_size_match_partner_count` | API | P1 | **FULL** |
+| AC5 | Partners sorted descending by collaboration_score | `test_partners_returned_in_descending_collaboration_score_order`, `test_capability_overlap_ranking_reflected_in_scores` | API | P1 | **FULL** |
+| AC6 | Partial response graceful degradation: missing fields → null/[] not crash | `TestAC6GracefulDegradation` (4 tests): empty results, missing contact_info, missing past_projects, missing partners key | API | P2 | **FULL** |
+| AC7 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC7AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
+| AC8 | Unauthenticated → 401; all roles permitted | `TestAC8Authorization` (2 tests) | API | P0 | **FULL** |
+| AC9 | Stateless — no DB writes | Implicit via architecture (no AsyncSession dep) | API | — | **FULL** |
 
-**Story 3.6 AC Coverage: 7/7 ACs = 100% · Epic Test IDs: E03-P1-013 (AC3/AC5), E03-P2-009 (AC1), E03-P2-010 (AC6)**
+**Story Coverage:** 9/9 ACs → **FULL** | 26 tests total (P0: 9, P1: 7, P2: 10)
 
 ---
 
-### S03.07 — i18n Setup with next-intl (BG + EN)
+### S11.07 — Logframe Generator & Reporting Template Agent Integrations
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `next-intl` installed; `next.config.mjs` wraps with `createNextIntlPlugin('./i18n.ts')`; `i18n.ts` configures `getRequestConfig` | `i18n-setup.test.ts` T01–T06 | Unit/File | P1 | **FULL** |
-| AC2 | `middleware.ts`: `locales: ['bg', 'en']`, `defaultLocale: 'bg'`, `localePrefix: 'always'`; correct matcher pattern | `i18n-setup.test.ts` T07–T11 | Unit/File | P1 | **FULL** |
-| AC3 | `app/[locale]/` route structure; `NextIntlClientProvider` + `QueryProvider` in locale layout | _(build-level — verified by pnpm build CI gate)_ | Build/CI | P1 | **FULL** |
-| AC4 | `messages/bg.json` + `messages/en.json`: all 6 namespaces present (`common`, `nav`, `auth`, `forms`, `errors`, `wizard`); identical key sets | `check-i18n-keys.test.ts` T01–T11 (client); T01–T07 (admin) | Unit/File | P1 | **FULL** |
-| AC5 | Shell chrome uses `useTranslations()`; `UserAvatarMenu` accepts `labels` prop; TopBar aria labels | `UserAvatarMenu-i18n.test.tsx` T01–T04; `TopBar-i18n.test.tsx` T07 | Component | P1 | **FULL** |
-| AC6 | TopBar: globe icon + locale codes (BG/EN); clicking inactive locale calls `onLocaleChange` | `TopBar-i18n.test.tsx` T01–T06 | Component | P0 | **FULL** |
-| AC7 | `setLocale()` action on `uiStore`; locale written to localStorage; persists across reload | `ui-store-s3-7.test.ts` T01–T05 | Unit | P1 | **FULL** |
-| AC8 | `formatDate` + `formatCurrency` in `packages/ui/src/lib/format.ts`; locale-aware output; exported | `format.test.ts` T01–T10 | Unit | P2 | **FULL** |
-| AC9 | `check-i18n-keys.mjs` exits 0 on key match, non-zero on mismatch; `pnpm check:i18n` script | `check-i18n-keys.test.ts` T12–T14 (client); T08–T10 (admin) | Unit/Exec | P1 | **FULL** |
-| AC10 | `pnpm build` exits 0; `pnpm type-check` exits 0; `/` redirects to `/bg/` with ≤1 redirect | _(CI gate: build + type-check)_; **`locale-redirect.spec.ts` T01–T04: runtime redirect-count E2E** | Build/CI + E2E | P0 | ✅ **FULL** _(was PARTIAL in Run 1)_ |
+| AC1 | `POST /grants/logframe-generate` accepts project_narrative (required, min_length=1), optional target_programme; returns 200 | `TestAC1AC2HappyPath` (4 tests) + `TestAC1InputValidation` (2 tests) | API | P0 | **FULL** |
+| AC2 | Agent payload: project_narrative, target_programme, company_id (str); X-Caller-Service; timeout 30s | `test_logframe_agent_payload_has_required_fields`, `test_logframe_x_caller_service_header_sent`, `test_logframe_null_target_programme_forwarded` | API | P0 | **FULL** |
+| AC3 | LogframeResponse: all 4 fields (logical_framework, work_packages, gantt_data, deliverable_table) with sub-types | `TestAC3AC4ResponseParsing` (7 tests): all fields, each sub-type validated | API | P1 | **FULL** |
+| AC4 | gantt_data: null when key absent; [] when present but empty (distinct!) | `test_gantt_data_absent_returns_null_not_error` (null) + `test_gantt_data_present_empty_list_not_null` (empty list distinct from null) | API | P1 | **FULL** |
+| AC5 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC5AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
+| AC6 | Unauthenticated → 401; all roles allowed; stateless | `TestAC6Authorization` (1 test: unauthenticated → 401) | API | P0 | **FULL** |
+| AC7 | `POST /reporting-template` accepts project_id (UUID, required); returns 200 or 404 | `TestAC7AC8HappyPath` (1 test: 200), `TestAC8NotFound` (1: 404), `TestInputValidation` (2: 422) | API | P0 | **FULL** |
+| AC8 | Service loads project from DB with company RLS; builds agent payload; calls reporting-template-generator | `test_reporting_template_agent_payload_includes_project_data`, `test_reporting_template_x_caller_service_header_sent` | API | P1 | **FULL** |
+| AC9 | ReportingTemplateResponse structure: project_id, milestones (list), sections (list) | `test_reporting_template_milestones_have_required_fields`, `test_reporting_template_sections_have_required_fields` | API | P1 | **FULL** |
+| AC10 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE; 404 propagates unchanged | `TestAC10AgentErrorHandling` (3 tests): timeout, HTTP 500, export timeout | API | P0 | **FULL** |
+| AC11 | `POST /reporting-template/export` returns DOCX; correct Content-Type + Content-Disposition | `TestAC11DOCX`: `test_export_returns_docx_content_type`, `test_export_has_content_disposition_attachment`, `test_export_body_is_non_empty`, `test_export_unknown_project_id_returns_404` | API | P1 | **FULL** |
+| AC12 | DOCX includes heading, sections, milestones table, budget overview, consortium summary | `test_export_is_valid_word_document` (P2: python-docx parse + paragraphs > 0) | API | P2 | **PARTIAL** *(structure verified; content detail deferred to P3-006)* |
 
-**Story 3.7 AC Coverage: 10/10 ACs = 100% · Epic Test IDs: E03-P0-005 (AC10 — FULL, locale-redirect.spec.ts), E03-P0-006 (AC6), E03-P1-006 (AC7), E03-P1-007 (AC4/AC9), E03-P2-011 (AC8)**
+**Story Coverage:** 11/12 ACs FULL, 1/12 PARTIAL (AC12 structural only) | 35 tests total (P0: 14, P1: 16, P2: 5)
 
 ---
 
-### S03.08 — Authentication Pages
+### S11.08 — Compliance Framework CRUD API (Admin)
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | Auth layout: no sidebar/topbar; centred flex; EU Solicit logo; max-w-md white card | `auth-pages.spec.ts` AC1 block (5 E2E); `auth-pages-s3-8.test.ts` AC1 block (3 unit) | E2E + Unit | P1 | **FULL** |
-| AC2 | `/login`: email + password + "Remember me" + "Forgot password?" + "Sign in" + Google OAuth + register link | `auth-pages.spec.ts` Login block (7 E2E); `auth-pages-s3-8.test.ts` AC2 block (4 unit) | E2E + Unit | P0/P1 | **FULL** |
-| AC3 | `/register`: company name, EIK, first name, last name, email, password, confirm, terms; POST to `POST /auth/register` | `auth-pages.spec.ts` Register block (7 E2E); `auth-pages-s3-8.test.ts` AC3 block (3 unit) | E2E + Unit | P1 | **FULL** |
-| AC4 | `/forgot-password`: email + submit; success state shows "Check your email"; form hidden | `auth-pages.spec.ts` Forgot-pwd block (5 E2E); `auth-pages-s3-8.test.ts` AC4 block (2 unit) | E2E + Unit | P1 | **FULL** |
-| AC5 | `/auth/callback`: Suspense boundary; extracts code/state params; loading + error states with testids | `auth-pages.spec.ts` OAuth callback block (7 E2E); `auth-pages-s3-8.test.ts` AC5 block (5 unit) | E2E + Unit | P2 | **FULL** |
-| AC6 | Inline Zod errors on blur + submit; all pages; loading state: Loader2 spinner + disabled inputs | `auth-pages.spec.ts` Validation block (10 E2E); `auth-pages-s3-8.test.ts` AC6 block (7 unit) | E2E + Unit | P1 | **FULL** |
-| AC7 | Loading states: button spinner + disabled inputs during submission (all auth pages) | `auth-pages.spec.ts` AC7 block (4 E2E) | E2E | P1 | **FULL** |
-| AC8 | Authenticated users redirect to `/dashboard` from `/login` and `/register` | `auth-pages.spec.ts` AC8 block (4 E2E) | E2E | P0 | **FULL** |
-| AC9 | 8 new auth i18n keys in both `en.json` and `bg.json`; key parity; UI smoke renders English text | `auth-pages-s3-8.test.ts` AC9 block (18 unit); `auth-pages.spec.ts` i18n smoke (7 E2E) | Unit + E2E | P1 | **FULL** |
-| AC10 | `pnpm build` + `pnpm type-check` + `pnpm check:i18n` exit 0 | _(CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /admin/compliance-frameworks` creates with name, description, country, regulation_type, rules JSONB | **No ATDD checklist** | — | P0/P1 | **NONE** |
+| AC2 | `GET /admin/compliance-frameworks` lists with filters (country, regulation_type, is_active); paginated | **No ATDD checklist** | — | P1 | **NONE** |
+| AC3 | `GET /admin/compliance-frameworks/:id` detail view | **No ATDD checklist** | — | P1 | **NONE** |
+| AC4 | `PATCH /admin/compliance-frameworks/:id` updates any field | **No ATDD checklist** | — | P1 | **NONE** |
+| AC5 | `DELETE /admin/compliance-frameworks/:id` soft-delete or hard-delete if unused | **No ATDD checklist** | — | P0/P1 | **NONE** |
+| AC6 | Validate rules JSONB structure (rule_id, criterion, check_type, threshold, description) | **No ATDD checklist** | — | P2 | **NONE** |
+| AC7 | Prevent deletion of frameworks currently assigned to active opportunities | **No ATDD checklist** | — | P0/P1 | **NONE** |
+| AC8 | Enforce admin-only access via role-based middleware | **No ATDD checklist** | — | P0 | **NONE** |
 
-**Story 3.8 AC Coverage: 10/10 ACs = 100% · Epic Test IDs: E03-P0-004 (AC8), E03-P1-003 (AC6/AC7), E03-P1-004 (AC6), E03-P1-005 (AC4), E03-P1-007 extension (AC9), E03-P2-012 (AC5)**
+**Story Coverage:** 0/8 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
 
 ---
 
-### S03.09 — Company Profile Setup Wizard
+### S11.09 — Framework Assignment & Auto-Suggestion API (Admin)
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | Wizard page at `(protected)/setup`; `WizardStepper` renders 4 labelled steps with status | `wizard.spec.ts` AC1 block (7 E2E); `wizard-s3-9.test.ts` FS block (3 unit) | E2E + Unit | P1 | **FULL** |
-| AC2 | Step 1 — Company Info: pre-filled name/EIK, address, phone, website (optional URL), logo upload with preview | `wizard.spec.ts` AC2 block (7 E2E); `wizard-s3-9.test.ts` schemas block | E2E + Unit | P1 | **FULL** |
-| AC3 | Step 2 — CPV: searchable input filters list; dismissible badges; ≥1 required for Next | `wizard.spec.ts` AC3 block (9 E2E); `wizard-s3-9.test.ts` CPV block (5 unit) | E2E + Unit | P1 | **FULL** |
-| AC4 | Step 3 — Regions: 6 Bulgarian + 27 EU states; select-all toggles; ≥1 required for Next | `wizard.spec.ts` AC4 block (6 E2E); `wizard-s3-9.test.ts` regions block (4 unit) | E2E + Unit | P1 | **FULL** |
-| AC5 | Step 4 — Team Invites: email add/remove; invalid email error; Complete Setup always enabled (optional step) | `wizard.spec.ts` AC5 block (7 E2E); `wizard-s3-9.test.ts` schema block | E2E + Unit | P1 | **FULL** |
-| AC6 | Back (no validation), Next (validates current step), Complete Setup (stub POST + redirect to /dashboard) | `wizard.spec.ts` AC6 + Full Flow blocks (6 E2E); `wizard-s3-9.test.ts` API stub block | E2E + Unit | P0/P1 | **FULL** |
-| AC7 | Wizard state persisted via Zustand persist (`"eusolicit-wizard-store"`); `logoFile` excluded; `logoDataUrl` included; data survives reload | `wizard.spec.ts` AC7 block (4 E2E); `wizard-s3-9.test.ts` store block (5 unit) | E2E + Unit | P1 | **FULL** |
-| AC8 | `wizardStore.reset()` clears store + removes localStorage key after Complete Setup | `wizard.spec.ts` AC8 block (1 E2E) | E2E | P1 | **FULL** |
-| AC9 | Register page redirects to `/${locale}/setup` (not /dashboard) after successful registration | `wizard.spec.ts` AC9 block (1 E2E); `wizard-s3-9.test.ts` register block (2 unit) | E2E + Unit | P1 | **FULL** |
-| AC10 | All wizard UI strings use `useTranslations()`; all `wizard.*` keys present in en.json + bg.json | `wizard-s3-9.test.ts` i18n block (6 unit) | Unit | P1 | **FULL** |
-| AC11 | `pnpm build` + `pnpm type-check` + `pnpm check:i18n` exit 0 | _(CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | `POST /admin/opportunities/:id/compliance-frameworks` assigns one or more frameworks | **No ATDD checklist** | — | P1 | **NONE** |
+| AC2 | `GET /admin/opportunities/:id/compliance-frameworks` lists assigned frameworks | **No ATDD checklist** | — | P1 | **NONE** |
+| AC3 | `DELETE /admin/opportunities/:id/compliance-frameworks/:fid` removes assignment | **No ATDD checklist** | — | P1 | **NONE** |
+| AC4 | Auto-suggestion flow: Framework Suggestion Agent invoked on opportunity ingest; suggestions stored with confidence scores | **No ATDD checklist** | — | P0/P1 | **NONE** |
+| AC5 | `GET /admin/framework-suggestions` lists pending suggestions | **No ATDD checklist** | — | P0/P1 | **NONE** |
+| AC6 | `PATCH /admin/framework-suggestions/:id` accept/reject; on accept → auto-assign atomically | **No ATDD checklist** | — | P1 | **NONE** |
+| AC7 | Tests for assignment CRUD, suggestion generation, acceptance flow | **No ATDD checklist** | — | P1 | **NONE** |
 
-**Story 3.9 AC Coverage: 11/11 ACs = 100% · Epic Test IDs: E03-P1-008 (AC6/Full Flow), E03-P1-009 (AC7), E03-P2-013 (AC3), E03-P2-014 (AC4), E03-P2-015 (AC5), E03-P0-002 partial (AC1: unauthenticated /setup guard), E03-R-007 (AC7)**
+**Story Coverage:** 0/7 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
 
 ---
 
-### S03.10 — Loading States, Error Boundaries & Empty States
+### S11.10 — Regulation Tracker Agent & Platform Settings API (Admin)
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | 5 Skeleton variants (`SkeletonCard`, `SkeletonTable`, `SkeletonList`, `SkeletonText`, `SkeletonAvatar`): `animate-pulse` + `bg-slate-200`; `className` prop; configurable rows/cols/lines/size | `loading-states-s3-10.test.ts` AC1 block (~30 tests) | Static/File | P1 | **FULL** |
-| AC2 | Global `error.tsx` at `app/[locale]/error.tsx`; `"use client"`; AlertCircle icon; translated heading + Try-again; collapsible details; 3 `data-testid` attrs | `loading-states-s3-10.test.ts` AC2 block | Static/File | P1 | **FULL** |
-| AC3 | Per-section `<ErrorBoundary>`: wraps `react-error-boundary`; optional `fallback`; default red-50 card with AlertTriangle; `data-testid="section-error-boundary"` | `loading-states-s3-10.test.ts` AC3 block | Static/File | P1 | **FULL** |
-| AC4 | `<EmptyState>`: icon, title, description?, action? props; centred flex; `data-testid="empty-state"` + `data-testid="empty-state-action"` | `loading-states-s3-10.test.ts` AC4 block | Static/File | P2 | **FULL** |
-| AC5 | 3 pre-built empty state variants: `EmptyStateNoResults`, `EmptyStateGetStarted`, `EmptyStateNoAccess` | `loading-states-s3-10.test.ts` AC5 block | Static/File | P2 | **FULL** |
-| AC6 | `<QueryGuard>`: priority render isLoading→skeleton | isError→error | isEmpty→empty | children; `data-testid` on each wrapper; exports `QueryGuardProps` | `loading-states-s3-10.test.ts` AC6 block | Static/File | P1 | **FULL** |
-| AC7 | `states` namespace (6 keys) + 2 `errors` namespace keys added to both `en.json` and `bg.json`; key parity | `loading-states-s3-10.test.ts` AC7 block | Static/File | P1 | **FULL** |
-| AC8 | `/dev/ui-states` demo page: `"use client"`; renders all skeleton variants + empty states + QueryGuard states | `loading-states-s3-10.test.ts` AC8 block | Static/File | P2 | **FULL** |
-| AC9 | All new symbols in `packages/ui/index.ts` under `// New in S3.10`; types exported | `loading-states-s3-10.test.ts` AC9 block | Static/File | P1 | **FULL** |
-| AC10 | `pnpm build` + `pnpm type-check` + `pnpm check:i18n` exit 0 | _(CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | Celery Beat task triggers Regulation Tracker Agent on configurable schedule; parses regulatory_changes | **No ATDD checklist** | — | P1 | **NONE** |
+| AC2 | `GET /admin/regulatory-changes` lists with filters (status, severity, date range) | **No ATDD checklist** | — | P2 | **NONE** |
+| AC3 | `PATCH /admin/regulatory-changes/:id` acknowledge/dismiss with optional notes | **No ATDD checklist** | — | P1 | **NONE** |
+| AC4 | `GET /admin/platform-settings` admin only | **No ATDD checklist** | — | P2 | **NONE** |
+| AC5 | `PATCH /admin/platform-settings/:key` manages configuration | **No ATDD checklist** | — | P2 | **NONE** |
+| AC6 | Enforce admin-only access; tests for Celery task, CRUD, settings | **No ATDD checklist** | — | P1 | **NONE** |
 
-**Story 3.10 AC Coverage: 10/10 ACs = 100% · Epic Test IDs: E03-P1-015 (AC1), E03-P1-016 (AC2/AC3), E03-P2-016 (AC4/AC5)**
+**Story Coverage:** 0/6 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
 
 ---
 
-### S03.11 — Toast Notification System
+### S11.11 — EU Grant Tools Frontend — Eligibility & Budget Panels
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | `addToast()` and `removeToast()` from `uiStore`; `Toast` interface shape | `toast-s3-11.test.ts` AC1 block (6 tests — ✅ PASSING regression guards) | Static/Unit | P1 | **FULL** |
-| AC2 | `ToastItem`: success/error/warning/info types with colour classes + lucide icons; `data-testid="toast-item"`; props | `toast-s3-11.test.ts` AC2 block (13 tests) | Static/File | P1 | **FULL** |
-| AC3 | `ToastContainer`: fixed bottom-right portal; max 5 visible; 8px gap; `data-testid="toast-container"`; reads `uiStore.toasts` | `toast-s3-11.test.ts` AC3 block (10 tests) | Static/File | P1 | **FULL** |
-| AC4 | Auto-dismiss: 5s (success/info), 8s (warning), 10s (error); `Infinity` → no dismiss; `clearTimeout` on unmount | `toast-s3-11.test.ts` AC4 block (6 tests) | Static/File | P1 | **FULL** |
-| AC5 | Close button (`data-testid="toast-close"`); `onMouseEnter` pauses timer; `onMouseLeave` resumes | `toast-s3-11.test.ts` AC5 block (5 tests); **E2E hover-pause behavior: NOT WRITTEN** | Static/File | P1/P2 | **PARTIAL** |
-| AC6 | Entry: slide in from right + fade in; exit: reverse; `translate-x-full`/`translate-x-0` + `opacity-0`/`opacity-100` | `toast-s3-11.test.ts` AC6 block (4 tests) | Static/File | P2 | **FULL** |
-| AC7 | `useToast()` hook: `"use client"`; `{ success, error, warning, info }` shorthands wrapping `uiStore.addToast` | `toast-s3-11.test.ts` AC7 block (8 tests) | Static/File | P1 | **FULL** |
-| AC8 | `/dev/toasts` demo page: `"use client"`; imports `useToast`; 4 type trigger buttons | `toast-s3-11.test.ts` AC8 block (7 tests) | Static/File | P2 | **FULL** |
-| AC9 | `ToastItem`, `ToastItemProps`, `ToastContainer`, `useToast` in `packages/ui/index.ts` under `// New in S3.11`; feedback barrel | `toast-s3-11.test.ts` AC9 block (7 tests) | Static/File | P1 | **FULL** |
-| AC10 | `pnpm build` + `pnpm type-check` exit 0 | _(CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | Grant Eligibility Panel: trigger button, loading spinner, results as programme list sorted by eligibility score | **No ATDD checklist** | — | P2 | **NONE** |
+| AC2 | Budget Builder Panel: input form; results as editable table with cost categories, co-financing split; recalculated totals | **No ATDD checklist** | — | P2 | **NONE** |
+| AC3 | Wire up React Query mutations; handle loading, error, empty states | **No ATDD checklist** | — | P2 | **NONE** |
 
-**Story 3.11 AC Coverage: 9/10 ACs FULL, 1/10 PARTIAL (AC5 hover-pause E2E behavior) · Epic Test IDs: E03-P1-014 (AC2/AC3/AC4/AC5 — PARTIAL: static coverage, no browser E2E), E03-P2-017 (AC5 — PARTIAL: handler code verified, runtime behavior not tested)**
+**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
 
 ---
 
-### S03.12 — Client-Side Route Guards & Auth Redirects
+### S11.12 — EU Grant Tools Frontend — Consortium Finder & Logframe Panels
 
 | AC | Description | Test(s) | Level | Priority | Coverage |
 |----|-------------|---------|-------|----------|----------|
-| AC1 | Unauthenticated user → `/login?redirect=/dashboard`; dashboard content NOT rendered before redirect | AC1-T01, AC1-T02, AC1-T03, AC1-T04 | E2E | P0/P1 | **FULL** |
-| AC2 | Post-login redirect round-trip: `redirect` param preserved; defaults to /dashboard if missing | AC2-T01, AC2-T02, AC2-T03 | E2E | P1 | **FULL** |
-| AC3 | Authenticated user on `/login` or `/register` → redirect to `/dashboard` | AC3-T01, AC3-T02, AC3-T03 | E2E | P0/P1 | **FULL** |
-| AC4 | Corrupt auth state (`isAuthenticated=true, token=null`) → treated as unauthenticated | AC4-T01, AC4-T02 | E2E | P2 | **FULL** |
-| AC5 | Full-page loading spinner (`data-testid="auth-loading-spinner"`) visible during hydration; no flash of protected content | AC5-T01, AC5-T02, AC5-T03, AC5-T04 | E2E | P0/P1 | **FULL** |
-| AC6 | Guards work in both client (port 3000) and admin (port 3001) apps | AC6-T01–T04, AC7-AC6-T01/T02, AC9-T01 (admin suite) | E2E | P1 | **FULL** |
-| AC7 | Next.js middleware server-side redirect (307) when `eusolicit-session` cookie absent | AC7-T01–T05 | E2E/Request | P2 | **FULL** |
-| AC8 | Redirect loop protection: `/login?redirect=/login` sanitized; ≤2 redirects for any path | AC8-T01, AC8-T02, AC8-T03 | E2E | P2 | **FULL** |
-| AC9 | `AuthGuard` exported from `packages/ui`; admin app starts without import errors | AC9-T01 | E2E | P2 | **FULL** |
-| AC10 | `pnpm build` + `pnpm type-check` exit 0 | _(CI gate)_ | Build/CI | P0 | **FULL** |
+| AC1 | Consortium Finder Panel: tag input, multi-select countries, partner cards with collaboration score | **No ATDD checklist** | — | P2 | **NONE** |
+| AC2 | Logframe Display Panel: logical framework table, work package cards, Gantt chart (Recharts), deliverable table | **No ATDD checklist** | — | P2 | **NONE** |
+| AC3 | Reporting Template tab: project selector, generation, editable fields, Download DOCX button | **No ATDD checklist** | — | P2 | **NONE** |
 
-**Story 3.12 AC Coverage: 10/10 ACs = 100% · Epic Test IDs: E03-P0-002 (AC1), E03-P0-003 (AC5), E03-P0-004 (AC3), E03-P1-017 (AC2), E03-P1-018 (P1-018-T01–T03), E03-P2-018 (AC7), E03-P2-019 (AC4/AC8), E03-R-002 (AC5)**
+**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
 
 ---
 
-## 3. Epic Test Design Traceability
+### S11.13 — ESPD Profile Management & Auto-Fill Frontend
 
-### P0 Requirements
+| AC | Description | Test(s) | Level | Priority | Coverage |
+|----|-------------|---------|-------|----------|----------|
+| AC1 | ESPD Profile List Page: table with profiles, create/edit/delete actions, empty state | **No ATDD checklist** | — | P2 | **NONE** |
+| AC2 | ESPD Profile Editor: multi-step form mapped to ESPD Parts II-V with inline validation and help tooltips | **No ATDD checklist** | — | P2 | **NONE** |
+| AC3 | ESPD Auto-Fill Page: side-by-side preview (original vs auto-filled), changed fields highlighted, accept/reject individual changes, XML/PDF download | **No ATDD checklist** | — | P2 | **NONE** |
 
-| Epic Test ID | Requirement | Covering Test(s) | Story | Coverage |
-|-------------|-------------|-----------------|-------|----------|
-| **E03-P0-001** | `pnpm build` succeeds for both `client` and `admin` — hard CI gate | CI gate (all stories); build gate tests in S3.1 AC6, S3.2 AC5 | S03.01–S03.12 | **FULL** |
-| **E03-P0-002** | Unauthenticated user → `/login?redirect=/dashboard`; protected content NOT rendered | `route-guards.spec.ts` AC1-T01, AC1-T02; `wizard.spec.ts` AC1 guard | S03.12, S03.09 | **FULL** |
-| **E03-P0-003** | Full-page loading spinner visible during auth hydration; no flash of protected content | `route-guards.spec.ts` AC5-T01, AC5-T02, AC5-T03, AC5-T04 | S03.12 | **FULL** |
-| **E03-P0-004** | Authenticated user on `/login` or `/register` → redirect to `/dashboard` | `route-guards.spec.ts` AC3-T01, AC3-T02; `auth-pages.spec.ts` AC8-T01, AC8-T03 | S03.12, S03.08 | **FULL** |
-| **E03-P0-005** | Default locale `/` and `/dashboard` → `/bg/dashboard`; ≤1 redirect (no loop) | `locale-redirect.spec.ts` T01 (`/` → `/bg/` ≤1 hop); T02 (`/dashboard` → `/bg/dashboard` ≤1 hop); T03 (no prefix duplication); T04 (`/en/dashboard` no forced redirect) | S03.07 | ✅ **FULL** _(upgraded from PARTIAL in Run 1)_ |
-| **E03-P0-006** | Language selector BG→EN: URL updates to `/en/*`; shell chrome re-renders in English | `TopBar-i18n.test.tsx` T01–T06 (component interaction) | S03.07 | **FULL** |
-| **E03-P0-007** | 3 concurrent 401s → `POST /auth/refresh` called exactly once → all 3 succeed | `api-client.test.ts` T03 | S03.05 | **FULL** |
-| **E03-P0-008** | `apiClient` calls `authStore.logout()` when `POST /auth/refresh` returns 401 | `api-client.test.ts` T04, T05 | S03.05 | **FULL** |
-| **E03-P0-009** | Client app shell: collapsible sidebar (6 items), top bar, breadcrumbs, content area | `app-shell-layout.spec.ts` T01–T22 | S03.03 | **FULL** |
-| **E03-P0-010** | Admin app shell with admin-specific nav: Dashboard, Companies, Tenders, Users, Reports, Settings | `app-shell-layout.admin.spec.ts` A01–A07 | S03.03 | **FULL** |
-
-### P1 Requirements
-
-| Epic Test ID | Requirement | Covering Test(s) | Story | Coverage |
-|-------------|-------------|-----------------|-------|----------|
-| **E03-P1-001** | `authStore` persists to localStorage; rehydrates `isAuthenticated=true` | `auth-store.test.ts` T06–T07 | S03.05 | **FULL** |
-| **E03-P1-002** | `uiStore.sidebarCollapsed` persists; restored on reload | `ui-store.test.ts` T09–T10 | S03.05 | **FULL** |
-| **E03-P1-003** | Login form: invalid email/password show inline Zod errors on blur + submit; loading spinner | `auth-pages.spec.ts` AC6-T01, AC6-T02, AC7-T01, AC7-T02 | S03.08 | **FULL** |
-| **E03-P1-004** | Register form: invalid EIK, password mismatch, unchecked terms all show inline errors | `auth-pages.spec.ts` AC6-T04–T07 | S03.08 | **FULL** |
-| **E03-P1-005** | Forgot password: valid email → "Check your email" success; form hidden | `auth-pages.spec.ts` AC4-T03–T05 | S03.08 | **FULL** |
-| **E03-P1-006** | Locale preference persisted to localStorage; EN locale survives reload | `ui-store-s3-7.test.ts` T01–T05 | S03.07 | **FULL** |
-| **E03-P1-007** | All shell chrome i18n keys present in both `bg.json` and `en.json` — sets match exactly | `check-i18n-keys.test.ts` T09–T14 (client); + S3.8 key-parity test; + S3.9 wizard keys | S03.07, S03.08, S03.09, S03.10 | **FULL** |
-| **E03-P1-008** | Company setup wizard: Step 1→4 completion; Next validates; "Complete Setup" → POST + redirect | `wizard.spec.ts` Full Wizard Flow block (2 E2E) | S03.09 | **FULL** |
-| **E03-P1-009** | Wizard state survives page reload mid-wizard (Step 2 CPV data present after reload) | `wizard.spec.ts` AC7 block (4 E2E) | S03.09 | **FULL** |
-| **E03-P1-010** | Sidebar toggle: collapses to ~64px (labels hidden); expand restores; `uiStore` persists | `app-shell-layout.spec.ts` T10–T17; `app-shell-layout.admin.spec.ts` A08–A11 | S03.03 | **FULL** |
-| **E03-P1-011** | Desktop (≥1280px) sidebar visible; tablet (768–1279px) auto-collapses; mobile (<768px) bottom nav | `responsive-layout.spec.ts` T01–T13; `responsive-layout.admin.spec.ts` A01–A03 | S03.04 | **FULL** |
-| **E03-P1-012** | `useHealthCheck` hits `GET /health`; `/dev/api-test` shows loading/success/error | `api-test-page.spec.ts` T01–T04 | S03.05 | **FULL** |
-| **E03-P1-013** | `<FormField>` renders label, input, error message (text-destructive, animated), description | `FormField.test.tsx` T01–T05, T14, T15 | S03.06 | **FULL** |
-| **E03-P1-014** | Toast: each type (success/error/warning/info) correct icon + colour; auto-dismisses; close works | `toast-s3-11.test.ts` AC2–AC5 static structure (60 tests); **MISSING: browser-level E2E** | S03.11 | ⚠️ **PARTIAL** |
-| **E03-P1-015** | Skeleton variants render with `animate-pulse` + slate-200 background | `loading-states-s3-10.test.ts` AC1 block | S03.10 | **FULL** |
-| **E03-P1-016** | Global `error.tsx` catches unhandled errors + "Try again"; per-section `<ErrorBoundary>` | `loading-states-s3-10.test.ts` AC2 + AC3 blocks | S03.10 | **FULL** |
-| **E03-P1-017** | `redirect` param preserved through auth flow: `/tenders` → login → redirected to `/tenders` | `route-guards.spec.ts` AC2-T01, AC2-T02, AC2-T03 | S03.12 | **FULL** |
-| **E03-P1-018** | `authStore.logout()` clears state + localStorage; redirects to `/login` | `route-guards.spec.ts` P1-018-T01–T03; `auth-store.test.ts` T03 | S03.12, S03.05 | **FULL** |
-
-### P2 Requirements
-
-| Epic Test ID | Requirement | Covering Test(s) | Story | Coverage |
-|-------------|-------------|-----------------|-------|----------|
-| **E03-P2-001** | Shared `<Button>` from `packages/ui` imports and renders in both apps | S3.1 AC2 tests; S3.2 AC3 barrel export tests | S03.01, S03.02 | **FULL** |
-| **E03-P2-002** | `/dev/components` renders all 19 shadcn/ui components without JS errors | `design-system-smoke.spec.ts` AC4 browser tests | S03.02 | **FULL** |
-| **E03-P2-003** | Tailwind preset tokens visible: `--primary`, `--destructive`, `--muted` CSS vars set | `design-system-smoke.spec.ts` AC2 browser tests | S03.02 | **FULL** |
-| **E03-P2-004** | Avatar dropdown shows name, email, Profile, Settings, divider, Sign out | `app-shell-layout.spec.ts` T23–T25 | S03.03 | **FULL** |
-| **E03-P2-005** | Notifications bell renders unread count badge (static placeholder) | `app-shell-layout.spec.ts` T26–T29 | S03.03 | **FULL** |
-| **E03-P2-006** | Mobile sidebar opens as Sheet overlay via hamburger | `responsive-layout.spec.ts` T15–T18 | S03.04 | **FULL** |
-| **E03-P2-007** | Tablet sidebar auto-collapses after route change | `responsive-layout.spec.ts` T06; `responsive-layout.admin.spec.ts` A06 | S03.04 | **FULL** |
-| **E03-P2-008** | `useSSE(url)`: `EventSource.close()` called on unmount | `useSSE.test.ts` T01 | S03.05 | **FULL** |
-| **E03-P2-009** | `useZodForm(schema)`: returns form with zodResolver; invalid data → `formState.errors` | `useZodForm.test.ts` T01–T04 | S03.06 | **FULL** |
-| **E03-P2-010** | `/dev/form-test`: validates sample schema; inline errors on blur + submit; toast on valid | `form-test-page.spec.ts` T01–T06 | S03.06 | **FULL** |
-| **E03-P2-011** | `formatDate` + `formatCurrency` produce locale-specific output for BG vs EN | `format.test.ts` T01–T10 | S03.07 | **FULL** |
-| **E03-P2-012** | OAuth callback page: extracts code/state params; shows loading state | `auth-pages.spec.ts` AC5 block (7 E2E) | S03.08 | **FULL** |
-| **E03-P2-013** | Wizard Step 2: CPV search filters; zero-selection → validation error | `wizard.spec.ts` AC3 block (9 E2E) | S03.09 | **FULL** |
-| **E03-P2-014** | Wizard Step 3: select-all toggle; zero-selection → validation error | `wizard.spec.ts` AC4 block (6 E2E) | S03.09 | **FULL** |
-| **E03-P2-015** | Wizard Step 4: email add/remove; Complete without any email → no error | `wizard.spec.ts` AC5 block (7 E2E) | S03.09 | **FULL** |
-| **E03-P2-016** | Empty state variants: "No results", "Get started", "No access" with icons and CTAs | `loading-states-s3-10.test.ts` AC4 + AC5 blocks | S03.10 | **FULL** |
-| **E03-P2-017** | Hover pauses toast auto-dismiss; close button dismisses immediately | `toast-s3-11.test.ts` AC5 block (`onMouseEnter`/`onMouseLeave` code verified); **MISSING: E2E hover interaction** | S03.11 | ⚠️ **PARTIAL** |
-| **E03-P2-018** | Next.js middleware 307 for unprotected cookie on protected route | `route-guards.spec.ts` AC7-T01–T05 | S03.12 | **FULL** |
-| **E03-P2-019** | Redirect loop protection: corrupt state + sanitized `redirect` param; ≤2 hops | `route-guards.spec.ts` AC4-T01, AC4-T02, AC8-T01–T03 | S03.12 | **FULL** |
-| **E03-P2-020** | TypeScript strict mode: `pnpm build` — zero type errors across all packages | S3.1 AC7 `tsc --noEmit` tests; S3.2 AC5 tsc tests | S03.01, S03.02 | **FULL** |
-
-### P3 Requirements (Deferred)
-
-| Epic Test ID | Requirement | Status | Rationale |
-|-------------|-------------|--------|-----------|
-| **E03-P3-001** | Dark mode toggle with system-preference detection (stretch AC) | **NONE** | Explicitly deferred — stretch requirement; not implemented in Sprint 1–2 scope |
-| **E03-P3-002** | `prefers-color-scheme: dark` → initial dark theme before JS hydration | **NONE** | Depends on E03-P3-001; deferred |
-| **E03-P3-003** | Sidebar collapse animation 200ms ease — no visible jank | **NONE** | Manual QA baseline only; visual/timing test deferred post-MVP |
-| **E03-P3-004** | `/dashboard` p95 < 2s under 100 concurrent users | **NONE** | k6 load test; nightly run; not in sprint ATDD scope |
+**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
 
 ---
 
-## 4. Gap Analysis
+### S11.14 — Compliance Admin — Framework Management Frontend
 
-### Resolved Gap (P0 — Previously Blocked Gate, Now CLOSED)
+| AC | Description | Test(s) | Level | Priority | Coverage |
+|----|-------------|---------|-------|----------|----------|
+| AC1 | Framework List Page: data table with name, country, regulation type, active status toggle, filters, pagination | **No ATDD checklist** | — | P2 | **NONE** |
+| AC2 | Framework Editor Page: form with country dropdown, regulation type radio, dynamic rules editor (add/remove/reorder), preview panel | **No ATDD checklist** | — | P2 | **NONE** |
 
-| ID | Gap | Priority | Resolution |
-|----|-----|----------|------------|
-| ~~**G-001**~~ | ~~E03-P0-005: Locale redirect-count E2E test missing~~ | ~~P0~~ | ✅ **RESOLVED** — `locale-redirect.spec.ts` added (4 tests using `countRedirects()` to assert ≤1 hop for `/`, `/dashboard`, verify no prefix duplication for `/bg/dashboard` and `/en/dashboard`) |
-
-### Significant Gap (P1 — Accepted at Current P1 = 94.4%)
-
-| ID | Gap | Priority | Risk | Recommended Action |
-|----|-----|----------|------|--------------------|
-| **G-002** | **E03-P1-014: Toast E2E browser tests missing.** Static code-structure tests verify component files, CSS class names, and timer constant values, but no Playwright E2E test navigates to `/dev/toasts`, triggers each toast type, and asserts visual rendering + auto-dismiss timing. | **P1** | E03-R-002 (secondary — toast visibility) | Run `bmad-testarch-automate` for S03.11 to generate: navigate to `/dev/toasts`; trigger each type; assert toast visible with correct colour; assert auto-dismisses after ~5s/8s/10s; assert close button works |
-
-### Minor Gap (P2)
-
-| ID | Gap | Priority | Risk | Recommended Action |
-|----|-----|----------|------|--------------------|
-| **G-003** | **E03-P2-017: Toast hover-pause E2E behavior missing.** Static tests verify `onMouseEnter`/`onMouseLeave` handler code, but no E2E test simulates hover to confirm the timer actually pauses and resumes. | **P2** | E03-R-002 (minor) | Add to `automate` phase: trigger toast → `page.hover('[data-testid=toast-item]')` → assert still visible after default duration → `page.mouse.move(0,0)` → assert dismisses |
-
-### Deferred Gaps (P3 — Accepted)
-
-| ID | Gap | Status | Justification |
-|----|-----|--------|---------------|
-| **G-004** | Dark mode (E03-P3-001/002) | Intentionally deferred | Stretch requirement per epic spec; post-MVP |
-| **G-005** | Sidebar animation visual/timing (E03-P3-003) | Intentionally deferred | Manual QA only; no automated mechanism in sprint scope |
-| **G-006** | k6 performance test (E03-P3-004) | Intentionally deferred | Nightly run; separate from ATDD sprint scope |
+**Story Coverage:** 0/2 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
 
 ---
 
-## 5. Coverage Heuristics
+### S11.15 — Compliance Admin — Assignment, Suggestions & Regulation Tracker Frontend
 
-### API Endpoint Coverage
+| AC | Description | Test(s) | Level | Priority | Coverage |
+|----|-------------|---------|-------|----------|----------|
+| AC1 | Framework Assignment Page: opportunity selector, assigned frameworks panel, add/remove assignments | **No ATDD checklist** | — | P2 | **NONE** |
+| AC2 | Auto-Suggestion Queue: table of pending suggestions with confidence bars, accept/override/dismiss actions, batch processing | **No ATDD checklist** | — | P2 | **NONE** |
+| AC3 | Regulation Tracker Dashboard: feed of detected changes, acknowledge/dismiss actions with notes, filter by status/severity/date | **No ATDD checklist** | — | P2 | **NONE** |
 
-| Endpoint | E03 Consumer | Tests | Gap? |
-|----------|-------------|-------|------|
-| `POST /auth/login` | S03.08 login page | `auth-pages.spec.ts` (mocked via `page.route()`) | None |
-| `POST /auth/register` | S03.08 register page | `auth-pages.spec.ts` (mocked) | None |
-| `POST /auth/refresh` | S03.05 apiClient | `api-client.test.ts` T03–T05 (mocked) | None |
-| `POST /auth/forgot-password` | S03.08 forgot-password | `auth-pages.spec.ts` (mocked) | None |
-| `GET /auth/callback` | S03.08 OAuth callback | `auth-pages.spec.ts` (mocked) | None |
-| `GET /health` | S03.05 useHealthCheck | `api-test-page.spec.ts` (mocked via `page.route()`) | None |
-| `POST /companies/:id/profile` | S03.09 wizard Complete Setup | `wizard.spec.ts` (stub — no real HTTP) | None |
-
-No uncovered endpoints within E03 scope.
-
-### Auth/AuthZ Coverage
-
-| Path | Tests | Positive | Negative |
-|------|-------|----------|---------|
-| Unauthenticated → protected route | AC1-T01–T04 (S3.12) | N/A | ✅ Redirect tested |
-| Authenticated → auth page | AC3-T01–T02 (S3.12) | N/A | ✅ Redirect tested |
-| Corrupt state (token=null) | AC4-T01–T02 (S3.12) | N/A | ✅ Tested |
-| Server-side cookie check | AC7-T01–T05 (S3.12) | AC7-T05 | ✅ AC7-T04 (auth route exempt) |
-| Logout → cleared state | P1-018-T01–T03 (S3.12) | N/A | ✅ Tested |
-
-Auth/AuthZ negative paths fully covered for E03 frontend scope.
-
-### Error-Path Coverage
-
-| Scenario | Tests | Happy-Path Only? |
-|----------|-------|-----------------|
-| 401 refresh dedup | `api-client.test.ts` T03 | No — concurrent 401 scenario |
-| Refresh token 401 → logout | `api-client.test.ts` T04–T05 | No — failure path tested |
-| SSE EventSource cleanup | `useSSE.test.ts` T01 | No — unmount cleanup |
-| Form validation errors | `FormField.test.tsx`, `auth-pages.spec.ts`, `wizard.spec.ts` | No — all show errors |
-| Error boundary rendering | `loading-states-s3-10.test.ts` AC2/AC3 | No — error state tested |
-| OAuth callback error state | `auth-pages.spec.ts` AC5 block | No — error state tested |
-| Wizard zero-selection validation | `wizard.spec.ts` AC3/AC4 | No — error state tested |
-| Redirect loop protection | `route-guards.spec.ts` AC8 | No — loop prevention tested |
-| Locale redirect hop count | `locale-redirect.spec.ts` T01–T04 | No — loop prevention + hop count tested |
-
-No happy-path-only gaps identified in E03 scope.
+**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
 
 ---
 
-## 6. Recommendations
+### S11.16 — E2E Integration Testing & Agent Error Handling Hardening
 
-| Priority | Action | Requirement(s) | Effort |
-|----------|--------|---------------|--------|
-| **HIGH** | Run `bmad-testarch-automate` for S03.11 (Toast) to generate E2E browser tests (G-002) | E03-P1-014 | ~4 hours |
-| **HIGH** | Set up Vitest in `apps/admin` (identified in S3.7 checklist) to enable 10 pending i18n key tests | E03-P1-007 admin verification | ~1 hour |
-| **MEDIUM** | Add toast hover-pause E2E test (G-003) during automate phase | E03-P2-017 | ~2 hours |
-| **MEDIUM** | Add `/bg/dashboard` locale prefix to S03.03 shell tests — noted in S3.3 checklist: "those tests will need a URL update when S3.7 lands" | E03-P0-009, E03-P0-010 | ~1 hour |
-| **LOW** | Run `bmad-testarch-test-review` to assess test quality across 24 test files (711 tests) | All | ~8 hours |
-| **LOW** | Add E03-P3-001/002 dark mode tests when stretch AC is implemented | E03-P3-001, E03-P3-002 | ~4 hours |
-| **LOW** | Add E03-P3-004 k6 performance test to nightly CI pipeline | E03-P3-004 | ~4 hours |
+| AC | Description | Test(s) | Level | Priority | Coverage |
+|----|-------------|---------|-------|----------|----------|
+| AC1 | E2E Journey 1: company runs eligibility check → budget builder | **No ATDD checklist** | — | P3 | **NONE** |
+| AC2 | E2E Journey 2: company creates ESPD profile → auto-fill → XML export | **No ATDD checklist** | — | P3 | **NONE** |
+| AC3 | E2E Journey 3: admin creates framework → assigns → proposal validated (reuses E07 compliance checker) | **No ATDD checklist** | — | P3 | **NONE** |
+| AC4 | E2E Journey 4: opportunity ingested → suggestion generated → admin accepts → framework assigned | **No ATDD checklist** | — | P3 | **NONE** |
+| AC5 | E2E Journey 5: regulation tracker fires → admin views → acknowledges → reviews framework | **No ATDD checklist** | — | P3 | **NONE** |
+| AC6 | Agent error hardening: standardised timeout (30s), retry logic (1 retry + exp backoff), graceful degradation, consistent error format across all E11 endpoints | **No ATDD checklist** *(partial coverage in S11.03–S11.07 for 6 agents)* | — | P0 | **PARTIAL** |
 
----
-
-## 7. Gate Decision Summary
-
-```
-✅ GATE DECISION: PASS
-
-📊 Coverage Analysis:
-- P0 Coverage: 100% (10/10 FULL; Required: 100%) → ✅ MET
-- P1 Coverage: 94.4% (17/18 FULL; PASS target: ≥90%) → ✅ MET
-- P1 Coverage: 94.4% (minimum: ≥80%) → ✅ MET
-- Overall FULL Coverage: 88.5% (46/52; Minimum: ≥80%) → ✅ MET
-
-✅ Decision Rationale:
-All gate criteria are now met. The single P0 blocker from Run 1 (E03-P0-005 — locale
-redirect-count E2E) has been resolved. `locale-redirect.spec.ts` was added with 4 Playwright
-tests using `countRedirects()` to assert that:
-  - `/` redirects to `/bg/` with ≤1 hop and no loops (T01)
-  - `/dashboard` redirects to `/bg/dashboard` with ≤1 hop (T02)
-  - `/bg/dashboard` does NOT double-prefix to `/bg/bg/dashboard` (T03)
-  - `/en/dashboard` is not forcibly redirected to `/bg/` (T04)
-
-P0 is now 100% FULL. P1 remains 94.4% FULL (E03-P1-014 toast hover-pause E2E is
-PARTIAL and deferred to automate phase — this does not block PASS at 94.4% ≥ 90%).
-
-⚠️ Open Gaps (Non-Blocking):
-- P1 PARTIAL: E03-P1-014 (toast browser E2E — deferred to automate phase)
-- P2 PARTIAL: E03-P2-017 (toast hover-pause E2E — deferred to automate phase)
-- Deferred P3: dark mode, animation timing, k6 performance (all intentional)
-
-📝 Top Recommended Actions:
-1. [HIGH]   Run bmad-testarch-automate for S03.11 to add toast browser E2E tests (~4 hours)
-2. [HIGH]   Configure Vitest in apps/admin for 10 pending i18n admin key tests (~1 hour)
-3. [MEDIUM] Add toast hover-pause E2E test in automate phase (~2 hours)
-
-📂 Full Report: eusolicit-docs/test-artifacts/traceability-matrix.md
-
-✅ GATE: PASS — Coverage thresholds met. Proceed to implementation.
-      Total tests: 711 (all in TDD RED phase).
-      Re-run gate after implementation to confirm test results reach GREEN.
-```
+**Story Coverage:** 0/6 ACs FULL, 1 PARTIAL (AC6 via S11.03–S11.07) | 0 E2E tests | ⚠️ ATDD checklist required (fullstack/E2E)
 
 ---
 
-**Generated by:** BMad TEA Agent — Traceability Matrix Workflow
-**Workflow:** `bmad-testarch-trace`
-**Version:** 4.0 (BMad v6)
-**Run:** 2 (updated 2026-04-09 after `locale-redirect.spec.ts` added)
-**TDD Phase:** 🔴 RED — Pre-implementation baseline. Re-run after implementation completes.
+## 4. Epic Test ID Coverage Matrix
+
+### P0 — Critical (10 test IDs, 38 assertions required)
+
+| Test ID | Requirement | Tests | TDD Phase | Coverage |
+|---------|-------------|-------|-----------|----------|
+| **E11-P0-001** | ESPD profile company RLS — Company A JWT cannot GET/PATCH/DELETE Company B profile (404, not 403) | S11.02: `test_company_a_cannot_get_company_b_profile_returns_404` (1), `test_company_a_cannot_patch_company_b_profile_returns_404` (1), `test_company_a_cannot_delete_company_b_profile_returns_404` (1); S11.03: `test_autofill_cross_company_returns_404` (1), `test_export_cross_company_returns_404` (1) | 🔴 RED | **FULL** (5 tests, all 3 RLS vectors) |
+| **E11-P0-002** | ESPD Auto-Fill: timeout → structured 503 (not raw 500) | S11.03: `test_autofill_gateway_timeout_returns_503`, `test_autofill_gateway_500_returns_503_not_500`, `test_autofill_gateway_503_returns_503_with_standard_body` | 🔴 RED | **FULL** (3 tests: timeout + 500 + 503) |
+| **E11-P0-003** | ESPD XML export validates against EU ESPD XSD (Parts II-V all present) | S11.03: `test_export_xml_is_well_formed`, `test_export_xml_root_has_correct_namespace`, `test_export_xml_contains_all_parts_present_in_espd_data` | 🔴 RED | **PARTIAL** *(structural + namespace checked; full lxml XSD conformance test scheduled weekly per test-design exit criteria)* |
+| **E11-P0-004** | Grant Eligibility Agent: structured 503 on timeout; structured list returned on success | S11.04: `test_eligibility_check_returns_200_with_response_structure`, `test_gateway_timeout_returns_503_agent_unavailable` | 🔴 RED | **FULL** |
+| **E11-P0-005** | Budget Builder: line items sum to total_budget; overhead correctly applied; co-financing split sums to total_requested_funding | S11.05: `test_valid_solo_budget_arithmetic_passes`, `test_inconsistent_line_item_total_returns_422`, `test_inconsistent_co_financing_sum_returns_422`, `test_overhead_inconsistency_returns_422` | 🔴 RED | **FULL** (4 tests: valid + 3 invalid) |
+| **E11-P0-006** | Compliance Framework: non-admin JWT returns 403 on POST/GET/PATCH/DELETE /admin/compliance-frameworks | **No tests** (S11.08 has no ATDD checklist) | ⚫ NO TESTS | **NONE** — 🚨 BLOCKER |
+| **E11-P0-007** | Framework Suggestion admin-only: company JWT returns 403 on GET/PATCH /admin/framework-suggestions | **No tests** (S11.09 has no ATDD checklist) | ⚫ NO TESTS | **NONE** — 🚨 BLOCKER |
+| **E11-P0-008** | Agent error handling: all 8 E11 agent types return AGENT_UNAVAILABLE structure on agent 503 | S11.03 (ESPD Auto-Fill): 3 tests; S11.04 (Grant Eligibility): 3 tests; S11.05 (Budget Builder): 3 tests; S11.06 (Consortium Finder): 3 tests; S11.07 (Logframe + Reporting Template): 4+3 tests. **Missing:** Framework Suggestion (S11.09) + Regulation Tracker (S11.10) | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
+| **E11-P0-009** | AI Gateway mock: all 8 E11 agent types return deterministic fixture responses in CI | S11.03–S11.07: all 6 implemented agents have deterministic fixture responses. **Missing:** Framework Suggestion (S11.09) + Regulation Tracker (S11.10) | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
+| **E11-P0-010** | 30s timeout enforced on all E11 agent endpoints; request does not hang | S11.03: timeout test; S11.04: `test_gateway_timeout_returns_503_agent_unavailable`; S11.05: timeout test; S11.06: timeout test; S11.07: logframe + reporting template timeout tests. **Missing:** Framework Suggestion + Regulation Tracker | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
+
+**P0 Summary:** 4 FULL · 4 PARTIAL · 2 NONE (BLOCKERS) | P0 FULL%: **40%**
+
+---
+
+### P1 — High (18 test IDs, 42 assertions required)
+
+| Test ID | Requirement | Tests | TDD Phase | Coverage |
+|---------|-------------|-------|-----------|----------|
+| **E11-P1-001** | Grant Eligibility: full-match, partial-match, no-match; filter params applied | S11.04: `TestAC3ResponseParsing` (4 tests), `test_eligibility_check_with_programme_type_filter`, `test_eligibility_check_with_funding_range_filter` | 🔴 RED | **FULL** |
+| **E11-P1-002** | Budget Builder: per-partner breakdown present when consortium_size > 1; co_financing_split visualizable | S11.05: `TestAC5ConsortiumBudget` (4 tests) | 🔴 RED | **FULL** |
+| **E11-P1-003** | Consortium Finder: paginated results; capability overlap ranking; single-country filter; max_results honoured | S11.06: `TestAC3AC5ResponseParsing` (6 tests): sorting, total_results, required fields, single-country, max_results, ranking | 🔴 RED | **FULL** |
+| **E11-P1-004** | Logframe Generator: all 4 output fields present (logical_framework, work_packages, gantt_data, deliverable_table) | S11.07: `test_all_four_logframe_fields_present_in_response`, `test_logical_framework_rows_*`, `test_work_packages_*`, `test_gantt_tasks_*`, `test_deliverables_*` | 🔴 RED | **FULL** |
+| **E11-P1-005** | Logframe: gantt_data absent → partial result with null gantt_data (no 500) | S11.07: `test_gantt_data_absent_returns_null_not_error` + `test_gantt_data_present_empty_list_not_null` | 🔴 RED | **FULL** |
+| **E11-P1-006** | Reporting Template Generator: project data loaded from DB; agent called; pre-filled report returned as JSON | S11.07: `test_reporting_template_returns_200_with_json_structure`, `test_reporting_template_agent_payload_includes_project_data`, `test_reporting_template_x_caller_service_header_sent` | 🔴 RED | **FULL** |
+| **E11-P1-007** | Reporting Template: DOCX export generated, correct Content-Type, download succeeds | S11.07: `test_export_returns_docx_content_type`, `test_export_has_content_disposition_attachment`, `test_export_body_is_non_empty` | 🔴 RED | **FULL** |
+| **E11-P1-008** | ESPD CRUD: create, list, get, update, delete — all 5 endpoints functional | S11.02: `TestAC1`–`TestAC5` (smoke: each endpoint has a working test); S11.03: snapshot profile accessible via GET after auto-fill | 🔴 RED | **FULL** |
+| **E11-P1-009** | ESPD espd_data validation: missing Part III → 422 with field detail | S11.02 notes: "Not in scope for S11.02; completeness enforced at export time in S11.03." S11.03: `TestAC10EmptyEspdValidation` covers empty espd_data → 422. S11.02: `test_post_invalid_part_type_returns_422` covers non-dict Part → 422. **Missing:** missing Part III specifically → 422 with field detail | 🔴 RED | **PARTIAL** *(empty + non-dict Part covered; specific missing Part III validation gap)* |
+| **E11-P1-010** | Compliance Framework CRUD: create, list with filters, get, update, soft-delete (admin JWT) | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-011** | Framework assignment: assign 1 framework to opportunity, list, remove | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-012** | Hybrid assignment: assign 2 frameworks (national + EU) to same opportunity; list returns both | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-013** | Framework auto-suggestion: Framework Suggestion Agent called on opportunity ingest; stored with confidence | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-014** | Suggestion accept flow: PATCH → status=accepted + opportunity framework assignment created atomically | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-015** | Suggestion reject flow: PATCH → status=rejected; no auto-assignment created | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-016** | Regulation Tracker Celery task: fires with mocked agent; regulatory_changes records created | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-017** | Regulation Tracker: acknowledge + dismiss flows; acknowledged change links to affected framework | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P1-018** | Framework deletion guard: cannot DELETE framework assigned to active opportunity → 409 Conflict | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
+
+**P1 Summary:** 8 FULL · 1 PARTIAL · 9 NONE | P1 FULL%: **44.4%**
+
+---
+
+### P2 — Medium (20 test IDs, 37 assertions required)
+
+| Test ID | Requirement | Tests | Phase | Coverage |
+|---------|-------------|-------|-------|----------|
+| **E11-P2-001** | Budget Builder: missing optional params → defaults applied or clear validation error | S11.05: `TestAC2OptionalParams` (6 tests) | 🔴 RED | **FULL** |
+| **E11-P2-002** | Consortium Finder: empty results; contact_info absent → null, not crash | S11.06: `TestAC6GracefulDegradation` (4 tests) | 🔴 RED | **FULL** |
+| **E11-P2-003** | Logframe: DOCX reporting export returns valid DOCX | S11.07: `test_export_is_valid_word_document` (python-docx parse) | 🔴 RED | **FULL** |
+| **E11-P2-004** | ESPD CRUD cross-company: Company A cannot PATCH/DELETE Company B profile → 404 | S11.02: `test_company_a_cannot_patch_company_b_profile_returns_404`, `test_company_a_cannot_delete_company_b_profile_returns_404` | 🔴 RED | **FULL** |
+| **E11-P2-005** | ESPD espd_data: all 4 Parts can be independently patched without overwriting other Parts | S11.02: `test_patch_espd_data_part_level_merge` (Part-level merge semantics) | 🔴 RED | **FULL** |
+| **E11-P2-006** | Compliance Framework rules JSONB: invalid rule schema → 422 | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-007** | Framework suggestion: override with alternative framework_id → override framework assigned | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-008** | Regulation tracker: GET /admin/regulatory-changes filters (status, severity, date_range) functional | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-009** | Platform settings: GET /admin/platform-settings (admin only); PATCH merges value | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-010** | Platform settings: invalid key → 404; invalid JSON value → 422 | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-011** | Grant Eligibility Panel E2E: loading spinner, error state on 503, empty state | **No tests** (S11.11 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-012** | Budget Builder Panel E2E: editable table cells recalculate totals on input | **No tests** (S11.11 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-013** | Consortium Finder Panel E2E: tag input + multi-select; partner card grid | **No tests** (S11.12 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-014** | Logframe Panel E2E: Gantt chart renders; deliverable table sortable | **No tests** (S11.12 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-015** | ESPD Profile List E2E: empty state; "Create New Profile" navigates | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-016** | ESPD Profile Editor E2E: multi-step form + exclusion grounds checkboxes | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-017** | ESPD Auto-Fill Preview E2E: side-by-side diff; download XML functional | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-018** | Compliance Framework List E2E: filter + search + pagination | **No tests** (S11.14 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-019** | Framework Assignment Page E2E: add 2 frameworks; remove 1; list shows remaining | **No tests** (S11.15 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P2-020** | Auto-Suggestion Queue E2E: batch accept; confidence bar colour-coded; filter | **No tests** (S11.15 no ATDD) | ⚫ NO TESTS | **NONE** |
+
+**P2 Summary:** 5 FULL · 0 PARTIAL · 15 NONE | P2 FULL%: **25%**
+
+---
+
+### P3 — Low (8 test IDs)
+
+| Test ID | Requirement | Tests | Phase | Coverage |
+|---------|-------------|-------|-------|----------|
+| **E11-P3-001** | E2E Journey 1 (S11.16): eligibility check → budget builder | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-002** | E2E Journey 2 (S11.16): ESPD profile → auto-fill → preview → XML export | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-003** | E2E Journey 3 (S11.16): admin creates framework → assigns → proposal validated | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-004** | E2E Journey 4 (S11.16): opportunity ingested → suggestion → admin accepts → auto-assign | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-005** | E2E Journey 5 (S11.16): regulation tracker fires → admin acknowledges → reviews framework | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-006** | Reporting Template DOCX: valid Word document with structured sections | S11.07: `test_export_is_valid_word_document` (P2/P3: python-docx parse, paragraphs > 0) | 🔴 RED | **PARTIAL** *(structural parse verified; full section/heading content deferred)* |
+| **E11-P3-007** | Regulation Tracker Frontend E2E: feed renders; acknowledge/dismiss functional | **No tests** (S11.15/S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+| **E11-P3-008** | k6: 10 concurrent agent endpoint calls; p95 < 5s on mock; no 500s | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
+
+**P3 Summary:** 0 FULL · 1 PARTIAL · 7 NONE | P3 FULL%: **0%**
+
+---
+
+## 5. Coverage Heuristics Analysis
+
+### Endpoint Coverage
+
+| Category | Endpoints Exercised | Endpoints Without Tests |
+|----------|--------------------|-----------------------|
+| ESPD Profiles (S11.01–S11.03) | POST, GET(list), GET(detail), PATCH, DELETE `/espd-profiles/*`; POST `auto-fill`; POST `export` | None — all covered |
+| Grant Tools (S11.04–S11.07) | POST `/grants/eligibility-check`; POST `/grants/budget-builder`; POST `/grants/consortium-finder`; POST `/grants/logframe-generate`; POST `/grants/reporting-template`; POST `/grants/reporting-template/export` | None — all covered |
+| Compliance Admin (S11.08–S11.10) | — | POST/GET/PATCH/DELETE `/admin/compliance-frameworks/*`; POST/GET/DELETE `/admin/opportunities/:id/compliance-frameworks/*`; GET/PATCH `/admin/framework-suggestions/*`; GET/PATCH `/admin/regulatory-changes/*`; GET/PATCH `/admin/platform-settings/*` |
+| Frontend Pages (S11.11–S11.15) | — | `/grants/tools`, `/espd`, `/admin/compliance`, `/admin/compliance/assign`, `/admin/compliance/suggestions`, `/admin/compliance/regulations` |
+
+**Endpoints Without Tests:** 15+ admin endpoints (S11.08–S11.10) + all frontend pages (S11.11–S11.15)
+
+### Auth / Authz Coverage
+
+| Auth Scenario | Covered | Missing |
+|---------------|---------|---------|
+| ESPD RLS (company-scoped): 404 not 403 on cross-company | ✅ S11.02 + S11.03 (5 tests) | — |
+| ESPD API auth: unauthenticated → 401 | ✅ S11.02 + S11.03 | — |
+| ESPD API auth: low-privilege → 403 on write | ✅ S11.02 TestAC9 (13 parametrized cases) | — |
+| Agent API auth: unauthenticated → 401 | ✅ S11.04, S11.05, S11.06, S11.07 | — |
+| Agent API auth: all roles permitted (no role gate) | ✅ S11.04–S11.07: read_only role → 200 | — |
+| Admin API auth: company JWT → 403 | ❌ **Missing** — S11.08 (framework CRUD), S11.09 (suggestions), S11.10 (tracker) | E11-P0-006, E11-P0-007 |
+| Admin API auth: expired admin JWT → 401 | ❌ **Missing** — S11.08–S11.10 | E11-P0-006 (scope) |
+
+### Error Path Coverage
+
+| Error Scenario | Covered | Missing |
+|----------------|---------|---------|
+| AI Gateway timeout → 503 AGENT_UNAVAILABLE | ✅ S11.03–S11.07 (6 of 8 agents) | Framework Suggestion + Regulation Tracker |
+| AI Gateway 500 → 503 (not raw 500) | ✅ S11.03–S11.07 | Framework Suggestion + Regulation Tracker |
+| AI Gateway 503 → 503 with standard body | ✅ S11.03–S11.07 | Framework Suggestion + Regulation Tracker |
+| Empty agent response graceful degradation | ✅ S11.04 (empty programmes list), S11.06 (missing keys) | — |
+| Budget arithmetic inconsistency → 422 | ✅ S11.05 (3 inconsistency types) | — |
+| Missing partner breakdown → 422 | ✅ S11.05 | — |
+| Cross-company access → 404 (not 403) | ✅ S11.02 + S11.03 | — |
+| Framework deletion guard → 409 | ❌ **Missing** — E11-P1-018 | S11.08 ATDD required |
+| Suggestion accept atomicity failure | ❌ **Missing** — E11-R-007 | S11.09 ATDD required |
+| Celery Beat task agent timeout | ❌ **Missing** — E11-R-006 | S11.10 ATDD required |
+
+---
+
+## 6. Gap Analysis
+
+### Critical Gaps (P0 — Gate Blockers)
+
+| Gap ID | Test ID | Story | Description | Risk |
+|--------|---------|-------|-------------|------|
+| **GAP-001** | E11-P0-006 | S11.08 | No tests for admin-only enforcement on compliance framework CRUD endpoints | E11-R-003 (SEC, score 6) |
+| **GAP-002** | E11-P0-007 | S11.09 | No tests for admin-only enforcement on framework suggestion endpoints | E11-R-003 (SEC, score 6) |
+| **GAP-003** | E11-P0-008 (partial) | S11.09, S11.10 | Framework Suggestion Agent + Regulation Tracker Agent error handling untested | E11-R-001 (TECH, score 6) |
+| **GAP-004** | E11-P0-009 (partial) | S11.09, S11.10 | Framework Suggestion + Regulation Tracker not in CI smoke gate | E11-R-001 (TECH, score 6) |
+| **GAP-005** | E11-P0-010 (partial) | S11.09, S11.10 | 30s timeout not verified for Framework Suggestion + Regulation Tracker | E11-R-001 (TECH, score 6) |
+| **GAP-006** | E11-P0-003 (partial) | S11.03 | Full EU ESPD XSD conformance validation (lxml) not in per-PR suite | E11-R-002 (DATA, score 6) |
+
+### High Gaps (P1 — Must Address Before Sprint Gate)
+
+| Gap ID | Test IDs | Stories | Description |
+|--------|----------|---------|-------------|
+| **GAP-007** | E11-P1-010 | S11.08 | Zero coverage on Compliance Framework CRUD (admin): create, list, get, update, soft-delete |
+| **GAP-008** | E11-P1-018 | S11.08 | Zero coverage on framework deletion guard (cannot delete if assigned to active opportunity) |
+| **GAP-009** | E11-P1-011, E11-P1-012 | S11.09 | Zero coverage on framework assignment CRUD (single + hybrid national+EU) |
+| **GAP-010** | E11-P1-013, E11-P1-014, E11-P1-015 | S11.09 | Zero coverage on auto-suggestion lifecycle (generate, accept, reject) |
+| **GAP-011** | E11-P1-016, E11-P1-017 | S11.10 | Zero coverage on Regulation Tracker Celery task + acknowledge/dismiss flows |
+| **GAP-012** | E11-P1-009 (partial) | S11.02/S11.03 | ESPD Part III missing specifically → 422 with field detail not fully tested |
+
+### Medium Gaps (P2 — Frontend + Admin Edge Cases)
+
+| Gap ID | Test IDs | Stories | Description |
+|--------|----------|---------|-------------|
+| **GAP-013** | E11-P2-006 | S11.08 | Rules JSONB validation (invalid schema → 422) |
+| **GAP-014** | E11-P2-007 | S11.09 | Suggestion override with alternative framework_id |
+| **GAP-015** | E11-P2-008, E11-P2-009, E11-P2-010 | S11.10 | Regulation tracker + platform settings edge cases |
+| **GAP-016** | E11-P2-011, E11-P2-012 | S11.11 | Grant Eligibility + Budget Builder frontend panels (E2E) |
+| **GAP-017** | E11-P2-013, E11-P2-014 | S11.12 | Consortium Finder + Logframe frontend panels (E2E) |
+| **GAP-018** | E11-P2-015, E11-P2-016, E11-P2-017 | S11.13 | ESPD Profile management frontend (E2E) |
+| **GAP-019** | E11-P2-018 | S11.14 | Compliance Framework List + Editor (E2E) |
+| **GAP-020** | E11-P2-019, E11-P2-020 | S11.15 | Framework Assignment + Auto-Suggestion Queue (E2E) |
+
+### Low Gaps (P3 — Deferred / Nightly)
+
+| Gap ID | Test IDs | Stories | Description |
+|--------|----------|---------|-------------|
+| **GAP-021** | E11-P3-001 to E11-P3-005 | S11.16 | All 5 E2E integration journeys (eligibility→budget, ESPD, framework admin, suggestion, regulation tracker) |
+| **GAP-022** | E11-P3-007 | S11.15/S11.16 | Regulation Tracker Frontend E2E |
+| **GAP-023** | E11-P3-008 | S11.16 | k6 agent load test (10 concurrent, p95 < 5s) |
+
+---
+
+## 7. Phase 2 — Quality Gate Decision
+
+### Gate Criteria Evaluation
+
+| Criterion | Threshold | Actual | Status |
+|-----------|-----------|--------|--------|
+| P0 FULL coverage | **100%** | **40%** | ❌ NOT MET |
+| P1 FULL coverage (PASS) | ≥ 90% | 44.4% | ❌ NOT MET |
+| P1 FULL coverage (minimum) | ≥ 80% | 44.4% | ❌ NOT MET |
+| Overall FULL coverage | ≥ 80% | 30.4% | ❌ NOT MET |
+
+### Risk Context (from test-design-epic-11.md)
+
+| Risk ID | Category | Score | Status | Mitigation Tests |
+|---------|----------|-------|--------|-----------------|
+| E11-R-001 | TECH — AI Gateway error handling (8 agents) | 6 | ⚠️ PARTIAL | 6/8 agents covered; Framework Suggestion + Regulation Tracker missing |
+| E11-R-002 | DATA — ESPD XML schema non-conformance | 6 | ⚠️ PARTIAL | Structural tests written; full XSD weekly only |
+| E11-R-003 | SEC — Admin endpoint authorization gaps | 6 | ❌ NONE | GAP-001, GAP-002 — zero coverage on admin auth |
+| E11-R-004 | BUS — Budget arithmetic consistency | 6 | ✅ FULL | S11.05 covers all 3 inconsistency types |
+| E11-R-005 | SEC — ESPD company-scoped RLS | 6 | ✅ FULL | S11.02 + S11.03: 5 RLS tests |
+| E11-R-006 | OPS — Regulation Tracker Celery reliability | 4 | ❌ NONE | S11.10 ATDD required |
+| E11-R-007 | DATA — Framework suggestion atomicity | 4 | ❌ NONE | S11.09 ATDD required |
+| E11-R-008 | DATA — Logframe parser field completeness | 4 | ✅ FULL | S11.07 covers gantt_data null vs empty list |
+| E11-R-009 | BUS — Framework deletion guard | 4 | ❌ NONE | S11.08 ATDD required |
+| E11-R-010 | TECH — Hybrid framework assignment | 4 | ❌ NONE | S11.09 ATDD required |
+
+### Blocking Issues
+
+| Priority | Issue | Description | Story | Status |
+|----------|-------|-------------|-------|--------|
+| **P0** | GAP-001 — Admin auth zero coverage | No tests verify company JWT → 403 on `/admin/compliance-frameworks` | S11.08 | ⚫ OPEN |
+| **P0** | GAP-002 — Suggestion auth zero coverage | No tests verify company JWT → 403 on `/admin/framework-suggestions` | S11.09 | ⚫ OPEN |
+| **P0** | GAP-003/004/005 — 2 agent types not in CI gate | Framework Suggestion + Regulation Tracker have no mock responses, error handling, or timeout tests | S11.09, S11.10 | ⚫ OPEN |
+| **P1** | GAP-007 to GAP-011 | Zero coverage on S11.08, S11.09, S11.10 admin backend stories (9 P1 test IDs) | S11.08–S11.10 | ⚫ OPEN |
+
+### Recommendations
+
+**[URGENT — Before Gate Can Move]**
+
+1. **Run `bmad-testarch-atdd` for S11.08** — Compliance Framework CRUD API (Admin). Target: E11-P0-006, E11-P1-010, E11-P1-018, E11-P2-006 + admin auth tests for all framework endpoints.
+
+2. **Run `bmad-testarch-atdd` for S11.09** — Framework Assignment & Auto-Suggestion. Target: E11-P0-007, E11-P1-011 through E11-P1-015, E11-P2-007 + admin auth tests for suggestion endpoints.
+
+3. **Run `bmad-testarch-atdd` for S11.10** — Regulation Tracker & Platform Settings. Target: E11-P1-016, E11-P1-017, E11-P2-008 through E11-P2-010 + Celery Beat task tests.
+
+**[HIGH — This Sprint]**
+
+4. **Run `bmad-testarch-atdd` for S11.11–S11.15** — All 5 frontend stories (Playwright E2E). Target: E11-P2-011 through E11-P2-020.
+
+5. **Run `bmad-testarch-atdd` for S11.16** — E2E Integration + Agent Error Hardening. Target: E11-P3-001 through E11-P3-008 + AC6 agent error hardening for Framework Suggestion + Regulation Tracker.
+
+6. **Complete ESPD Part III validation gap** (GAP-012 / E11-P1-009) — Add specific test: `POST /espd-profiles` with espd_data missing `part_iii` → 422 with field-level error detail.
+
+**[MEDIUM — Deferred / Nightly]**
+
+7. **Add full EU ESPD XSD lxml validation** to per-PR suite (currently weekly-only per GAP-006). Risk E11-R-002 score 6 — consider promoting to per-PR for MVP milestone confidence.
+
+8. **Run `bmad-testarch-atdd` for S11.16 k6 load test** — E11-P3-008: 10 concurrent agent calls, p95 < 5s on mock.
+
+---
+
+## 8. Sign-Off
+
+**Phase 1 — Traceability Assessment:**
+
+- Total Test IDs Tracked: 56 (P0: 10 · P1: 18 · P2: 20 · P3: 8)
+- Total Tests Written: 210 (🔴 RED phase, S11.01–S11.07 only)
+- Stories with Coverage: 7/16
+- Stories Without Coverage: 9/16 (S11.08–S11.16)
+- Overall FULL Coverage: 30.4% (17/56)
+- Critical Gaps (P0): 6 (2 NONE + 4 PARTIAL)
+- High Gaps (P1): 6 gap groups covering 9 test IDs
+
+**Phase 2 — Gate Decision:**
+
+- **Decision**: ❌ FAIL
+- **P0 Evaluation**: ❌ ONE OR MORE FAILED (40% FULL, 2 blockers with zero coverage)
+- **P1 Evaluation**: ❌ FAILED (44.4% FULL, 9 test IDs uncovered)
+- **Overall Status**: ❌ FAIL
+
+**Next Steps:**
+
+- If FAIL ❌: Block deployment, run `bmad-testarch-atdd` for S11.08–S11.16, re-run this gate.
+- Priority order: S11.08 → S11.09 → S11.10 → S11.11–S11.15 → S11.16
+
+---
+
+## TRACE_GATE: FAIL
+
+**Generated:** 2026-04-11
+**Workflow:** bmad-testarch-trace (Epic 11 — EU Grant Specialization & Compliance)
+
+<!-- Powered by BMAD-CORE™ -->

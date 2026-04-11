@@ -653,6 +653,74 @@ All from Blind Hunter false positives (subagent received truncated code snippets
 - [x] [Review][Defer] `rule_id` field accepts arbitrary unbounded strings (no length/format constraint) [schemas/compliance_framework.py:20] — deferred, minor
 - [x] [Review][Defer] `HTTPException` triggers unnecessary rollback in `get_db_session` [dependencies.py:46-51] — deferred, pre-existing pattern
 
+#### R5 Review (2026-04-10)
+
+> **Review R5 (2026-04-10).** 0 `decision-needed`, 0 `patch`, 3 `defer`, 6 dismissed.
+> Full adversarial three-layer review (Blind Hunter + Edge Case Hunter + Acceptance Auditor).
+> **All R3 patch items CONFIRMED FIXED.** All R1/R2 items previously verified.
+> All 8 acceptance criteria pass. 40/40 tests pass. No new blocking issues.
+> **REVIEW: Approve.** Story status set to `done`.
+
+#### R5 Verification of R3 Patch Items (RESOLVED)
+
+- [x] [Review-R3][Patch] **`pydantic-settings>=2.0` and `asyncpg>=0.29` in pyproject.toml** — CONFIRMED FIXED. Both present at `pyproject.toml:13,19`.
+- [x] [Review-R3][Patch] **`regulation_type` list query param uses Literal type** — CONFIRMED FIXED. `compliance_frameworks.py:41` now reads `Literal["national", "eu", "programme"] | None = Query(None)`.
+
+#### R5 Deferred (new items, not blocking)
+
+- [ ] [Review-R5][Defer] JWT tokens without `exp` claim accepted as valid forever [core/security.py:59-64] — PyJWT validates `exp` only if present; a token minted without `exp` bypasses expiry. Add `options={"require": ["exp", "sub"]}` to `jwt.decode()`. Security hardening, not a spec violation.
+- [ ] [Review-R5][Defer] Missing `WWW-Authenticate: Bearer` header on 401 responses [core/security.py:52,66,68,75] — RFC 7235 requires `WWW-Authenticate` on 401. Add `headers={"WWW-Authenticate": "Bearer"}` to all four 401 HTTPException calls. Protocol compliance, no practical client impact.
+- [ ] [Review-R5][Defer] DELETE 409 response not documented in OpenAPI schema [api/v1/compliance_frameworks.py:86] — `@router.delete` only documents 204; the 409 from `FrameworkInUseError` is invisible in generated API docs. Add `responses={409: {"description": "Framework in use"}}` to the decorator.
+
+#### R5 Dismissed (6 items)
+
+1. Race condition in lazy engine init — already deferred in R1
+2. No aud/iss validation — already deferred in R1
+3. IntegrityError catch too broad — already deferred in R2/R4
+4. Nullable timestamps vs required response — already deferred in R1
+5. FrameworkInUseError causes session.commit() — false positive (session has no dirty state; only SELECTs before error)
+6. PATCH empty body triggers flush — no-op DB round-trip, no practical impact
+
+#### R6 Review (2026-04-10)
+
+> **Review R6 (2026-04-10).** 0 `decision-needed`, 0 `patch`, 0 `defer`, 5 dismissed.
+> Full adversarial three-layer review (Blind Hunter + Edge Case Hunter + Acceptance Auditor).
+> All prior patch items (R1–R5) confirmed resolved. 40/40 tests pass (0.60s). No new issues.
+> **REVIEW: Approve.** Story status remains `done`.
+
+#### R6 Acceptance Auditor — All 8 ACs Verified
+
+| AC | Status | Code Verification | Test Coverage |
+|----|--------|------------------|---------------|
+| AC1 | PASS | All 5 endpoints use `Depends(get_admin_user)`. `HTTPBearer(auto_error=False)` → 401. Role check → 403. | 5 × 401 tests + 5 × 403 tests (10 total across TestAC3AdminAuth + TestAC1ExtendedAuth) |
+| AC2 | PASS | POST returns 201. `is_active=True` default. `created_by=str(admin_user.admin_id)`. Unique name constraint → 409. | 4 creation tests + 1 duplicate-name test |
+| AC3 | PASS | `ValidationRule` model: `criterion` required, `check_type` Literal, `@model_validator` threshold constraint, `rule_id` auto-generated. | 3 validation-failure tests + 1 auto-rule_id test + 1 threshold happy-path |
+| AC4 | PASS | GET list: country/regulation_type/is_active filters. `regulation_type` uses `Literal` (R3 fix). Pagination: page (ge=1), page_size (ge=1, le=100). `order_by(created_at.desc())`. Response shape correct. | 5 filter tests + 2 pagination tests |
+| AC5 | PASS | GET single returns 200 regardless of `is_active`. 404 for non-existent UUID. | 3 tests (happy, 404, inactive→200) |
+| AC6 | PASS | PATCH uses `model_fields_set` for all fields. `{"description": null}` clears field (R1 fix). `{"rules": null}` → `[]` (R2 fix). Rules re-validated per AC3. 404 for non-existent. | 7 tests (name, is_active, rules-validation, 404, rules-replacement, description-null, rules-null) |
+| AC7 | PASS | DELETE: 404 not found. 409 with `{"detail": "...", "code": "FRAMEWORK_IN_USE"}` via `JSONResponse`. 204 hard-delete on success. Guard checks `opportunity_compliance_frameworks` join table. | 5 tests (204 unassigned, 409 assigned, 409 body code, 409 inactive+assigned, 404) |
+| AC8 | PASS | Guard checks join table exclusively, not `is_active` flag. `is_active=false` + assignment rows → 409. `is_active=true` + zero rows → 204. | `test_delete_inactive_framework_with_assignment_returns_409` directly verifies AC8 |
+
+#### R6 Architecture Alignment — Verified
+
+- Config module: `BaseSettings` + `@lru_cache` + env aliases ✓
+- Security module: HS256 JWT, `AdminUser` dataclass, `HTTPBearer(auto_error=False)`, 401/403 semantics ✓
+- Dependencies: lazy singleton engine + session factory, commit-on-success/rollback-on-error ✓
+- Service layer: business logic decoupled from router, structured logging with `structlog` ✓
+- Router: `APIRouter` under `/api/v1` prefix, correct HTTP status codes ✓
+- Schemas: Pydantic v2 with `ConfigDict`, `from_attributes=True`, proper validation ✓
+- Models: `admin` schema, proper indexes and constraints ✓
+- pyproject.toml: all runtime deps declared (`pydantic-settings>=2.0`, `asyncpg>=0.29`) ✓
+- Tests: 40 tests, transaction-rollback isolation, dependency-override pattern ✓
+
+#### R6 Dismissed (5 items — all pre-existing from prior reviews)
+
+1. JWT without `exp` claim accepted forever — already deferred in R5
+2. Missing `WWW-Authenticate: Bearer` header on 401s — already deferred in R5
+3. DELETE 409 not in OpenAPI schema — already deferred in R5
+4. `eusolicit-test-utils` not in dev deps — already deferred in R4
+5. No `@pytest.mark.integration` markers — already deferred in R4
+
 ---
 
 ## Dev Agent Record

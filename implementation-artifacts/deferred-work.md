@@ -2,6 +2,15 @@
 
 Tracked items deferred from code reviews and implementation. Each entry includes source, description, and rationale for deferral.
 
+## Deferred from: code review of story 11-12 (2026-04-10)
+
+- Partner `organisation_name` used as React key and shortlist identifier — not guaranteed unique. If the real API returns duplicate names, React key collision causes rendering bugs and shortlist misbehaves. Address when stub is replaced with real API (S11.06 integration). Source: S11.12 blind+edge review.
+- Score bar overflows if `collaboration_score` outside 0–100 — no runtime clamp. Values >100 or <0 break the progress bar layout. Add `Math.min(100, Math.max(0, score))` at API integration time. Source: S11.12 edge-case review.
+- Negative Gantt bar duration when `start_month > end_month` — corrupted API data produces a negative duration bar in Recharts. Add `Math.max(1, duration)` clamp at API integration time. Source: S11.12 edge-case review.
+- Country toggle button text overflow with many selections — selecting many countries causes the joined label to overflow the fixed-height trigger button. Truncate or summarize in a future UX polish pass. Source: S11.12 edge-case review.
+- Tab switch destroys all component state (shortlist, editable content, sort, form inputs) — Radix `TabsContent` unmounts inactive tabs by default, resetting all `useState` in panels. Pre-existing architectural pattern from S11.11. Fix with `forceMount` or lifted state. Source: S11.12 round-2 blind review.
+- Stub API functions return same mutable object reference on every call — all stub functions return the same `STUB_*` constant. If any consumer mutates data in-place, it corrupts the stub for subsequent calls. Replace with `structuredClone()` at backend integration time. Source: S11.12 round-2 blind review.
+
 ## Deferred from: code review of story 3-8-authentication-pages (2026-04-08)
 
 - No AbortController in callback useEffect — The mount-only `useEffect` in `callback/page.tsx` calling `exchangeOAuthCode()` has no cleanup function. If the component unmounts during the API call (back button, navigation), `.then()` fires on stale state causing potential memory leak and double navigation. Address when stubs are replaced with real API calls at E02 integration. Source: S03.08 edge-case review.
@@ -220,3 +229,62 @@ Tracked items deferred from code reviews and implementation. Each entry includes
 - CASCADE FK on `opportunity_compliance_frameworks` contradicts deletion guard intent — `models/opportunity_compliance_framework.py:33`. `ondelete="CASCADE"` means if the app-level guard is bypassed, the DB cascades deletes rather than blocking. Semantically contradicts the 409-guard intent of AC7/AC8. Source: S11.08 auditor review.
 - `rule_id` field accepts arbitrary unbounded strings — `schemas/compliance_framework.py:20`. No `min_length`, `max_length`, or pattern constraint on inbound `rule_id`. Oversized or malformed values persist into JSONB. Source: S11.08 edge review.
 - HTTPException triggers unnecessary rollback in `get_db_session` — `dependencies.py:46-51`. Application-level errors (404/409) caught by `except Exception`, triggering pointless ROLLBACK. If rollback itself fails, the original error is masked. Source: S11.08 edge review.
+
+## Deferred from: code review of story 11-8-compliance-framework-crud-api-admin R5 (2026-04-10)
+
+- JWT tokens without `exp` claim accepted as valid forever — `core/security.py:59-64`. PyJWT validates `exp` only if present; a token minted without `exp` bypasses expiry check entirely. Add `options={"require": ["exp", "sub"]}` to `jwt.decode()`. Security hardening. Source: S11.08 R5 blind review.
+- Missing `WWW-Authenticate: Bearer` header on 401 responses — `core/security.py:52,66,68,75`. RFC 7235 requires `WWW-Authenticate` on 401 responses. Add `headers={"WWW-Authenticate": "Bearer"}` to all four 401 HTTPException calls. Protocol compliance. Source: S11.08 R5 blind review.
+- DELETE 409 response not documented in OpenAPI schema — `api/v1/compliance_frameworks.py:86`. `@router.delete` only documents 204; the 409 `FrameworkInUseError` response is invisible in generated API docs/SDKs. Add `responses={409: {...}}` to the decorator. Source: S11.08 R5 blind review.
+
+## Deferred from: code review of story 11-10-regulation-tracker-agent-platform-settings-api-admin (2026-04-10)
+
+- PlatformSettings.updated_at is nullable=True in ORM (pre-existing from S11.01) but PlatformSettingResponse.updated_at is non-optional datetime — if any row has NULL updated_at, Pydantic serialization fails with 500. Fix: either add NOT NULL migration or make schema field Optional. Source: S11.10 code review (blind+edge).
+- PlatformSettings has redundant UniqueConstraint + unique Index on key column — creates two DB objects for the same purpose; wastes storage and write overhead. Source: S11.10 code review (blind).
+- Timezone-naive detected_at from agent response stored without UTC normalization — datetime.fromisoformat() on a string without timezone suffix produces a naive datetime; PostgreSQL interprets as server local TZ. Fix: add `.replace(tzinfo=UTC)` fallback if `tzinfo is None`. Source: S11.10 code review (edge).
+- asyncio.run() in Celery task is unsafe under gevent/eventlet worker pools — raises RuntimeError if event loop already running. Currently uses standard prefork; would break if worker pool config changes. Source: S11.10 code review (edge).
+- AI Gateway singleton httpx.AsyncClient never closed on FastAPI shutdown — no lifespan handler calls `_gw_client.aclose()`. Causes ResourceWarning and lingering TCP connections. Pre-existing from S11.09. Source: S11.10 code review (edge).
+- AiGatewayClient.run_agent does not handle 4xx responses or non-JSON bodies — HTTP 401/429 from gateway falls through; non-JSON bodies raise unhandled JSONDecodeError. Pre-existing from S11.09. Source: S11.10 code review (edge).
+- No UNIQUE constraint on (source, change_type, summary) — duplicate detection is application-level only via SELECT-then-INSERT with no row locking. Concurrent triggers could insert duplicates. Acceptable for weekly single-worker execution. Source: S11.10 code review (blind+edge).
+- Router trigger endpoint declares response_model=RegulationTriggerResponse but returns JSONResponse — FastAPI skips response_model validation when JSONResponse is returned directly. OpenAPI docs may be inaccurate. Source: S11.10 code review (blind).
+- AsyncEngine reuse across asyncio.run() calls in Celery task — cached engine holds references to previous event loop's connection pool; could cause "Event loop is closed" errors if task runs twice in same worker process. Source: S11.10 code review (edge).
+
+## Deferred from: code review of story 11-11-eu-grant-tools-frontend-page-eligibility-budget-panels (2026-04-10)
+
+- No React ErrorBoundary around EligibilityPanel or BudgetBuilderPanel — malformed API response (e.g., `programmes` is not an array) will throw unhandled exception and crash the entire Grant Tools page with a white screen. Cross-cutting concern for all pages; should be addressed at the `(protected)` layout level. Source: S11.11 code review (edge).
+- Co-financing stacked bar chart always shows server response values (`co_financing_split`), not user-edited cost table totals — if user edits amounts in the editable cost table, the chart becomes inconsistent with the displayed total. Recalculating client-side requires domain formula not available in the frontend. Source: S11.11 code review (blind).
+- `useEffect` on `mutation.data` in BudgetBuilderPanel silently overwrites user's in-progress edits to cost table when a re-submission completes — no dirty-check or confirmation dialog. Standard mutation behavior but could cause user confusion. Source: S11.11 code review (blind+edge).
+- Stub API functions (`checkEligibility`, `buildBudget`) return shared mutable object references — multiple calls return the same `STUB_ELIGIBILITY`/`STUB_BUDGET` objects. Current shallow copy via spread is adequate for stub phase; will be replaced by real API calls (S11.04/S11.05). Source: S11.11 code review (blind).
+- Overhead rate slider (`useState`) is decoupled from server response — if backend normalizes/clamps the overhead rate, the slider continues showing the client-submitted value while the result panel shows the server's calculation. Source: S11.11 code review (edge).
+- Tests for S11.11 are structural only (file read + string matching in Vitest node environment) — no component rendering or behavioral tests. E2E behavioral coverage deferred to P2 Playwright suite (`grant-tools-s11-11.spec.ts`). Source: S11.11 code review (blind).
+
+## Deferred from: code review of story-11.11 (2026-04-10)
+
+- No runtime Zod validation at API boundary — `checkEligibility` and `buildBudget` cast API responses directly to TypeScript interfaces. A backend returning unexpected shapes (e.g. `null` for `programmes`) would cause silent crashes. Deferred until real backend (S11.04/S11.05) is wired. [grants.ts:158-159,173-174]
+- Overhead rate slider max=25% may not apply to all EU programmes — Structural Funds and INTERREG use different rates (up to 40%). Will need revisiting when real backend defines programme-specific rates. [BudgetBuilderPanel.tsx:222]
+
+## Deferred from: code review of story-11.14 (2026-04-10)
+
+- `crypto.randomUUID()` used without fallback for older browsers or non-secure contexts. Admin app targets modern browsers so risk is low, but a polyfill or `Math.random()` fallback would be more defensive. [FrameworkEditor.tsx:75,128]
+- ReDoS vulnerability in regex preview — `new RegExp(criterion).test(SAMPLE_PROPOSAL_TEXT)` with user-authored patterns can cause catastrophic backtracking. Admin-only UI limits attack surface but a timeout wrapper or Web Worker execution would harden it. [FrameworkEditor.tsx:291]
+- Next.js 15 will make `params` an async Promise — `params.id` accessed synchronously in `[id]/edit/page.tsx` will break on upgrade. Migration needed when Next.js 15 adopted. [[id]/edit/page.tsx:5-10]
+- Query key structural collision — both list `["compliance-frameworks", params]` and detail `["compliance-frameworks", id]` queries share the same namespace prefix. Prefix-match invalidation works correctly today but namespacing as `["compliance-frameworks", "list", ...]` vs `["compliance-frameworks", "detail", ...]` would be cleaner. [use-compliance-frameworks.ts:31,43]
+- Mutation callbacks may fire after component unmount when user navigates away during in-flight create/update. React Query handles this gracefully in modern versions. [FrameworkEditor.tsx:226-248]
+- Concurrent toggle + delete mutations on the same framework can race — low probability admin scenario since mutations are serialized by React Query. [FrameworkList.tsx:121-163]
+- Null `created_at` could crash `toLocaleDateString()` — TypeScript interface guarantees `string` and backend contract enforces non-null, so this is safe under the current data contract. [FrameworkList.tsx:432]
+- Form reset clobbers unsaved edits if stale query refetches in edit mode — standard `react-hook-form` pattern with `staleTime: 30_000`. Admin concurrent editing is rare. [FrameworkEditor.tsx:118-135]
+
+## Deferred from: code re-review of story-11.14 (2026-04-10)
+
+- Toggle active error handler provides no user feedback — `onError` only clears `togglingId`; no toast or inline error shown. Toggle snaps back to original value silently. AC6 does not specify toggle error handling; UX enhancement for future sprint. [FrameworkList.tsx:129-131]
+- Client-side type/search filters over server-paginated data produce incomplete results at scale — when dataset exceeds one page, client-side type checkbox and search filters only operate on items from the current server page, missing matching items on other pages. Country dropdown also only shows countries from current page. By AC design (AC5 specifies client-side filtering; API supports single regulation_type only). Design limitation for future sprint. [FrameworkList.tsx:101-118,164]
+
+## Deferred from: final code review of story-11.14 (2026-04-10)
+
+- Missing `isError` handling on framework list query — query failure is indistinguishable from empty dataset (EmptyState renders). Not required by AC3; stub never errors. Should be added when real API (S11.08) is wired in. [FrameworkList.tsx:82]
+- Missing `isError` handling on framework editor query (edit mode) — failed fetch renders blank form instead of error state. Not required by AC10; stub never errors. Should be added when real API (S11.08) is wired in. [FrameworkEditor.tsx:105-106]
+
+## Deferred from: code review of story 11-16 (2026-04-10)
+
+- Frontend panels use generic `tErrors("serverError")` instead of agent-specific i18n keys (e.g., `t("grants.eligibility.agentUnavailable")`). All 8 agent-backed panels have correct error-state `data-testid` attributes but do not differentiate agent unavailability from other server errors. Established pattern from S11.11–S11.15. Track as UX enhancement. [EligibilityPanel.tsx, BudgetBuilderPanel.tsx, ConsortiumFinderPanel.tsx, LogframePanel.tsx, ReportingTemplatePanel.tsx, ESPDAutoFillPanel.tsx, RegulationTracker.tsx, SuggestionQueue.tsx]
+- E2E journey tests 2–5 do not import or use authenticated session fixtures. Tests use Playwright route-level mocking so auth is not required for mocked flows. Will need auth fixtures when tests run against a real staging backend. [e2e/espd/, e2e/compliance/]
+- Journey 2 (ESPD auto-fill export) skips Parts II & III form filling (AC2 step 4). Part editor may not be fully implemented per S11.13. Dependency on S11.13 editor completeness. [e2e/espd/journey-02-espd-autofill-export.spec.ts]
