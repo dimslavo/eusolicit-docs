@@ -1,18 +1,15 @@
 ---
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-09'
+lastSaved: '2026-04-12'
 workflowType: 'testarch-test-design'
-mode: 'system-level'
-lastEpic: 11
+mode: 'epic-level'
+lastEpic: 12
 inputDocuments:
-  - 'eusolicit-docs/EU_Solicit_PRD_v1.md'
-  - 'eusolicit-docs/EU_Solicit_Requirements_Brief_v4.md'
-  - 'eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md'
-  - 'eusolicit-docs/EU_Solicit_User_Journeys_and_Workflows_v1.md'
-  - 'eusolicit-docs/planning-artifacts/epic-03-frontend-shell-design-system.md'
+  - 'eusolicit-docs/planning-artifacts/epic-12-analytics-admin-platform.md'
   - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
   - 'eusolicit-docs/test-artifacts/test-design-qa.md'
+  - 'eusolicit-docs/test-artifacts/atdd-checklist-e12-p0.md'
   - 'knowledge/risk-governance.md'
   - 'knowledge/probability-impact.md'
   - 'knowledge/test-levels-framework.md'

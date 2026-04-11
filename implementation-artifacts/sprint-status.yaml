@@ -1,9 +1,9 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
-current_epic: 11
-current_story: 11-16-e2e-integration-testing-agent-error-handling-hardening
-last_updated: '2026-04-10'  # Updated by code-review: 11-16 approved
+current_epic: 12
+current_story: 12-1-analytics-materialized-views-refresh-infrastructure
+last_updated: '2026-04-11'  # Updated by create-story: 12-1 ready-for-dev
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -67,7 +67,7 @@ development_status:
   11-14-compliance-admin-framework-management-frontend: done
   11-15-compliance-admin-assignment-suggestions-regulation-tracker-frontend: done
   11-16-e2e-integration-testing-agent-error-handling-hardening: done
-  epic-12: backlog
+  epic-12: in-progress
   12-1-analytics-materialized-views-refresh-infrastructure: in-progress
   12-2-market-intelligence-dashboard-api: backlog
   12-3-market-intelligence-dashboard-frontend: backlog
