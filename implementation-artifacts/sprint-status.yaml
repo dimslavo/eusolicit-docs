@@ -2,8 +2,8 @@
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
 current_epic: 12
-current_story: 12-1-analytics-materialized-views-refresh-infrastructure
-last_updated: '2026-04-11'  # Updated by create-story: 12-1 ready-for-dev
+current_story: 12-3-market-intelligence-dashboard-frontend
+last_updated: '2026-04-12'  # Updated by create-story: 12-3 story file created, status moved to in-progress
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -68,9 +68,9 @@ development_status:
   11-15-compliance-admin-assignment-suggestions-regulation-tracker-frontend: done
   11-16-e2e-integration-testing-agent-error-handling-hardening: done
   epic-12: in-progress
-  12-1-analytics-materialized-views-refresh-infrastructure: in-progress
-  12-2-market-intelligence-dashboard-api: backlog
-  12-3-market-intelligence-dashboard-frontend: backlog
+  12-1-analytics-materialized-views-refresh-infrastructure: done
+  12-2-market-intelligence-dashboard-api: done
+  12-3-market-intelligence-dashboard-frontend: in-progress
   12-4-roi-tracker-dashboard-full-stack: backlog
   12-5-team-performance-dashboard-full-stack: backlog
   12-6-competitor-intelligence-dashboard-full-stack-professional-tier: backlog
@@ -128,3 +128,4 @@ tea_status:
   11-5-budget-builder-agent-integration: done
   11-6-consortium-finder-agent-integration: done
   11-7-logframe-generator-reporting-template-agent-integrations: done
+  12-1-analytics-materialized-views-refresh-infrastructure: in-progress

@@ -5,11 +5,15 @@ lastSaved: '2026-04-12'
 workflowType: 'testarch-test-design'
 mode: 'epic-level'
 lastEpic: 12
+epicVersion: 'v5'
 inputDocuments:
   - 'eusolicit-docs/planning-artifacts/epic-12-analytics-admin-platform.md'
   - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
   - 'eusolicit-docs/test-artifacts/test-design-qa.md'
   - 'eusolicit-docs/test-artifacts/atdd-checklist-e12-p0.md'
+  - 'eusolicit-docs/implementation-artifacts/12-1-analytics-materialized-views-refresh-infrastructure.md'
+  - 'eusolicit-docs/implementation-artifacts/12-2-market-intelligence-dashboard-api.md'
+  - 'eusolicit-docs/implementation-artifacts/12-3-market-intelligence-dashboard-frontend.md'
   - 'knowledge/risk-governance.md'
   - 'knowledge/probability-impact.md'
   - 'knowledge/test-levels-framework.md'
@@ -174,3 +178,92 @@ inputDocuments:
 - Gate thresholds: P0=100%, P1≥95%, SEC coverage 100%
 - ATDD P0 RED phase: complete (19 tests in 4 files)
 - Next step: GREEN phase as S12.01–S12.15 endpoints land in staging; run `*atdd` for P1–P3
+
+---
+
+## Epic-Level Run: Epic 12 v4 (2026-04-12)
+
+### Correction Pass
+
+**Discrepancy identified and corrected in v4:**
+- v3 stated "17 Playwright API + 2 infrastructure" in summary text, contradicting:
+  - P0 coverage table: rows sum to 2+4+3+2+2+4+2 = **19 Playwright tests**
+  - ATDD checklist `atdd-checklist-e12-p0.md`: explicitly counts **19 tests** across 4 files
+- All derived totals corrected: P0 total 19→21, functional total 59→61, overall 61→63
+
+**v4 corrections applied:**
+- P0 ATDD Status: "17 Playwright" → "19 Playwright"
+- P0 total: "19 atomic tests (17+2)" → "21 atomic tests (19+2)"
+- Exit criteria: "19 atomic tests in 4 spec files" → "21 atomic tests (19 Playwright + 2 infra)"
+- Execution Strategy: "~59 functional tests" → "~61 functional tests"
+- Resource Estimates P0: "19 (17 Playwright + 2 infra)" → "21 (19 Playwright + 2 infra)"
+- Resource Estimates Total: "~61" → "~63"
+- Executive Summary: "~19 atomic tests" → "~21 atomic tests (19 Playwright API + 2 infra)"
+- Executive Summary total: "~61 functional + 2 infrastructure" → "~63 (61 Playwright functional + 2 infrastructure)"
+- Quality Gate: updated P0 pass rate description to reference 21 atomic tests explicitly
+
+**Document generated:**
+- `eusolicit-docs/test-artifacts/test-design-epic-12.md` (v4, 2026-04-12)
+  - Status: Final — P0 ATDD Red Phase Complete; P1–P3 ATDD Pending
+  - 11 risks (3 high, 6 medium, 2 low) — unchanged from v3
+  - 51 scenarios → **63 atomic tests** (61 Playwright + 2 infra) — corrected from v3's 61
+  - Full mitigation plans for E12-R-001, R-002, R-003 — unchanged
+  - Interworking scope for 6 services — unchanged
+
+**Execution mode:** Sequential
+**Validation:** Checked against checklist.md — all sections present; count discrepancy resolved
+
+**Completion:**
+- Mode: Epic-Level (Epic 12)
+- Output file: `eusolicit-docs/test-artifacts/test-design-epic-12.md` (v4)
+- Key risks: E12-R-001 (cross-tenant analytics, 6), E12-R-002 (tier gate bypass, 6), E12-R-003 (OWASP confidence, 6)
+- Gate thresholds: P0=100% (21 atomic tests), P1≥95%, SEC coverage 100%
+- ATDD P0 RED phase: complete (19 Playwright tests in 4 files, confirmed)
+- Next step: GREEN phase as S12.01–S12.15 endpoints land in staging; run `*atdd` for P1–P3
+
+---
+
+## Epic-Level Run: Epic 12 v5 (2026-04-12)
+
+### Implementation-Aware Refresh Pass
+
+**Context:** S12.01 (done) and S12.02 (done) implementation artifacts read; S12.03 in-progress; tea_status for 12-1 = in-progress.
+
+**New findings from implementation:**
+1. **E12-R-002 reinforced:** `require_professional_plus_tier` in `tier_gate.py` is a `NotImplementedError` stub as of S12.02. Must be replaced before S12.06 deploys or all users get 500 on competitor/pipeline endpoints.
+2. **E12-R-006 refined:** Unique index column combinations now confirmed from migration `011_analytics_materialized_views.py`:
+   - `uq_mv_market_intelligence(company_id, sector, country, month)`
+   - `uq_mv_roi_tracker(company_id, proposal_id)`
+   - `uq_mv_team_performance(company_id, user_id, month)`
+   - `uq_mv_competitor_intelligence(company_id, competitor_name, sector)`
+   - `uq_mv_usage_consumption(company_id, metric_type, period_start)`
+3. **+E12-R-010 (new):** Celery Beat refresh schedule drift risk from 2:00–2:45 AM stagger detail in S12.01 implementation.
+4. **+1 P1 test:** Stub-gate verification test for `require_professional_plus_tier` replacement.
+5. **P1/P2 tests enriched:** Exact response schemas (from S12.02 Pydantic models), `Cache-Control: public, max-age=1800`, 403 body structure, data-testids from S12.03 story spec.
+
+**v5 changes summary:**
+- Total risks: 11 → 12 (+E12-R-010)
+- Total scenarios: 51 → 52 (+1 P1 stub gate test)
+- Total atomic tests: 63 → 64 (62 Playwright + 2 infra)
+- New entry criteria: `require_professional_plus_tier` real implementation
+- New dependency tracked with ⚠️ status
+
+**Document generated:**
+- `eusolicit-docs/test-artifacts/test-design-epic-12.md` (v5, 2026-04-12)
+  - Status: Final — P0 ATDD Red Phase Complete; S12.01–S12.02 Implemented; P1–P3 ATDD Pending
+  - 12 risks (3 high, 6 medium, 3 low)
+  - 52 scenarios → **64 atomic tests** (62 Playwright + 2 infra)
+  - Full mitigation plans for E12-R-001, R-002, R-003 (R-002 updated with stub risk)
+  - Interworking scope for 6 services + ORM models + tier_gate dependency
+
+**Execution mode:** Sequential
+**Validation:** All required sections populated; risks scored; coverage matrix complete; counts consistent
+
+**Completion:**
+- Mode: Epic-Level (Epic 12)
+- Output file: `eusolicit-docs/test-artifacts/test-design-epic-12.md` (v5)
+- Key risks: E12-R-001 (cross-tenant analytics, 6), E12-R-002 (tier gate / stub risk, 6), E12-R-003 (OWASP confidence, 6)
+- Gate thresholds: P0=100% (21 atomic tests), P1≥95%, SEC coverage 100%
+- Critical new gate: `require_professional_plus_tier` stub replacement before S12.06
+- ATDD P0 RED phase: complete (19 Playwright tests in 4 files); tea_status 12-1 = in-progress
+- Next step: Stub replacement → GREEN phase domain-by-domain; run `*atdd` for P1–P3 after S12.04–S12.18

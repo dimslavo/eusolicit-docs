@@ -288,3 +288,14 @@ Tracked items deferred from code reviews and implementation. Each entry includes
 - Frontend panels use generic `tErrors("serverError")` instead of agent-specific i18n keys (e.g., `t("grants.eligibility.agentUnavailable")`). All 8 agent-backed panels have correct error-state `data-testid` attributes but do not differentiate agent unavailability from other server errors. Established pattern from S11.11–S11.15. Track as UX enhancement. [EligibilityPanel.tsx, BudgetBuilderPanel.tsx, ConsortiumFinderPanel.tsx, LogframePanel.tsx, ReportingTemplatePanel.tsx, ESPDAutoFillPanel.tsx, RegulationTracker.tsx, SuggestionQueue.tsx]
 - E2E journey tests 2–5 do not import or use authenticated session fixtures. Tests use Playwright route-level mocking so auth is not required for mocked flows. Will need auth fixtures when tests run against a real staging backend. [e2e/espd/, e2e/compliance/]
 - Journey 2 (ESPD auto-fill export) skips Parts II & III form filling (AC2 step 4). Part editor may not be fully implemented per S11.13. Dependency on S11.13 editor completeness. [e2e/espd/journey-02-espd-autofill-export.spec.ts]
+
+
+## Deferred from: code review of story 12-2 (2026-04-12)
+
+- No `date_from > date_to` validation on market analytics endpoints (`/volume`, `/values`, `/authorities`, `/trends`). If a client passes an inverted date range (e.g., `date_from=2025-12-01&date_to=2025-01-01`), the query silently returns empty results instead of returning a 400 error. Not specified in the AC — defer to a future usability pass. [services/client-api/src/client_api/services/analytics_market_service.py:38-59, api/v1/analytics_market.py]
+- `_apply_market_filters.stmt` parameter lacks type annotation — should be typed as `Select` for mypy compliance. Cosmetic, low-priority consistency improvement. [services/client-api/src/client_api/services/analytics_market_service.py:39]
+
+
+## Deferred from: code review of story 12-3 (2026-04-12)
+
+- `SkeletonCard` and `SkeletonTable` in `@eusolicit/ui` only accept `className` and do not spread rest props. Any `data-testid` passed to them is silently dropped and will not appear in the rendered DOM. Affects all consumers that pass `data-testid` to these components (e.g. market intelligence skeleton loading states). Fix: add `...rest` spread to both components' root div. [packages/ui/src/components/feedback/SkeletonCard.tsx, packages/ui/src/components/feedback/SkeletonTable.tsx]
