@@ -2,8 +2,8 @@
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
 current_epic: 12
-current_story: 12-3-market-intelligence-dashboard-frontend
-last_updated: '2026-04-12'  # Updated by create-story: 12-3 story file created, status moved to in-progress
+current_story: 12-4-roi-tracker-dashboard-full-stack
+last_updated: '2026-04-12'  # Updated by create-story: 12-4 story file created, status moved to in-progress
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -70,8 +70,8 @@ development_status:
   epic-12: in-progress
   12-1-analytics-materialized-views-refresh-infrastructure: done
   12-2-market-intelligence-dashboard-api: done
-  12-3-market-intelligence-dashboard-frontend: in-progress
-  12-4-roi-tracker-dashboard-full-stack: backlog
+  12-3-market-intelligence-dashboard-frontend: done
+  12-4-roi-tracker-dashboard-full-stack: in-progress
   12-5-team-performance-dashboard-full-stack: backlog
   12-6-competitor-intelligence-dashboard-full-stack-professional-tier: backlog
   12-7-pipeline-forecasting-dashboard-full-stack-professional-tier: backlog
