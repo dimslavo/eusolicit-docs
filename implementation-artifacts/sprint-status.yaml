@@ -1,9 +1,9 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
-current_epic: 12
-current_story: 12-5-team-performance-dashboard-full-stack
-last_updated: '2026-04-12'  # Updated by create-story: 12-5 story file created, status moved to ready-for-dev
+current_epic: 5
+current_story: 5-4-aop-crawler-task
+last_updated: '2026-04-14'  # Updated: story 5-4 created
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -43,8 +43,30 @@ development_status:
   3-11-toast-notification-system: done
   3-12-client-side-route-guards-auth-redirects: done
 
-  epic-4: backlog
-  epic-5: backlog
+  epic-4: done
+  4-1-fastapi-service-scaffold-and-health-probes: done
+  4-2-httpx-async-client-and-kraftdata-authentication: done
+  4-3-agent-registry-logical-name-to-kraftdata-uuid-mapping: done
+  4-4-sync-agent-workflow-and-team-execution-endpoints: done
+  4-5-sse-stream-proxy-endpoints: done
+  4-6-circuit-breaker-and-retry-logic: done
+  4-7-kraftdata-webhook-receiver-and-redis-stream-publishing: done
+  4-8-execution-logging-and-database-schema: done
+  4-9-rate-limit-management-and-concurrency-control: done
+  4-10-integration-tests-and-end-to-end-validation: done
+  epic-5: in-progress
+  5-1-pipeline-schema-migration-and-model-layer: done
+  5-2-celery-app-bootstrap-and-beat-schedule-configuration: done
+  5-3-ai-gateway-client-module-with-retry-logic: done
+  5-4-aop-crawler-task: done
+  5-5-ted-crawler-task: backlog
+  5-6-eu-grants-crawler-task: backlog
+  5-7-relevance-scoring-post-processing-task: backlog
+  5-8-submission-guide-generation-task: backlog
+  5-9-redis-streams-event-publishing: backlog
+  5-10-expired-opportunity-cleanup-task: backlog
+  5-11-enrichment-queue-worker: backlog
+  5-12-end-to-end-integration-tests-and-pipeline-observability: backlog
   epic-6: backlog
   epic-7: backlog
   epic-8: backlog
@@ -67,25 +89,25 @@ development_status:
   11-14-compliance-admin-framework-management-frontend: done
   11-15-compliance-admin-assignment-suggestions-regulation-tracker-frontend: done
   11-16-e2e-integration-testing-agent-error-handling-hardening: done
-  epic-12: in-progress
+  epic-12: done
   12-1-analytics-materialized-views-refresh-infrastructure: done
   12-2-market-intelligence-dashboard-api: done
   12-3-market-intelligence-dashboard-frontend: done
   12-4-roi-tracker-dashboard-full-stack: done
-  12-5-team-performance-dashboard-full-stack: ready-for-dev
-  12-6-competitor-intelligence-dashboard-full-stack-professional-tier: backlog
-  12-7-pipeline-forecasting-dashboard-full-stack-professional-tier: backlog
-  12-8-usage-dashboard-full-stack: backlog
-  12-9-report-generation-engine-pdf-docx: backlog
-  12-10-scheduled-on-demand-report-delivery: backlog
-  12-11-admin-api-tenant-management: backlog
-  12-12-admin-api-crawler-white-label-management: backlog
-  12-13-admin-api-audit-log-platform-analytics: backlog
-  12-14-admin-frontend-pages: backlog
-  12-15-enterprise-api-api-key-auth-rate-limiting-documentation: backlog
-  12-16-enterprise-api-documentation-page-usage-frontend: backlog
-  12-17-performance-optimization-load-testing-security-audit: backlog
-  12-18-user-onboarding-flow-launch-polish: backlog
+  12-5-team-performance-dashboard-full-stack: done
+  12-6-competitor-intelligence-dashboard-full-stack-professional-tier: done
+  12-7-pipeline-forecasting-dashboard-full-stack-professional-tier: done
+  12-8-usage-dashboard-full-stack: done
+  12-9-report-generation-engine-pdf-docx: done
+  12-10-scheduled-on-demand-report-delivery: done
+  12-11-admin-api-tenant-management: done
+  12-12-admin-api-crawler-white-label-management: done
+  12-13-admin-api-audit-log-platform-analytics: done
+  12-14-admin-frontend-pages: done
+  12-15-enterprise-api-api-key-auth-rate-limiting-documentation: done
+  12-16-enterprise-api-documentation-page-usage-frontend: done
+  12-17-performance-optimization-load-testing-security-audit: done
+  12-18-user-onboarding-flow-launch-polish: done
 tea_status: {}
 
 # TEA test automation status

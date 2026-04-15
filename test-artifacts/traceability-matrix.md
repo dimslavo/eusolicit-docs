@@ -6,642 +6,893 @@ stepsCompleted:
   - step-04-analyze-gaps
   - step-05-gate-decision
 lastStep: step-05-gate-decision
-lastSaved: '2026-04-11'
-epic: 11
-epicTitle: 'EU Grant Specialization & Compliance'
+lastSaved: '2026-04-14'
+epic: 4
+epicTitle: 'AI Gateway Service'
 workflowType: bmad-testarch-trace
 inputDocuments:
-  - eusolicit-docs/planning-artifacts/epic-11-grants-compliance.md
-  - eusolicit-docs/test-artifacts/test-design-epic-11.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-1-espd-profile-compliance-framework-db-schema-migrations.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-2-espd-profile-crud-api.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-3-espd-auto-fill-agent-integration.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-4-grant-eligibility-agent-integration.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-5-budget-builder-agent-integration.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-6-consortium-finder-agent-integration.md
-  - eusolicit-docs/test-artifacts/atdd-checklist-11-7-logframe-generator-reporting-template-agent-integrations.md
-tddPhase: RED (S11.01–S11.07 only)
+  - eusolicit-docs/planning-artifacts/epics/E04-ai-gateway-service.md
+  - eusolicit-docs/test-artifacts/test-design-epic-04.md
+tddPhase: DESIGN — No test files implemented yet. This matrix grades the test DESIGN completeness against story ACs.
 ---
 
 # Traceability Matrix & Quality Gate Report
 
-**Epic:** E11 — EU Grant Specialization & Compliance
-**Generated:** 2026-04-11
-**Scope:** 16 stories (S11.01–S11.16), 56 epic test IDs (P0: 10 · P1: 18 · P2: 20 · P3: 8)
-**TDD Phase:** 🔴 RED — S11.01–S11.07: 210 tests written (all skipped/RED); S11.08–S11.16: no tests written yet
-**Sprint:** 11–12 | **Points:** 55 | **Dependencies:** E04, E06, E07 | **Milestone:** MVP
+**Epic:** E04 — AI Gateway Service
+**Generated:** 2026-04-14
+**Scope:** 10 stories (S04.01–S04.10), 59 story-level ACs, 13 epic-level ACs
+**TDD Phase:** DESIGN — Test design complete (`test-design-epic-04.md`); no test files implemented. Coverage grades whether every AC has a planned test in the design.
+**Sprint:** 3–4 | **Points:** 34 | **Dependencies:** E01 | **Milestone:** Demo
+
+> **⚠️ Phase Context:** This is a pre-implementation (test design phase) traceability matrix. "Coverage" means the test design document (`test-design-epic-04.md`) includes at least one planned test case for the AC, not that tests are written or passing. Implementing tests follows via `bmad-testarch-atdd` on each story.
 
 ---
 
-## TRACE_GATE: FAIL
+## TRACE_GATE: PASS
 
-**Rationale:** P0 coverage is 40% FULL (required: 100%). Two P0 requirements — E11-P0-006
-(Compliance Framework admin auth) and E11-P0-007 (Framework Suggestion admin auth) — have **zero**
-test coverage. Three additional P0 requirements (E11-P0-008, E11-P0-009, E11-P0-010) cover only
-6 of 8 required agent types (Framework Suggestion Agent and Regulation Tracker Agent have no tests).
-P1 FULL coverage is 44.4% (required: ≥80% minimum). Nine of 18 P1 test IDs (all admin-side
-scenarios from S11.08–S11.10) are completely uncovered. Overall FULL coverage is 30.4% (minimum:
-80%). Stories S11.08–S11.16 (9 stories = backend admin, all 5 frontend stories, and E2E story)
-have no ATDD checklists.
+**Rationale:** P0 FULL coverage is 100% (17/17). All 13 P0-critical tests planned in the design address the highest-risk requirements: health probes, KraftData authentication, agent registry, sync proxy routing, circuit breaker lifecycle (CLOSED→OPEN→HALF_OPEN→CLOSED), retry with backoff, webhook HMAC-SHA256 constant-time validation, Redis Stream publish, and execution audit logging. P1 FULL coverage is 96% (24/25): one PARTIAL item (S04.05-AC1 SSE latency <100ms) lacks an explicit timing-measurement test—functional forwarding is covered but latency is asserted only qualitatively. Overall FULL coverage is 91.5% (54/59), well above the 80% minimum. P2 sits at 73.3% (11/15) due to four PARTIAL operational meta-criteria in S04.10 (CI run time, flakiness, code coverage threshold, credentials isolation) that are enforced by CI tooling rather than dedicated test scenarios—these are informational and do not block.
 
-> **📋 TDD Baseline Context:** All 210 existing tests (S11.01–S11.07) are in 🔴 RED phase —
-> tests are written but implementations not yet started. The gate measures traceability coverage
-> (whether every acceptance criterion maps to at least one test), not execution pass/fail.
-> Stories S11.08–S11.16 need ATDD checklists written before this gate can improve.
+**Key Residual Concerns (do not block gate, but track):**
 
-> **✅ To reach PASS:** Run `bmad-testarch-atdd` for S11.08 (Compliance Framework CRUD Admin),
-> S11.09 (Framework Assignment & Auto-Suggestion), S11.10 (Regulation Tracker & Platform Settings),
-> S11.11–S11.15 (all frontend stories), and S11.16 (E2E Integration). Then re-run this gate.
+1. **SSE latency assertion absent (S04.05-AC1 / E04-R-002):** E04-P1-009 verifies events forwarded in correct order but contains no wall-clock assertion for the <100ms per-event latency requirement. Add a timing assertion or P3 benchmark to close this gap before Demo.
+2. **29-entry registry count deferred to P3 nightly (S04.03-AC1):** E04-P0-004 validates the loading mechanism with 5 entries; E04-P3-005 validates the full 29-entry count. The P0 mechanism test is sufficient for PR gates, but the exact-count verification only runs nightly. If the `agents.yaml` fixture is incomplete at implementation time, this P3 test may not catch it until the nightly run.
+3. **S04.10 operational criteria are CI-enforced, not test-covered (S04.10-AC2/3/4):** "Tests complete in <60 seconds," "no flaky tests (3× run)," and "≥85% line coverage" are quality gates enforced by pytest-xdist timing, CI burn-in, and pytest-cov respectively. No dedicated test case proves these. They will be validated only after tests are written and CI is running—re-run this gate post-implementation.
+4. **Pre-implementation status:** All 55 planned tests remain unwritten. This gate approves the test **design**. The gate should be re-run after tests are implemented and first CI run completes.
 
 ---
 
 ## 1. Coverage Statistics
 
-| Dimension | FULL | PARTIAL | NONE | Total | % FULL | % Covered |
-|-----------|-----:|--------:|-----:|------:|-------:|----------:|
-| **P0**    |  4   |    4    |  2   |  10   | **40%**  | 80%     |
-| **P1**    |  8   |    1    |  9   |  18   | **44.4%**| 50%     |
-| **P2**    |  5   |    0    | 15   |  20   | **25%**  | 25%     |
-| **P3**    |  0   |    1    |  7   |   8   | **0%**   | 12.5%   |
-| **Overall** | **17** | **6** | **33** | **56** | **30.4%** | **41.1%** |
+| Dimension   | FULL | PARTIAL | NONE | Total | % FULL | % Any Coverage |
+|-------------|-----:|--------:|-----:|------:|-------:|---------------:|
+| **P0**      |  17  |    0    |   0  |  17   | **100%** | 100%         |
+| **P1**      |  24  |    1    |   0  |  25   | **96%**  | 100%         |
+| **P2**      |  11  |    4    |   0  |  15   | **73%**  | 100%         |
+| **P3**      |   2  |    0    |   0  |   2   | **100%** | 100%         |
+| **Overall** | **54** | **5** | **0** | **59** | **91.5%** | **100%** |
+
+> **Note:** Every AC maps to at least one planned test. PARTIAL means the planned test addresses the AC but does not fully satisfy all measurable aspects (e.g., latency bound, count, operational runtime).
+
+### Coverage by Test Level
+
+| Test Level  | Planned Tests | ACs Covered | Coverage % |
+|-------------|:-------------:|:-----------:|:----------:|
+| Integration | 20            | 32          | 54%        |
+| Unit        | 35            | 59          | 100%       |
+| CI/Tooling  | —             | 4           | PARTIAL    |
+
+> Integration tests use testcontainers (PostgreSQL + Redis) + `respx` KraftData mocks. Unit tests use `pytest-asyncio` + `freezegun` + `unittest.mock`. All tests run in PR CI (except P3 timing benchmarks and `@skip-ci` real-credential smoke tests).
+
+---
+
+## 2. Detailed Traceability Matrix
+
+### S04.01 — FastAPI Service Scaffold and Health Probes
+
+| AC ID       | Requirement                                                                                 | Priority | Test ID(s)      | Level       | Coverage |
+|-------------|--------------------------------------------------------------------------------------------|----------|-----------------|-------------|----------|
+| S04.01-AC1  | `GET /health` returns 200 with `{"status": "ok"}`                                           | P0       | E04-P0-001      | Integration | FULL ✅  |
+| S04.01-AC2  | `GET /ready` returns 200 when DB+Redis up; 503 when either down                              | P0       | E04-P0-002      | Integration | FULL ✅  |
+| S04.01-AC3  | Service starts in under 3 seconds locally                                                    | P3       | E04-P3-002      | Integration | FULL ✅  |
+| S04.01-AC4  | Configuration loads from environment variables and `.env` file                               | P2       | E04-P0-001/002 (implicit) | Integration | PARTIAL ⚠️ |
+
+**S04.01-AC4 note:** No dedicated test for config validation failure (e.g., `KRAFTDATA_API_KEY` absent or `DATABASE_URL` malformed). The env vars are exercised by every integration test fixture, providing implicit positive-path coverage. A negative-path unit test (bad/missing env var → startup error with clear message) would close this gap. Mark for implementation in `conftest.py`.
+
+---
+
+#### S04.01-AC1: `GET /health` returns 200 with `{"status": "ok"}` (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-001` — Integration
+    - **Given:** Service started with valid config in testcontainers environment
+    - **When:** `GET /health` is called
+    - **Then:** Returns HTTP 200 with exact body `{"status": "ok"}`; also verified in Docker Compose
+
+#### S04.01-AC2: `GET /ready` returns 200 / 503 correctly (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-002` — Integration (3 sub-cases via testcontainers)
+    - **Given:** (a) PostgreSQL and Redis both running; (b) PostgreSQL stopped; (c) Redis stopped
+    - **When:** `GET /ready` is called in each scenario
+    - **Then:** (a) 200; (b) 503 with body indicating PostgreSQL; (c) 503 with body indicating Redis
+
+#### S04.01-AC3: Service starts in under 3 seconds (P3)
+
+- **Coverage:** FULL ✅ (P3 / nightly)
+- **Tests:**
+  - `E04-P3-002` — Integration
+    - **Given:** Docker Compose cold start
+    - **When:** Container is started (`up --wait`)
+    - **Then:** First successful `GET /health` response within 3 seconds
+
+#### S04.01-AC4: Configuration from env vars (P2)
+
+- **Coverage:** PARTIAL ⚠️
+- **Tests:** Implicit coverage via all integration tests (env vars set in fixtures)
+- **Gaps:** Missing negative-path test: start with invalid/missing `KRAFTDATA_API_KEY` → expect startup failure with descriptive error
+- **Recommendation:** Add `E04-P2-NEW-001` unit test: pydantic-settings validation raises `ValidationError` on missing required fields; assert error message names the missing field.
+
+---
+
+### S04.02 — httpx Async Client and KraftData Authentication
+
+| AC ID       | Requirement                                                                                 | Priority | Test ID(s)             | Level       | Coverage |
+|-------------|--------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
+| S04.02-AC1  | Client authenticates with `Authorization: Bearer` header on every request                  | P0       | E04-P0-003             | Unit        | FULL ✅  |
+| S04.02-AC2  | Connection pool respects `CONCURRENCY_LIMIT`                                                | P2       | E04-P2-014             | Unit        | FULL ✅  |
+| S04.02-AC3  | Timeout errors raise `KraftDataTimeoutError` with original context                          | P1       | E04-P0-003, E04-P1-005 | Unit        | FULL ✅  |
+| S04.02-AC4  | 4xx responses raise `KraftDataAPIError` with status code and body                           | P1       | E04-P1-005, E04-P1-007 | Unit        | FULL ✅  |
+| S04.02-AC5  | Client cleanly shut down on app shutdown (no resource leaks)                                | P1       | E04-P1-020             | Unit        | FULL ✅  |
+
+#### S04.02-AC1: httpx auth header on every request (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-003` — Unit (mock httpx transport via `respx`)
+    - **Given:** `call_kraftdata()` invoked with arbitrary path
+    - **When:** Mock transport captures the outbound request
+    - **Then:** `Authorization: Bearer {KRAFTDATA_API_KEY}` header present; `Content-Type: application/json` default header present; API key matches configured value
+
+> Real KraftData stage smoke test tagged `@skip-ci` (requires live credentials); runs manually pre-Demo.
+
+#### S04.02-AC2: Connection pool limits (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-014` — Unit
+    - **Given:** `httpx.AsyncClient` constructed with `CONCURRENCY_LIMIT` config value
+    - **When:** Client limits are inspected
+    - **Then:** `max_connections=CONCURRENCY_LIMIT`; `max_keepalive_connections=CONCURRENCY_LIMIT//2`; `keepalive_expiry=30`
+
+#### S04.02-AC3: Timeout errors raise `KraftDataTimeoutError` (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-003` — Unit: mock raises `httpx.TimeoutException` → verify `KraftDataTimeoutError` raised with original context
+  - `E04-P1-005` — Integration: `respx` raises `httpx.TimeoutException` → caller receives HTTP 504
+
+#### S04.02-AC4: 4xx → `KraftDataAPIError` (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-005` — Unit: mock returns 500 → caller receives 502 (error mapped)
+  - `E04-P1-007` — Unit: mock returns 404 → call count=1 (no retry); error propagated immediately
+
+#### S04.02-AC5: Clean shutdown (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-020` — Unit
+    - **Given:** FastAPI app running with lifespan-managed `httpx.AsyncClient`
+    - **When:** App lifespan shutdown is triggered
+    - **Then:** `httpx.AsyncClient.aclose()` called; mock transport reports 0 pending connections
+
+---
+
+### S04.03 — Agent Registry
+
+| AC ID       | Requirement                                                                                   | Priority | Test ID(s)             | Level       | Coverage |
+|-------------|-----------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
+| S04.03-AC1  | Registry loads 29 entries from YAML without error                                              | P0       | E04-P0-004, E04-P3-005 | Unit (P3)   | FULL ✅* |
+| S04.03-AC2  | `resolve("executive-summary")` returns correct UUID and type                                   | P0       | E04-P0-004             | Unit        | FULL ✅  |
+| S04.03-AC3  | `resolve("nonexistent")` raises `AgentNotFoundError` (HTTP 404)                               | P0       | E04-P0-004             | Unit        | FULL ✅  |
+| S04.03-AC4  | Duplicate logical names in YAML cause startup failure with clear error                         | P1       | E04-P1-017             | Unit        | FULL ✅  |
+| S04.03-AC5  | Reload endpoint updates registry without service restart                                       | P2       | E04-P2-001/002/003     | Integration | FULL ✅  |
+
+> *S04.03-AC1: E04-P0-004 loads 5-entry fixture (validates mechanism). E04-P3-005 validates full 29-entry file (nightly only). Exact-count verification deferred to P3. Classified FULL because the loading mechanism is tested at P0; the 29-entry count is a data invariant checked nightly.
+
+#### S04.03-AC1: 29 entries loaded (P0)
+
+- **Coverage:** FULL ✅ (mechanism P0, count P3 nightly)
+- **Tests:**
+  - `E04-P0-004` — Unit: 5-entry fixture YAML; assert entry count = 5; assert load succeeds without error; assert Pydantic model validation passes
+  - `E04-P3-005` — Integration (nightly): full `config/agents-full.yaml` with 29 entries; assert entry count = 29; assert `GET /admin/circuits` lists 29 entries all `CLOSED`
+- **Gap:** No P1/PR-level test verifies exact count = 29. If `agents.yaml` is under-populated at implementation time, the CI gap won't be caught until nightly E04-P3-005 runs. **Recommend** adding an assertion in E04-P0-004's fixture fixture header comment that the full 29-entry file path is `config/agents.yaml` and that P3-005 must pass before Sprint 4 Demo.
+
+#### S04.03-AC2: Resolve known name (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-004` — Unit: `registry.resolve("executive-summary")` returns `AgentEntry` with expected `kraftdata_id` and `type=agent`
+
+#### S04.03-AC3: Resolve unknown name → `AgentNotFoundError` / 404 (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-004` — Unit: `registry.resolve("nonexistent-agent")` raises `AgentNotFoundError`; assert HTTP router maps this to 404
+
+#### S04.03-AC4: Duplicate names fail startup (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-017` — Unit: YAML fixture with duplicate `executive-summary` key; assert `AgentRegistry.__init__` raises `ValueError` or `StartupError`; assert error message names the duplicate key
+
+#### S04.03-AC5: Hot-reload (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-001` — Integration: start with YAML containing agent A; POST `/admin/registry/reload` with YAML containing agent B; assert `resolve(B)` succeeds; assert `resolve(A)` raises `AgentNotFoundError`
+  - `E04-P2-002` — Unit: trigger reload with invalid YAML (duplicate key); assert existing registry unchanged; assert endpoint returns 400
+  - `E04-P2-003` — Unit: 10 concurrent `resolve()` tasks + reload midway; assert all complete without exception (lock correctness, E04-R-006 mitigation)
+
+---
+
+### S04.04 — Sync Agent, Workflow, and Team Execution Endpoints
+
+| AC ID       | Requirement                                                                                   | Priority | Test ID(s)         | Level       | Coverage |
+|-------------|-----------------------------------------------------------------------------------------------|----------|--------------------|-------------|----------|
+| S04.04-AC1  | `POST /agents/name/run` resolves logical name to UUID and returns KraftData response           | P0       | E04-P0-005         | Integration | FULL ✅  |
+| S04.04-AC2  | `POST /agents/{uuid}/run` works without registry lookup                                        | P1       | E04-P1-001         | Unit        | FULL ✅  |
+| S04.04-AC3  | `POST /workflows/{id}/run` rejects if registry entry type is not `workflow`                   | P0       | E04-P0-006         | Integration | FULL ✅  |
+| S04.04-AC4  | `POST /storage/{id}/files` successfully uploads a test PDF                                     | P1       | E04-P1-002         | Integration | FULL ✅  |
+| S04.04-AC5  | Missing `X-Caller-Service` header returns 400                                                  | P1       | E04-P1-003         | Unit        | FULL ✅  |
+| S04.04-AC6  | KraftData 500 response returns 502 to caller with error details                                | P1       | E04-P1-005         | Integration | FULL ✅  |
+| S04.04-AC7  | KraftData timeout returns 504 to caller                                                        | P1       | E04-P1-005         | Integration | FULL ✅  |
+
+#### S04.04-AC1: Logical name resolution + proxy (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-005` — Integration (`respx` mock):
+    - **Given:** `respx` intercepts `POST /client/api/v1/agents/{uuid}/run`
+    - **When:** Caller sends `POST /agents/executive-summary/run` with JSON body
+    - **Then:** KraftData URL contains resolved UUID (not logical name); request body forwarded verbatim; response body matches KraftData mock response; status 200
+
+#### S04.04-AC2: Raw UUID passthrough (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-001` — Unit: path param is valid UUID format; assert `AgentRegistry.resolve()` NOT called (spy); assert KraftData URL uses the raw UUID verbatim
+
+#### S04.04-AC3: Type enforcement (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-006` — Integration (3 sub-cases):
+    - (a) Valid workflow-type entry → `/client/api/v1/workflows/{id}/run` → 200
+    - (b) Valid team-type entry → `/client/api/v1/teams/{id}/run` → 200
+    - (c) Workflow endpoint called with agent-type registry entry → 400 with clear error body
+
+#### S04.04-AC4: Storage upload (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-002` — Integration: POST multipart with small test PDF; assert KraftData storage URL correct; assert file ID returned in response
+
+#### S04.04-AC5: Missing `X-Caller-Service` → 400 (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-003` — Unit: call each of the 5 execution endpoints without `X-Caller-Service` header; assert 400 for all; assert error body mentions the missing header name
+
+#### S04.04-AC6: KraftData 500 → 502 (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-005` — Integration: `respx` mock returns 500; assert caller receives 502; assert error details forwarded or wrapped
+
+#### S04.04-AC7: KraftData timeout → 504 (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-005` — Integration: `respx` raises `httpx.TimeoutException`; assert caller receives 504
+
+---
+
+### S04.05 — SSE Stream Proxy Endpoints
+
+| AC ID       | Requirement                                                                                  | Priority | Test ID(s)    | Level | Coverage      |
+|-------------|----------------------------------------------------------------------------------------------|----------|---------------|-------|---------------|
+| S04.05-AC1  | Client receives SSE events in real time (latency < 100ms per event)                          | P1       | E04-P1-009    | Unit  | PARTIAL ⚠️    |
+| S04.05-AC2  | Stream completes cleanly on normal agent completion                                           | P1       | E04-P1-009    | Unit  | FULL ✅       |
+| S04.05-AC3  | Client disconnect cancels upstream KraftData connection within 5s                             | P1       | E04-P1-011    | Unit  | FULL ✅       |
+| S04.05-AC4  | KraftData disconnect sends error event to client                                              | P1       | E04-P1-010    | Unit  | FULL ✅       |
+| S04.05-AC5  | Idle stream times out after 120s with timeout event                                           | P2       | E04-P2-006    | Unit  | FULL ✅       |
+| S04.05-AC6  | Heartbeat events arrive every ~15s during idle periods                                        | P2       | E04-P2-004    | Unit  | FULL ✅       |
+| S04.05-AC7  | Partial SSE frames are correctly reassembled                                                  | P2       | E04-P2-005    | Unit  | FULL ✅       |
+
+#### S04.05-AC1: SSE latency < 100ms per event (P1)
+
+- **Coverage:** PARTIAL ⚠️
+- **Tests:**
+  - `E04-P1-009` — Integration: mock SSE source with 3 events; assert events forwarded in correct order; assert `text/event-stream` content type. **Does NOT assert < 100ms wall-clock latency per event.**
+- **Gaps:**
+  - Missing: Explicit wall-clock timing assertion confirming < 100ms event forwarding latency
+  - Current test proves correctness (order, fields) but not performance of the forwarding path
+- **Recommendation:** Add a timing sub-assertion to E04-P1-009: record `time.time()` immediately before mock emits event and after `StreamingResponse` yields it; assert delta < 0.1s. Alternatively promote to E04-P3 benchmark test so CI isn't timing-sensitive.
+- **Risk link:** E04-R-002 (SSE edge-case fragility, Score 6)
+
+#### S04.05-AC2: Stream completes cleanly (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-009`: mock SSE source emits 3 events then closes; assert `StreamingResponse` closes cleanly; assert no exception propagated; assert final event received by caller
+
+#### S04.05-AC3: Client disconnect cancels upstream (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-011` — Unit (`asyncio` cancellation):
+    - **Given:** SSE proxy running; caller's response write raises `asyncio.CancelledError`
+    - **When:** CancelledError propagated
+    - **Then:** Upstream httpx request cancelled; active task count before = active task count after (no coroutine leak); no resource leak
+
+#### S04.05-AC4: Upstream disconnect → error event (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-010` — Unit: mock SSE source emits 2 events then raises `httpx.RemoteProtocolError`; assert final `event: error\ndata: {"error": "upstream_disconnected"}` sent; assert stream closed without exception propagated to caller
+
+#### S04.05-AC5: Idle timeout 120s (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-006` — Unit (`freezegun`): mock SSE source yields nothing; advance clock 120s; assert `event: timeout` sent; assert stream closed; assert all async tasks cleaned up
+
+#### S04.05-AC6: Heartbeat every ~15s (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-004` — Unit (`freezegun`): advance clock 15s; assert `event: heartbeat` sent; advance another 15s; assert second heartbeat; timing within ±2s
+
+#### S04.05-AC7: Partial SSE frame reassembly (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-005` — Unit: mock transport yields `b"data: partial"` then `b" content\n\n"` (two chunks); assert single complete `data: partial content` event forwarded; no malformed output
+
+---
+
+### S04.06 — Circuit Breaker and Retry Logic
+
+| AC ID       | Requirement                                                                                        | Priority | Test ID(s)    | Level | Coverage |
+|-------------|-----------------------------------------------------------------------------------------------------|----------|---------------|-------|----------|
+| S04.06-AC1  | Circuit opens after 5 consecutive failures; 6th call returns 503 without KraftData contact          | P0       | E04-P0-007    | Unit  | FULL ✅  |
+| S04.06-AC2  | After 30s cooldown, next call allowed through (HALF_OPEN state)                                     | P0       | E04-P0-008    | Unit  | FULL ✅  |
+| S04.06-AC3  | HALF_OPEN success → circuit CLOSED; subsequent calls proceed normally                               | P0       | E04-P0-008    | Unit  | FULL ✅  |
+| S04.06-AC4  | HALF_OPEN failure → circuit reopens for another 30s cooldown                                        | P1       | E04-P1-016    | Unit  | FULL ✅  |
+| S04.06-AC5  | Retry succeeds on 2nd attempt with ~1s delay; `retry_count=1` in execution log                      | P0       | E04-P0-009    | Unit  | FULL ✅  |
+| S04.06-AC6  | 3 retries exhausted → 502 returned; `retry_count=3` in log                                          | P1       | E04-P1-006    | Unit  | FULL ✅  |
+| S04.06-AC7  | 400 from KraftData is NOT retried; returned immediately                                              | P1       | E04-P1-007    | Unit  | FULL ✅  |
+| S04.06-AC8  | `GET /admin/circuits` returns state of all agents (failure counts, last failure time, state)         | P1       | E04-P1-008, E04-P3-005 | Integration | FULL ✅ |
+
+#### S04.06-AC1: Circuit opens after 5 failures (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-007` — Unit:
+    - **Given:** Mock always returns 500; circuit in CLOSED state
+    - **When:** 5 consecutive calls made
+    - **Then:** Circuit transitions CLOSED→OPEN after 5th failure; 6th call raises `CircuitOpenError` without invoking `call_kraftdata()` (spy confirms no HTTP call on 6th)
+
+#### S04.06-AC2/AC3: HALF_OPEN recovery lifecycle (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-008` — Unit (`freezegun`):
+    - **Given:** Circuit tripped (OPEN); clock frozen
+    - **When:** Clock advanced 30s
+    - **Then:** Next call enters HALF_OPEN; mock returns 200; circuit transitions to CLOSED; following call proceeds normally (no 503)
+
+#### S04.06-AC4: HALF_OPEN failure → OPEN again (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-016` — Unit (`freezegun`): trip circuit; advance 30s (HALF_OPEN); mock returns 500; assert circuit back to OPEN; assert immediately subsequent call returns 503 without HTTP attempt
+
+#### S04.06-AC5: Retry success on 2nd attempt (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-009` — Unit:
+    - **Given:** `respx` mock: first call 500, second call 200
+    - **When:** Execution call made
+    - **Then:** Final result 200; retry delay in range [0.75s, 1.25s] (±25% jitter); execution log `retry_count=1`
+
+#### S04.06-AC6: Retry exhaustion → 502 (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-006` — Unit: mock returns 500 four times (initial + 3 retries); assert 502 returned; assert retry delays ≈1s, 2s, 4s (with ±25% jitter bounds); assert `retry_count=3` in log
+
+#### S04.06-AC7: 4xx not retried (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-007` — Unit: mock returns 404; assert call count=1 (spy); assert no retry delay; assert 404 (or mapped response) returned immediately; assert `retry_count=0`
+
+#### S04.06-AC8: `GET /admin/circuits` (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-008` — Integration: trip circuit for one agent; call `/admin/circuits`; assert OPEN state, failure count, last failure time for that agent; assert other agents show CLOSED
+  - `E04-P3-005` — Integration (nightly): full 29-entry registry; assert all 29 agents listed; all show `circuit_state=CLOSED`, `failure_count=0` on fresh start
+
+---
+
+### S04.07 — KraftData Webhook Receiver and Redis Stream Publishing
+
+| AC ID       | Requirement                                                                                      | Priority | Test ID(s)              | Level       | Coverage |
+|-------------|--------------------------------------------------------------------------------------------------|----------|-------------------------|-------------|----------|
+| S04.07-AC1  | Valid signature → 200; message in Redis Stream; webhook_log entry created                         | P0       | E04-P0-010              | Integration | FULL ✅  |
+| S04.07-AC2  | Invalid signature → 401; nothing published to Redis                                               | P0       | E04-P0-011, E04-P0-012  | Integration + Unit | FULL ✅ |
+| S04.07-AC3  | Duplicate `execution_id` within 1 hour → 200 acknowledged, NOT re-published                       | P1       | E04-P1-012              | Integration | FULL ✅  |
+| S04.07-AC4  | Unknown event type → 200 + WARN log; nothing published                                            | P1       | E04-P1-013              | Unit        | FULL ✅  |
+| S04.07-AC5  | Webhook processing completes in < 50ms                                                            | P3       | E04-P3-003              | Unit        | FULL ✅  |
+| S04.07-AC6  | `gateway.webhook_log` contains entry for every received webhook (valid or invalid)                 | P0       | E04-P0-010, E04-P2-011  | Integration | FULL ✅  |
+
+#### S04.07-AC1: Valid webhook happy path (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-010` — Integration:
+    - **Given:** Valid HMAC-SHA256 signature generated with configured webhook secret
+    - **When:** `POST /webhooks/kraftdata` with `execution.completed` payload
+    - **Then:** HTTP 200; Redis `XADD` called with stream `agent.execution.completed`; message JSON matches expected format (execution_id, agent_id, agent_name, event_type, payload, received_at); `webhook_log` row inserted with `signature_valid=True`
+- **Risk link:** E04-R-001 (webhook signature bypass, Score 6)
+
+#### S04.07-AC2: Invalid signature → 401 (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-011` — Integration: POST with tampered signature; assert 401; assert Redis `XADD` NOT called; assert `webhook_log` row with `signature_valid=False`
+  - `E04-P0-012` — Unit (timing-safe comparison): inspect source for `hmac.compare_digest()` usage; time valid vs off-by-one invalid signatures; assert timing difference < 1ms for same-length tokens; assert naive string `==` NOT used
+- **Risk link:** E04-R-001 (SEC, timing attack mitigation)
+
+#### S04.07-AC3: Idempotency (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-012` — Integration: POST same webhook twice; assert both return 200; assert Redis `XADD` called exactly once (spy); assert `webhook_log` has 2 rows; Redis SET TTL=1h deduplication verified
+
+#### S04.07-AC4: Unknown event type (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-013` — Unit: POST `event_type: "execution.unknown"`; assert 200; assert Redis `XADD` NOT called; assert WARN log emitted
+
+#### S04.07-AC5: Processing < 50ms (P3)
+
+- **Coverage:** FULL ✅ (P3 / nightly)
+- **Tests:**
+  - `E04-P3-003` — Unit (mocked Redis + DB): measure wall clock over 100 runs; assert mean < 50ms
+
+#### S04.07-AC6: webhook_log for all webhooks (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-010` (valid signature path): webhook_log row with `signature_valid=True`
+  - `E04-P2-011` — Integration (both paths): POST valid → `signature_valid=True`; POST invalid → `signature_valid=False`; assert both rows present
+
+---
+
+### S04.08 — Execution Logging and Database Schema
+
+| AC ID       | Requirement                                                                                     | Priority | Test ID(s)             | Level       | Coverage |
+|-------------|--------------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
+| S04.08-AC1  | Migration creates `gateway.agent_executions` and `gateway.webhook_log` with all indexes          | P2       | E04-P2-015             | Integration | FULL ✅  |
+| S04.08-AC2  | Every sync execution creates exactly one `agent_executions` row with accurate timing              | P0       | E04-P0-013             | Integration | FULL ✅  |
+| S04.08-AC3  | Streaming execution creates row; `is_streaming=True`; `end_time` set on stream complete           | P1       | E04-P1-018             | Integration | FULL ✅  |
+| S04.08-AC4  | Circuit-open rejections logged with `status=circuit_open` and `latency_ms=0`                     | P1       | E04-P1-019             | Unit        | FULL ✅  |
+| S04.08-AC5  | `GET /admin/executions` with `agent_name`/`status` filters returns only matching rows; pagination | P2       | E04-P2-009, E04-P3-004 | Integration | FULL ✅  |
+| S04.08-AC6  | Logging failure does not cause proxy call to fail (fire-and-forget with error log)                | P2       | E04-P2-010             | Unit        | FULL ✅  |
+
+#### S04.08-AC1: Migration tables + indexes (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-015` — Integration (testcontainers PostgreSQL): run Alembic migration; assert both tables exist; assert all 6 indexes exist (`idx_agent_executions_agent_name`, `idx_agent_executions_status`, `idx_agent_executions_start_time`, `idx_agent_executions_caller`, `idx_webhook_log_execution_id`, `idx_webhook_log_event_type`); assert column types and nullability
+
+#### S04.08-AC2: Sync execution row accuracy (P0)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P0-013` — Integration (testcontainers full stack):
+    - **Given:** Proxy call made through testcontainers PostgreSQL + Redis stack
+    - **When:** Call completes
+    - **Then:** Exactly 1 `agent_executions` row; `start_time` non-null; `end_time` non-null and ≥ `start_time`; `status=success`; `latency_ms > 0`; `caller_service` populated; `execution_id` non-null
+
+#### S04.08-AC3: Streaming execution row (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-018` — Integration: make streaming call; after stream ends, query table; assert `is_streaming=True`; assert `end_time IS NOT NULL`; assert `status=success`
+
+#### S04.08-AC4: Circuit-open logged (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-019` — Unit: trip circuit; make call; assert execution log row `status=circuit_open`; assert `latency_ms=0`; assert `error_message` describes circuit state; assert KraftData not called (spy)
+
+#### S04.08-AC5: Filtered queries + pagination (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-009` — Integration: seed 10 rows with varied names/statuses; query `?agent_name=executive-summary&status=failed`; assert only matching rows; query `?limit=3&offset=3`; assert correct page
+  - `E04-P3-004` — Integration (nightly): seed 1000 rows; time paginated query; assert < 200ms
+
+#### S04.08-AC6: Log failure swallowed (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-010` — Unit: mock `SessionLocal.execute()` raises `asyncpg.PostgresError`; make proxy call; assert 200 returned; assert ERROR log emitted with execution_id; assert no exception propagated
+
+---
+
+### S04.09 — Rate Limit Management and Concurrency Control
+
+| AC ID       | Requirement                                                                                  | Priority | Test ID(s)    | Level       | Coverage |
+|-------------|-----------------------------------------------------------------------------------------------|----------|---------------|-------------|----------|
+| S04.09-AC1  | `CONCURRENCY_LIMIT=2`: 3 calls → 2 proceed, 1 queues; all eventually succeed                  | P1       | E04-P1-014    | Integration | FULL ✅  |
+| S04.09-AC2  | `CONCURRENCY_LIMIT=2`, slow KraftData: 3rd returns 429 after queue timeout                    | P1       | E04-P1-015    | Unit        | FULL ✅  |
+| S04.09-AC3  | Per-agent `max_concurrent=2`: 3rd call to that agent returns 429 even with global capacity     | P2       | E04-P2-007    | Unit        | FULL ✅  |
+| S04.09-AC4  | `GET /admin/rate-limit` returns accurate active/queued counts in real time                    | P2       | E04-P2-008    | Integration | FULL ✅  |
+| S04.09-AC5  | Streaming requests hold semaphore permit for full stream duration                              | P2       | E04-P2-017    | Unit        | FULL ✅  |
+| S04.09-AC6  | Rate limit rejection logged to `agent_executions` with `status=rate_limited`                  | P1       | E04-P1-015    | Unit        | FULL ✅  |
+
+#### S04.09-AC1: Queuing under limit (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-014` — Integration: fire 3 concurrent asyncio requests; mock KraftData with 200ms delay; assert all 3 succeed (no 429); assert max 2 active simultaneously (semaphore `_value` spy)
+
+#### S04.09-AC2: 429 on queue timeout (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-015` — Unit (`QUEUE_TIMEOUT=0.1s` test override): mock semaphore full + slow KraftData (2s); assert 3rd call returns 429 after 0.1s; assert `rate_limited` status in execution log
+
+#### S04.09-AC3: Per-agent limit (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-007` — Unit: `CONCURRENCY_LIMIT=10`, test agent `max_concurrent=2`; fire 3 concurrent calls to same agent; assert 3rd returns 429; assert only 2 active simultaneously for that agent; global semaphore not exhausted
+
+#### S04.09-AC4: `GET /admin/rate-limit` live counts (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-008` — Integration: hold 3 requests in-flight while querying admin endpoint; assert `active_requests` and `queued_requests` match expected counts; assert `concurrency_limit` and `total_rejected` fields present
+
+#### S04.09-AC5: Streaming holds permit (P2)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P2-017` — Unit: start stream; assert semaphore `_value` decremented by 1; close stream; assert `_value` restored; assert subsequent sync call proceeds immediately
+
+#### S04.09-AC6: rate_limited logged (P1)
+
+- **Coverage:** FULL ✅
+- **Tests:**
+  - `E04-P1-015`: execution log row asserts `status=rate_limited` in conjunction with 429 response path
+
+---
+
+### S04.10 — Integration Tests and End-to-End Validation
+
+| AC ID       | Requirement                                                                                  | Priority | Test ID(s)                               | Level  | Coverage      |
+|-------------|-----------------------------------------------------------------------------------------------|----------|------------------------------------------|--------|---------------|
+| S04.10-AC1  | All 10 test scenarios pass in CI                                                               | P0       | S04.10 Scenarios 1–10 (see mapping)      | Mixed  | FULL ✅       |
+| S04.10-AC2  | Tests complete in under 60 seconds                                                             | P2       | CI timing (pytest-xdist + testcontainers)| CI     | PARTIAL ⚠️    |
+| S04.10-AC3  | No flaky tests (verified 3× in CI)                                                             | P2       | Burn-in strategy                         | CI     | PARTIAL ⚠️    |
+| S04.10-AC4  | Coverage report exceeds 85% on `app/services/` and `app/routers/`                             | P2       | `pytest-cov` CI gate                     | CI     | PARTIAL ⚠️    |
+| S04.10-AC5  | Tests use no real KraftData credentials (fully mocked)                                         | P1       | Structural: `respx` throughout           | Design | FULL ✅       |
+
+#### S04.10-AC1: 10 integration scenarios (P0)
+
+- **Coverage:** FULL ✅
+- **Scenario Mapping:**
+
+| Scenario | Description                                       | Covered By                          |
+|----------|---------------------------------------------------|--------------------------------------|
+| 1        | Happy path sync call by logical name              | E04-P0-005                           |
+| 2        | Happy path SSE stream                             | E04-P1-009, E04-P1-018               |
+| 3        | Circuit breaker trip (5 failures → 6th 503)       | E04-P0-007, E04-P0-008               |
+| 4        | Retry success (500 once then 200)                 | E04-P0-009                           |
+| 5        | Retry exhaustion (4× 500 → 502)                   | E04-P1-006                           |
+| 6        | Webhook valid → Redis + webhook_log               | E04-P0-010                           |
+| 7        | Webhook invalid signature → 401                   | E04-P0-011, E04-P0-012               |
+| 8        | Rate limit flood → queuing and 429                | E04-P1-014, E04-P1-015               |
+| 9        | Unknown agent logical name → 404                  | E04-P0-004, E04-P0-005               |
+| 10       | Type mismatch (workflow endpoint + agent type)    | E04-P0-006                           |
+
+#### S04.10-AC2: < 60 seconds CI runtime (P2)
+
+- **Coverage:** PARTIAL ⚠️
+- **Note:** No dedicated test asserts CI run time. Time budget enforced by `pytest-xdist` parallelization + testcontainers Docker layer caching. Monitored via CI run duration metric. Will be validated only after tests are written and first CI run completes.
+- **Recommendation:** Set a CI step timeout of 90s for the ai-gateway test stage as early warning. If consistently >60s, investigate with `pytest --durations=10`.
+
+#### S04.10-AC3: No flaky tests (3× run) (P2)
+
+- **Coverage:** PARTIAL ⚠️
+- **Note:** Flakiness validated operationally by burn-in runs (tagged `@pytest.mark.slow`). No individual test "tests" for flakiness. SSE timing tests (E04-P2-004, E04-P2-006, E04-P3-001) are highest flakiness risk due to `freezegun` + `asyncio` interaction.
+- **Recommendation:** Pin Python 3.11 for consistent asyncio behavior; use `asyncio.wait_for` pattern not sleep-based; run E04-P1-009/011 three times in nightly burn-in.
+
+#### S04.10-AC4: ≥85% line coverage (P2)
+
+- **Coverage:** PARTIAL ⚠️
+- **Note:** Coverage percentage is an emergent property of test implementation, not a testable AC. Enforced by `pytest-cov` with `--fail-under=85` as CI quality gate. PARTIAL because no test verifies coverage before tests exist. Targeted modules: `app/services/` and `app/routers/`.
+- **Recommendation:** Add coverage configuration to `pyproject.toml` before test implementation begins so the gate is active from Sprint 3 Week 1.
+
+#### S04.10-AC5: No real credentials (P1)
+
+- **Coverage:** FULL ✅
+- **Note:** Structural guarantee: all outbound KraftData calls are intercepted by `respx` mock router. CI does not have `KRAFTDATA_API_KEY` in secrets. Real-credential tests tagged `@skip-ci` and run manually only.
+
+---
+
+## 3. Gap Analysis
+
+### Critical Gaps (P0 Blockers) ❌
+
+**0 gaps found.** All 17 P0 acceptance criteria have FULL planned test coverage. No P0 blockers exist in the test design.
+
+---
+
+### High Priority Gaps (P1 — PR Blocker) ⚠️
+
+**1 gap found.**
+
+1. **S04.05-AC1: SSE latency < 100ms per event** (P1)
+   - Current Coverage: PARTIAL (functional forwarding tested; latency bound not asserted)
+   - Missing: Wall-clock timing assertion confirming < 100ms per event in E04-P1-009
+   - Recommend: Add `assert (t_after - t_before) < 0.1` for each event in E04-P1-009; or add a dedicated P2 benchmark test if CI timing sensitivity is a concern
+   - Impact: Without this, the latency SLA is unverified. Late discovery (>100ms in real execution) would impact streaming UX for all AI-assisted proposal workflows.
+   - Risk link: E04-R-002 (SSE edge-case fragility, Score 6)
+
+---
+
+### Medium Priority Gaps (P2 — Nightly / CI Quality Gates) ⚠️
+
+**4 gaps found.**
+
+1. **S04.01-AC4: Config validation negative path** (P2)
+   - Current Coverage: PARTIAL (positive path implicit; negative path missing)
+   - Missing: Unit test for startup failure on missing required env var; error message quality
+   - Recommend: Add `E04-P2-NEW-001` — pydantic-settings raises `ValidationError` on absent required fields
+
+2. **S04.10-AC2: CI run < 60 seconds** (P2)
+   - Current Coverage: PARTIAL (enforced by CI timing, no dedicated test)
+   - Note: Operational metric. Validate after first CI run. Set 90s pipeline timeout as early warning.
+
+3. **S04.10-AC3: No flaky tests (3× burn-in)** (P2)
+   - Current Coverage: PARTIAL (burn-in strategy documented; not yet validated)
+   - Note: SSE timing and circuit breaker cooldown tests are highest flakiness risk. Validate in first nightly burn-in.
+
+4. **S04.10-AC4: ≥85% line coverage** (P2)
+   - Current Coverage: PARTIAL (CI gate configured; coverage not yet measurable pre-implementation)
+   - Note: Wire `pytest-cov --fail-under=85` before Sprint 3 Week 1.
+
+---
+
+### Low Priority Gaps (P3 — Optional) ℹ️
+
+**0 gaps found.** All 2 P3 ACs have planned test coverage.
+
+---
+
+## 4. Coverage Heuristics Findings
+
+### Endpoint Coverage Gaps
+
+All 7 internal API endpoints have tests:
+
+| Endpoint                         | Covered By                      |
+|----------------------------------|---------------------------------|
+| `POST /agents/{id}/run`          | E04-P0-005, E04-P1-001          |
+| `POST /agents/{id}/run-stream`   | E04-P1-009, E04-P1-011, E04-P2-004/005/006 |
+| `POST /workflows/{id}/run`       | E04-P0-006                      |
+| `POST /workflows/{id}/run-stream`| E04-P2-016                      |
+| `POST /teams/{id}/run`           | E04-P0-006 (sub-case b)         |
+| `POST /storage/{id}/files`       | E04-P1-002                      |
+| `POST /webhooks/kraftdata`       | E04-P0-010, E04-P0-011, E04-P0-012 |
+
+Admin endpoints:
+- `GET /health` → E04-P0-001
+- `GET /ready` → E04-P0-002
+- `GET /admin/circuits` → E04-P1-008, E04-P3-005
+- `GET /admin/rate-limit` → E04-P2-008
+- `GET /admin/executions` → E04-P2-009, E04-P3-004
+- `POST /admin/registry/reload` → E04-P2-001/002/003
+
+**Endpoints without direct tests:** 0
+
+---
+
+### Auth / AuthZ Negative-Path Gaps
+
+| Auth Requirement                                  | Positive Path | Negative Path | Status     |
+|---------------------------------------------------|:-------------:|:-------------:|------------|
+| `Authorization: Bearer` on KraftData requests     | E04-P0-003    | Implicit (mock) | FULL ✅  |
+| `X-Kraftdata-Signature` HMAC validation           | E04-P0-010    | E04-P0-011/012 | FULL ✅  |
+| `X-Caller-Service` header required                | (all proxy)   | E04-P1-003     | FULL ✅  |
+| Webhook idempotency (replay protection)           | E04-P1-012    | E04-P1-012     | FULL ✅  |
+| Constant-time comparison (timing attack)          | E04-P0-012    | E04-P0-012     | FULL ✅  |
+
+**Auth/authz criteria missing negative-path tests:** 0
+
+> All three E04-R-001 (webhook signature bypass) mitigations — valid, invalid, and timing-safe tests — are explicitly planned at P0 priority.
+
+---
+
+### Happy-Path-Only Criteria
+
+| AC with potential happy-path gap                  | Error/Edge Test Planned?          | Status      |
+|---------------------------------------------------|-----------------------------------|-------------|
+| S04.04-AC1 (sync proxy response)                  | E04-P1-005 (500→502, timeout→504) | FULL ✅     |
+| S04.05-AC2 (SSE stream completion)                | E04-P1-010/011 (disconnect paths) | FULL ✅     |
+| S04.06-AC2 (half-open recovery)                   | E04-P1-016 (HALF_OPEN→OPEN fail)  | FULL ✅     |
+| S04.07-AC1 (valid webhook)                        | E04-P0-011 (invalid sig), E04-P1-012 (duplicate), E04-P1-013 (unknown type) | FULL ✅ |
+| S04.08-AC2 (execution logging)                    | E04-P2-010 (log failure swallowed)| FULL ✅     |
+
+**Happy-path-only criteria without error scenarios:** 0
+
+---
+
+## 5. Risk Coverage Summary
+
+### High-Priority Risks (Score ≥ 6) — Test Mitigation Map
+
+| Risk ID    | Category | Description                               | Score | Mitigation Tests                                    | Status   |
+|------------|----------|-------------------------------------------|-------|-----------------------------------------------------|----------|
+| E04-R-001  | SEC      | Webhook signature bypass (timing attack)  | 6     | E04-P0-010 (valid), E04-P0-011 (invalid), E04-P0-012 (constant-time) | PLANNED ✅ |
+| E04-R-002  | TECH     | SSE proxy edge-case fragility             | 6     | E04-P1-009/010/011 (core), E04-P2-004/005/006 (edge), E04-P3-001 (total timeout) | PLANNED ✅ |
+| E04-R-003  | DATA     | Redis Stream publish-or-acknowledge gap   | 6     | E04-P0-010 (happy), E04-P0-011 (invalid sig), E04-P1-012 (idempotency); manual: mock Redis XADD failure | PARTIAL ⚠️ |
+
+> **E04-R-003 residual:** The test design specifies manual testing for the "mock Redis `XADD` failure → verify 200 + ERROR log + `webhook_log.processed=False`" scenario but no automated test ID is assigned. Add `E04-P1-NEW-001` unit test to close this gap: mock `redis.xadd()` to raise `ConnectionError`; assert 200 returned; assert ERROR log with execution_id; assert `webhook_log.processed=False`.
+
+### Medium-Priority Risks (Score 3–5) — Test Mitigation Map
+
+| Risk ID    | Category | Description                             | Score | Mitigation Tests          | Status   |
+|------------|----------|-----------------------------------------|-------|---------------------------|----------|
+| E04-R-004  | PERF     | Semaphore starvation under streaming    | 4     | E04-P2-017 (streaming holds permit), E04-P1-014/015 (queue behavior) | PLANNED ✅ |
+| E04-R-005  | TECH     | Circuit breaker per-instance state      | 3     | No test (accepted limitation) | ACCEPTED |
+| E04-R-006  | TECH     | Registry hot-reload race condition      | 4     | E04-P2-003 (concurrent resolve + reload) | PLANNED ✅ |
+| E04-R-007  | OPS      | Execution log async backlog             | 4     | E04-P2-010 (DB error swallowed) | PLANNED ✅ |
+
+---
+
+## 6. Quality Gate Decision
 
 ### Gate Criteria Evaluation
 
-| Criterion | Required | Actual | Status |
-|-----------|----------|--------|--------|
-| P0 FULL coverage | 100% | 40% | ❌ NOT MET — 2 P0 tests with zero coverage; 4 P0 partially covered |
-| P1 FULL coverage (PASS target) | ≥ 90% | 44.4% | ❌ NOT MET |
-| P1 FULL coverage (minimum) | ≥ 80% | 44.4% | ❌ NOT MET |
-| Overall FULL coverage | ≥ 80% | 30.4% | ❌ NOT MET |
+| Criterion                   | Threshold | Actual   | Status        |
+|-----------------------------|-----------|----------|---------------|
+| P0 Coverage                 | 100%      | **100%** | ✅ MET        |
+| P1 Coverage (PASS target)   | ≥90%      | **96%**  | ✅ MET        |
+| P1 Coverage (minimum)       | ≥80%      | **96%**  | ✅ MET        |
+| Overall Coverage (minimum)  | ≥80%      | **91.5%**| ✅ MET        |
+| Security risks covered      | 100% P0   | 3/3 P0 SEC tests planned | ✅ MET |
+| Critical risks (score=9)    | 0 open    | 0 (none exist) | ✅ MET  |
 
-### Test Volume by Story
+### P0 Criteria Evaluation: ✅ ALL PASS
 
-| Story | Title | Tests Written | TDD Phase | Test File(s) |
-|-------|-------|-------------:|-----------|--------------|
-| S11.01 | ESPD Profile & Compliance Framework DB Schema + Migrations | 39 | 🔴 RED | `test_009_migration.py`, `admin-api/test_002_migration.py` |
-| S11.02 | ESPD Profile CRUD API | 41 | 🔴 RED | `test_espd_profile.py` |
-| S11.03 | ESPD Auto-Fill Agent Integration | 27 | 🔴 RED | `test_espd_autofill_export.py` |
-| S11.04 | Grant Eligibility Agent Integration | 15 | 🔴 RED | `test_grant_eligibility.py` |
-| S11.05 | Budget Builder Agent Integration | 27 | 🔴 RED | `test_budget_builder.py` |
-| S11.06 | Consortium Finder Agent Integration | 26 | 🔴 RED | `test_consortium_finder.py` |
-| S11.07 | Logframe Generator & Reporting Template | 35 | 🔴 RED | `test_logframe_generator.py`, `test_reporting_template.py` |
-| S11.08 | Compliance Framework CRUD API (Admin) | **0** | ⚫ NO TESTS | — |
-| S11.09 | Framework Assignment & Auto-Suggestion API (Admin) | **0** | ⚫ NO TESTS | — |
-| S11.10 | Regulation Tracker Agent & Platform Settings API (Admin) | **0** | ⚫ NO TESTS | — |
-| S11.11 | EU Grant Tools Frontend — Eligibility & Budget Panels | **0** | ⚫ NO TESTS | — |
-| S11.12 | EU Grant Tools Frontend — Consortium Finder & Logframe Panels | **0** | ⚫ NO TESTS | — |
-| S11.13 | ESPD Profile Management & Auto-Fill Frontend | **0** | ⚫ NO TESTS | — |
-| S11.14 | Compliance Admin — Framework Management Frontend | **0** | ⚫ NO TESTS | — |
-| S11.15 | Compliance Admin — Assignment, Suggestions & Regulation Tracker Frontend | **0** | ⚫ NO TESTS | — |
-| S11.16 | E2E Integration Testing & Agent Error Handling Hardening | **0** | ⚫ NO TESTS | — |
-| **Total** | | **210** | **S11.01–07 RED; S11.08–16 none** | 9 test files |
+All 17 P0 ACs have FULL coverage in the test design:
+- Health/readiness probes: 2/2 ✅
+- KraftData authentication: 1/1 ✅
+- Agent registry core: 3/3 ✅
+- Sync proxy (agents + type enforcement): 2/2 ✅
+- Circuit breaker lifecycle: 4/4 ✅
+- Webhook security (valid + invalid + constant-time): 3/3 ✅
+- Execution audit log: 1/1 ✅
+- Integration suite (10 scenarios): 1/1 ✅
+
+### P1 Criteria Evaluation: ✅ PASS (96% ≥ 90%)
+
+24/25 P1 ACs have FULL coverage. 1 PARTIAL:
+- S04.05-AC1 (SSE latency < 100ms): functional test exists but no timing assertion. **Not a blocker; recommend adding timing assertion to E04-P1-009 during implementation.**
 
 ---
 
-## 2. Epic-Level Acceptance Criteria Traceability
+## TRACE_GATE: PASS
 
-*The 13 Epic-level acceptance criteria from `epic-11-grants-compliance.md`.*
+**Decision:** PASS
+**Gate Type:** Epic (test design phase)
+**Decision Mode:** Deterministic
 
-| # | Epic AC | Tests | Level | Priority | Coverage |
-|---|---------|-------|-------|----------|----------|
-| AC-E1 | Grant Eligibility Agent maps company profile → matched programmes with eligibility scores | S11.04: `TestAC1AC2HappyPath` (5 tests), `TestAC3ResponseParsing` (4 tests), `TestAC4AgentErrorHandling` (3 tests) | API | P0/P1 | **FULL** |
-| AC-E2 | Budget Builder Agent generates EU-compliant budget with cost categories, overhead, co-financing | S11.05: `TestAC1AC2HappyPath` (4 tests), `TestAC3ResponseParsing` (4 tests), `TestAC4ArithmeticValidation` (4 tests), `TestAC5ConsortiumBudget` (4 tests) | API | P0/P1 | **FULL** |
-| AC-E3 | Consortium Finder Agent searches Consortium Partners Store and returns ranked partner suggestions | S11.06: `TestAC1AC2HappyPath` (5 tests), `TestAC3AC5ResponseParsing` (6 tests), `TestAC6GracefulDegradation` (4 tests) | API | P1 | **FULL** |
-| AC-E4 | Logframe Generator Agent produces logical frameworks, work packages, Gantt chart data, deliverables | S11.07 logframe: `TestAC1AC2HappyPath` (4 tests), `TestAC3AC4ResponseParsing` (7 tests) | API | P1 | **FULL** |
-| AC-E5 | Reporting Template Generator Agent pre-fills periodic report templates from awarded project data | S11.07 reporting: `TestAC7AC8HappyPath` (5 tests), `TestAC11DOCX` (4 tests) | API | P1 | **FULL** |
-| AC-E6 | ESPD profiles can be created, edited, listed, and deleted with structured data mapped to ESPD XML schema (Parts II-V) | S11.01: schema migration tests (E11-DB-001 to E11-DB-009); S11.02: all CRUD tests (AC1–AC5, AC9) | DB + API | P1 | **FULL** |
-| AC-E7 | ESPD Auto-Fill Agent maps company profile data to ESPD fields → pre-filled ESPD downloadable as XML and PDF | S11.03: `TestAC1AutoFillHappyPath` (4), `TestAC5ExportXml` (5), `TestAC7ExportPdf` (3) | API | P0 | **PARTIAL** *(XSD full validation weekly only; structural tests present)* |
-| AC-E8 | Admins can create, edit, activate/deactivate, and delete compliance frameworks with structured validation rules | **No ATDD checklist for S11.08** | — | P0/P1 | **NONE** |
-| AC-E9 | Admins can assign one or more compliance frameworks per opportunity, supporting hybrid national+EU scenarios | **No ATDD checklist for S11.09** | — | P1 | **NONE** |
-| AC-E10 | Framework Suggestion Agent auto-suggests applicable frameworks; admins confirm or override | **No ATDD checklist for S11.09** | — | P0/P1 | **NONE** |
-| AC-E11 | Regulation Tracker Agent runs on Celery Beat schedule, surfaces regulatory changes; admins acknowledge/dismiss | **No ATDD checklist for S11.10** | — | P1 | **NONE** |
-| AC-E12 | All agent calls go through AI Gateway with proper error handling, loading states, and timeout management | S11.03–S11.07: error handling for ESPD Auto-Fill, Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template (6 agents). Framework Suggestion + Regulation Tracker: **NOT COVERED** | API | P0 | **PARTIAL** *(6/8 agents)* |
-| AC-E13 | Frontend provides dedicated pages for grant tools, ESPD management, and compliance administration | **No ATDD checklists for S11.11–S11.15** | — | P2 | **NONE** |
+**Evidence:**
+- P0 Coverage: 100% (17/17 FULL) — Required: 100% ✅
+- P1 Coverage: 96% (24/25 FULL) — Pass target: ≥90% ✅
+- Overall Coverage: 91.5% (54/59 FULL) — Minimum: ≥80% ✅
+- Critical risks (score=9): 0 ✅
+- High-risk security tests (E04-R-001): 3 P0 tests planned ✅
 
----
+**Rationale:** All P0 requirements have FULL planned test coverage, including the three highest-risk items: webhook HMAC-SHA256 constant-time validation (E04-R-001), circuit breaker lifecycle (CLOSED→OPEN→HALF_OPEN→CLOSED), and execution audit logging. P1 coverage is 96% with one non-blocking PARTIAL (SSE latency bound). The test design is complete and ready for implementation. Four P2 PARTIAL items are operational CI quality gates (run time, flakiness, coverage threshold, config validation) that will be verified after first CI run — they do not block the PASS decision.
 
-## 3. Story-Level Acceptance Criteria Traceability
-
-### S11.01 — ESPD Profile & Compliance Framework DB Schema + Migrations
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Migration 009 runs from 008 baseline; espd_profiles restructured with profile_name + espd_data | E11-DB-001 → E11-DB-009 (client-api): `TestE11DB001MigrationLifecycle` (3), `TestE11DB007DataMigration` (2), `TestE11DB009Downgrade` (1), `TestE11DB002TableColumnStructure` (4), `TestE11DB003UniqueConstraintRemoval` (1), `TestE11DB004And005ColumnConstraints` (2), `TestE11DB006ServerDefaultBehavior` (1) | Integration | P0/P1 | **FULL** |
-| AC2 | Data migration: field_values → espd_data['part_iii'], profile_name = 'Migrated Profile' | `TestE11DB007DataMigration`: `test_field_values_migrated_to_espd_data_part_iii`, `test_empty_field_values_row_gets_empty_espd_data` | Integration | P0 | **FULL** |
-| AC3 | Admin-api migration 002: creates compliance_frameworks, platform_settings, opportunity_compliance_frameworks | E11-DB-010 → E11-DB-018 (admin-api): all 10 test classes, 22 test functions | Integration | P0 | **FULL** |
-| AC4 | All required indexes present in pg_indexes; ix_espd_profiles_company_id retained | E11-DB-008 (client-api), E11-DB-017 (admin-api): 8 tests | Integration | P0 | **FULL** |
-| AC5 | ORM model files created in admin-api | `test_orm_models_directory_created` (E11-DB-010 class) | Integration | P1 | **FULL** |
-| AC6–7 | *(implicit in AC1–AC3: column constraints, NOT NULL, defaults, FK cascade)* | E11-DB-004, E11-DB-005, E11-DB-016 | Integration | P0 | **FULL** |
-| AC8 | `alembic check` shows no pending changes (ORM ↔ DB sync) | `test_alembic_check_shows_no_pending_changes` (both services) | Integration | P1 | **FULL** |
-
-**Story Coverage:** 8/8 ACs → **FULL** | 39 tests total (P0: 26, P1: 13)
+**Phase Gate Note:** This PASS applies to the TEST DESIGN quality gate. The gate must be re-run as `TRACE_GATE (POST-IMPLEMENTATION)` after:
+1. All 55 planned tests are written
+2. First CI run confirms tests are GREEN
+3. Coverage ≥85% confirmed by `pytest-cov`
+4. Burn-in confirms 0 flaky tests
 
 ---
 
-### S11.02 — ESPD Profile CRUD API
+## 7. Traceability Recommendations
 
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /espd-profiles` → HTTP 201; company_id from JWT; admin/bid_manager only; others → 403 | `TestAC1CreateEspdProfile` (7 tests) + `TestAC9RoleEnforcement` (post variants) | API | P1/P0 | **FULL** |
-| AC2 | `GET /espd-profiles` → HTTP 200; all company profiles ordered by created_at DESC | `TestAC2ListEspdProfiles` (4 tests) | API | P1 | **FULL** |
-| AC3 | `GET /espd-profiles/{id}` → 200 (own) or 404 (cross-company); no 403 | `TestAC3GetEspdProfile` (3 tests) | API | P1 | **FULL** |
-| AC4 | `PATCH /espd-profiles/{id}` → 200; profile_name replaced; espd_data merged at Part level; 404 if cross-company | `TestAC4PatchEspdProfile` (6 tests) | API | P1 | **FULL** |
-| AC5 | `DELETE /espd-profiles/{id}` → 204; 404 if cross-company | `TestAC5DeleteEspdProfile` (3 tests) | API | P1 | **FULL** |
-| AC6 | Company-scoped RLS: all ops derive company_id from JWT; cross-company → 404 (not 403) | `TestAC6CrossCompanyRLS` (5 tests): GET/PATCH/DELETE cross-company → 404 | API | P0 | **FULL** |
-| AC7 | espd_data PATCH merge: Part-level (part_ii–part_v); absent Parts left unchanged | `test_patch_espd_data_part_level_merge` | API | P2 | **FULL** |
-| AC8 | espd_data validation: dict required; each Part key must be dict or absent; non-dict → 422 | `TestAC1CreateEspdProfile`: `test_post_invalid_part_type_returns_422` | API | P1 | **FULL** |
-| AC9 | Unauthenticated → 401; low-privilege roles → 403 on write; GET accessible to all | `TestAC9RoleEnforcement` (5 methods, 13 parametrized cases) | API | P0 | **FULL** |
+### Immediate Actions (Before Implementation Begins — Sprint 3 Week 1)
 
-**Story Coverage:** 9/9 ACs → **FULL** | 41 tests total (P0 security: 3 RLS + auth tests)
+1. **Wire `pytest-cov --fail-under=85`** — Add coverage config to `pyproject.toml` before writing any tests so the coverage gate is active from the first CI run. Prevents coverage regression during development.
 
----
+2. **Close E04-R-003 test gap** — Add `E04-P1-NEW-001`: unit test mocking `redis.xadd()` to raise `ConnectionError`; verify 200 returned to KraftData, ERROR log emitted with execution_id, `webhook_log.processed=False` recorded. This closes the publish-or-acknowledge gap (Risk Score 6).
 
-### S11.03 — ESPD Auto-Fill Agent Integration
+3. **Add SSE latency assertion** — Extend `E04-P1-009` to include wall-clock timing per event (assert < 100ms); or create `E04-P2-NEW-002` as a benchmark if CI timing sensitivity is a concern.
 
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /espd-profiles/{id}/auto-fill` → 200; snapshot_profile_id, source_profile_id, espd_data, changed_fields | `TestAC1AutoFillHappyPath` (4 tests) | API | P0 | **FULL** |
-| AC2 | Snapshot profile created with name "Auto-fill snapshot: …"; original profile unchanged | `test_autofill_creates_new_snapshot_profile_in_db` (2 tests) | API | P1 | **FULL** |
-| AC3 | Gateway payload includes espd_data, opportunity_id, company_id; X-Caller-Service header | `TestAC3GatewayPayload` (2 tests) | API | P1 | **FULL** |
-| AC4 | Gateway timeout / 5xx → 503 AGENT_UNAVAILABLE; no snapshot on failure | `TestAC4AgentErrorHandling` (4 tests) | API | P0 | **FULL** |
-| AC5 | `POST /espd-profiles/{id}/export` validates format=xml\|pdf; missing/invalid → 422 | `TestExportFormatValidation` (2 tests) | API | P1 | **FULL** |
-| AC6 | XML export: `<ESPDResponse xmlns="urn:X-eusolicit:espd:schema:v1">`; Parts mapped; well-formed | `TestAC5ExportXml` (5 tests): well-formed, root namespace, all Parts present | API | P0 | **PARTIAL** *(structural tests pass; full XSD lxml conformance deferred to weekly job per test-design exit criteria)* |
-| AC7 | PDF export: non-empty body starting with %PDF-; correct Content-Disposition | `TestAC7ExportPdf` (3 tests) | API | P1 | **FULL** |
-| AC8 | Company-scoped RLS on both endpoints; cross-company → 404 | `TestAC8CrossCompanyRLS` (2 tests) | API | P0 | **FULL** |
-| AC9 | Unauthenticated → 401; contributor/reviewer/read_only → 403 | `TestAC9Authorization` (4 methods, 8 with parametrize) | API | P0 | **FULL** |
-| AC10 | Empty espd_data ({}) → 422 with "no data to auto-fill" | `TestAC10EmptyEspdValidation` (1 test) | API | P1 | **FULL** |
+### Short-Term Actions (Sprint 3 — During Implementation)
 
-**Story Coverage:** 9/10 ACs FULL, 1/10 PARTIAL (AC6 XSD conformance) | 27 tests total
+4. **Add config validation negative-path test (`E04-P2-NEW-001`)** — Unit test: pydantic-settings `ValidationError` on absent `KRAFTDATA_API_KEY`; assert error message names the missing field; prevents silent misconfigurations in deployment.
+
+5. **Populate `agents.yaml` with all 29 entries before Sprint 4** — E04-P3-005 (which validates the full count nightly) must pass before Demo milestone. Ensure the full YAML fixture exists by end of Sprint 3.
+
+6. **Pin Python 3.11 in CI** — SSE timing tests (`freezegun` + `asyncio`) behave consistently only on pinned Python version. Document in `pyproject.toml` / `Dockerfile`.
+
+### Long-Term Actions (Post-Demo / Backlog)
+
+7. **Migrate circuit breaker state to Redis for multi-replica** — E04-R-005 (per-instance state, Score 3) accepted for Sprint 3–4 single-replica deployment. Add backlog item to migrate when auto-scaling is introduced (E10+ scale planning).
+
+8. **Add dead-letter alerting for `webhook_log.processed=False`** — E04-R-003 compensating monitoring. Alert on count > threshold in production. Track as separate observability backlog story.
+
+9. **Re-run full TRACE_GATE post-implementation** — After all 55 tests written and GREEN in CI, re-run `bmad-testarch-trace` to confirm PASS with actual test execution evidence (not just design coverage).
 
 ---
 
-### S11.04 — Grant Eligibility Agent Integration
+## 8. Residual Risks (For Monitoring Post-Implementation)
 
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /grants/eligibility-check` accepts optional filters; loads company; returns 200 | `test_eligibility_check_returns_200_with_response_structure` | API | P0 | **FULL** |
-| AC2 | Agent payload: company_profile + filters + X-Caller-Service + 30s timeout; no client retry | `test_eligibility_check_agent_payload_*` (4 tests), `test_eligibility_check_x_caller_service_header_sent` | API | P0 | **FULL** |
-| AC3 | Response parsed into GrantEligibilityResponse (matched programmes with eligibility_score, programme_name, call_reference, requirements_summary, gap_analysis) | `TestAC3ResponseParsing` (4 tests): full-match, partial-match, no-match, missing key default | API | P1 | **FULL** |
-| AC4 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE; no raw error forwarded | `TestAC4AgentErrorHandling` (3 tests): timeout, HTTP 500, HTTP 503 | API | P0 | **FULL** |
-| AC5 | Company not found → 404 | `test_company_not_found_returns_404` | API | P1 | **FULL** |
-| AC6 | Unauthenticated → 401; all roles permitted | `TestAC6Authorization` (2 tests) | API | P0 | **FULL** |
-| AC7 | No client-side filtering; null when absent; verbatim forwarding | `test_eligibility_check_with_programme_type_filter`, `test_eligibility_check_with_funding_range_filter` | API | P1 | **FULL** |
+| Priority | Risk Description                                              | Prob | Impact | Score | Mitigation                                                                 |
+|----------|---------------------------------------------------------------|------|--------|-------|----------------------------------------------------------------------------|
+| P1       | SSE latency < 100ms unverified (S04.05-AC1 PARTIAL)           | Med  | Med    | 4     | Add timing assertion to E04-P1-009 during implementation                   |
+| P2       | 29-entry count only in P3 nightly (S04.03-AC1)                | Low  | Low    | 1     | Ensure full `agents.yaml` exists by end of Sprint 3                         |
+| P2       | Redis XADD failure test missing (E04-R-003 partial)           | Low  | High   | 3     | Add E04-P1-NEW-001 before Sprint 4 Demo                                     |
+| P2       | CI run time unvalidated until tests implemented               | Low  | Low    | 1     | Monitor first CI run; set 90s timeout as early warning                     |
+| P3       | Circuit state per-instance (E04-R-005, Score 3)               | Low  | Med    | 2     | Accepted for Sprint 3–4; backlog for multi-replica migration                |
 
-**Story Coverage:** 7/7 ACs → **FULL** | 15 tests total (P0: 9, P1: 6)
+**Overall Residual Risk: LOW**
 
 ---
 
-### S11.05 — Budget Builder Agent Integration
+## 9. Related Artifacts
 
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /grants/budget-builder` accepts JSON body; returns 200 + BudgetBuilderResponse | `TestAC1AC2HappyPath` (4 tests) + `TestAC2OptionalParams` validation tests | API | P0 | **FULL** |
-| AC2 | Agent payload: all required fields + X-Caller-Service + company_id string; optional params forwarded | `test_budget_builder_agent_payload_has_required_fields`, `test_budget_builder_x_caller_service_header_sent`, `test_budget_builder_with_all_optional_params` | API | P0 | **FULL** |
-| AC3 | Response parsed: cost_categories, overhead_calculation, co_financing_split, per_partner_breakdown | `TestAC3ResponseParsing` (4 tests) | API | P1 | **FULL** |
-| AC4 | Budget arithmetic validation: line items, co-financing, overhead consistency | `TestAC4ArithmeticValidation` (4 tests): valid passes, 3 inconsistent → 422 | API | P0 | **FULL** |
-| AC5 | Per-partner breakdown required when consortium_size > 1; null accepted when solo | `TestAC5ConsortiumBudget` (4 tests) | API | P1 | **FULL** |
-| AC6 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC6AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
-| AC7 | Unauthenticated → 401; all roles permitted | `TestAC7Authorization` (2 tests) | API | P0 | **FULL** |
-| AC8 | Stateless: no DB writes | Implicit via fixture teardown (no session.flush); covered architecturally | API | P2 | **FULL** |
-
-**Story Coverage:** 8/8 ACs → **FULL** | 27 tests total (P0: 12, P1: 8, P2: 7)
+| Artifact                          | Path                                                              |
+|-----------------------------------|-------------------------------------------------------------------|
+| Epic file                         | `eusolicit-docs/planning-artifacts/epics/E04-ai-gateway-service.md` |
+| Test design document              | `eusolicit-docs/test-artifacts/test-design-epic-04.md`            |
+| E01 test design (infra dependency)| `eusolicit-docs/test-artifacts/test-design-epic-01.md`            |
+| NFR assessment                    | `eusolicit-docs/test-artifacts/nfr-report.md` (system-level)     |
+| System architecture test design   | `eusolicit-docs/test-artifacts/test-design-architecture.md`       |
+| Implementation plan               | `eusolicit-docs/planning-artifacts/implementation-plan.md`        |
 
 ---
 
-### S11.06 — Consortium Finder Agent Integration
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /grants/consortium-finder` accepts required/optional fields; returns 200 | `TestAC1AC2HappyPath` (happy path tests) + `TestAC1InputValidation` (6 tests) | API | P0 | **FULL** |
-| AC2 | Agent payload structure + X-Caller-Service header + timeout | `test_consortium_finder_agent_payload_has_required_fields`, `test_consortium_finder_x_caller_service_header_sent`, `test_consortium_finder_forwards_*` (2 tests) | API | P0 | **FULL** |
-| AC3 | ConsortiumFinderResponse structure: partners, total_results, page, page_size | `TestAC3AC5ResponseParsing`: `test_partners_have_required_fields`, `test_total_results_and_page_size_match_partner_count` | API | P1 | **FULL** |
-| AC4 | Single-page contract: page always 1, page_size == len(partners) | `test_total_results_and_page_size_match_partner_count` | API | P1 | **FULL** |
-| AC5 | Partners sorted descending by collaboration_score | `test_partners_returned_in_descending_collaboration_score_order`, `test_capability_overlap_ranking_reflected_in_scores` | API | P1 | **FULL** |
-| AC6 | Partial response graceful degradation: missing fields → null/[] not crash | `TestAC6GracefulDegradation` (4 tests): empty results, missing contact_info, missing past_projects, missing partners key | API | P2 | **FULL** |
-| AC7 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC7AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
-| AC8 | Unauthenticated → 401; all roles permitted | `TestAC8Authorization` (2 tests) | API | P0 | **FULL** |
-| AC9 | Stateless — no DB writes | Implicit via architecture (no AsyncSession dep) | API | — | **FULL** |
-
-**Story Coverage:** 9/9 ACs → **FULL** | 26 tests total (P0: 9, P1: 7, P2: 10)
-
----
-
-### S11.07 — Logframe Generator & Reporting Template Agent Integrations
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /grants/logframe-generate` accepts project_narrative (required, min_length=1), optional target_programme; returns 200 | `TestAC1AC2HappyPath` (4 tests) + `TestAC1InputValidation` (2 tests) | API | P0 | **FULL** |
-| AC2 | Agent payload: project_narrative, target_programme, company_id (str); X-Caller-Service; timeout 30s | `test_logframe_agent_payload_has_required_fields`, `test_logframe_x_caller_service_header_sent`, `test_logframe_null_target_programme_forwarded` | API | P0 | **FULL** |
-| AC3 | LogframeResponse: all 4 fields (logical_framework, work_packages, gantt_data, deliverable_table) with sub-types | `TestAC3AC4ResponseParsing` (7 tests): all fields, each sub-type validated | API | P1 | **FULL** |
-| AC4 | gantt_data: null when key absent; [] when present but empty (distinct!) | `test_gantt_data_absent_returns_null_not_error` (null) + `test_gantt_data_present_empty_list_not_null` (empty list distinct from null) | API | P1 | **FULL** |
-| AC5 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE | `TestAC5AgentErrorHandling` (3 tests) | API | P0 | **FULL** |
-| AC6 | Unauthenticated → 401; all roles allowed; stateless | `TestAC6Authorization` (1 test: unauthenticated → 401) | API | P0 | **FULL** |
-| AC7 | `POST /reporting-template` accepts project_id (UUID, required); returns 200 or 404 | `TestAC7AC8HappyPath` (1 test: 200), `TestAC8NotFound` (1: 404), `TestInputValidation` (2: 422) | API | P0 | **FULL** |
-| AC8 | Service loads project from DB with company RLS; builds agent payload; calls reporting-template-generator | `test_reporting_template_agent_payload_includes_project_data`, `test_reporting_template_x_caller_service_header_sent` | API | P1 | **FULL** |
-| AC9 | ReportingTemplateResponse structure: project_id, milestones (list), sections (list) | `test_reporting_template_milestones_have_required_fields`, `test_reporting_template_sections_have_required_fields` | API | P1 | **FULL** |
-| AC10 | Gateway timeout/5xx → 503 AGENT_UNAVAILABLE; 404 propagates unchanged | `TestAC10AgentErrorHandling` (3 tests): timeout, HTTP 500, export timeout | API | P0 | **FULL** |
-| AC11 | `POST /reporting-template/export` returns DOCX; correct Content-Type + Content-Disposition | `TestAC11DOCX`: `test_export_returns_docx_content_type`, `test_export_has_content_disposition_attachment`, `test_export_body_is_non_empty`, `test_export_unknown_project_id_returns_404` | API | P1 | **FULL** |
-| AC12 | DOCX includes heading, sections, milestones table, budget overview, consortium summary | `test_export_is_valid_word_document` (P2: python-docx parse + paragraphs > 0) | API | P2 | **PARTIAL** *(structure verified; content detail deferred to P3-006)* |
-
-**Story Coverage:** 11/12 ACs FULL, 1/12 PARTIAL (AC12 structural only) | 35 tests total (P0: 14, P1: 16, P2: 5)
-
----
-
-### S11.08 — Compliance Framework CRUD API (Admin)
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /admin/compliance-frameworks` creates with name, description, country, regulation_type, rules JSONB | **No ATDD checklist** | — | P0/P1 | **NONE** |
-| AC2 | `GET /admin/compliance-frameworks` lists with filters (country, regulation_type, is_active); paginated | **No ATDD checklist** | — | P1 | **NONE** |
-| AC3 | `GET /admin/compliance-frameworks/:id` detail view | **No ATDD checklist** | — | P1 | **NONE** |
-| AC4 | `PATCH /admin/compliance-frameworks/:id` updates any field | **No ATDD checklist** | — | P1 | **NONE** |
-| AC5 | `DELETE /admin/compliance-frameworks/:id` soft-delete or hard-delete if unused | **No ATDD checklist** | — | P0/P1 | **NONE** |
-| AC6 | Validate rules JSONB structure (rule_id, criterion, check_type, threshold, description) | **No ATDD checklist** | — | P2 | **NONE** |
-| AC7 | Prevent deletion of frameworks currently assigned to active opportunities | **No ATDD checklist** | — | P0/P1 | **NONE** |
-| AC8 | Enforce admin-only access via role-based middleware | **No ATDD checklist** | — | P0 | **NONE** |
-
-**Story Coverage:** 0/8 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
-
----
-
-### S11.09 — Framework Assignment & Auto-Suggestion API (Admin)
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | `POST /admin/opportunities/:id/compliance-frameworks` assigns one or more frameworks | **No ATDD checklist** | — | P1 | **NONE** |
-| AC2 | `GET /admin/opportunities/:id/compliance-frameworks` lists assigned frameworks | **No ATDD checklist** | — | P1 | **NONE** |
-| AC3 | `DELETE /admin/opportunities/:id/compliance-frameworks/:fid` removes assignment | **No ATDD checklist** | — | P1 | **NONE** |
-| AC4 | Auto-suggestion flow: Framework Suggestion Agent invoked on opportunity ingest; suggestions stored with confidence scores | **No ATDD checklist** | — | P0/P1 | **NONE** |
-| AC5 | `GET /admin/framework-suggestions` lists pending suggestions | **No ATDD checklist** | — | P0/P1 | **NONE** |
-| AC6 | `PATCH /admin/framework-suggestions/:id` accept/reject; on accept → auto-assign atomically | **No ATDD checklist** | — | P1 | **NONE** |
-| AC7 | Tests for assignment CRUD, suggestion generation, acceptance flow | **No ATDD checklist** | — | P1 | **NONE** |
-
-**Story Coverage:** 0/7 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
-
----
-
-### S11.10 — Regulation Tracker Agent & Platform Settings API (Admin)
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Celery Beat task triggers Regulation Tracker Agent on configurable schedule; parses regulatory_changes | **No ATDD checklist** | — | P1 | **NONE** |
-| AC2 | `GET /admin/regulatory-changes` lists with filters (status, severity, date range) | **No ATDD checklist** | — | P2 | **NONE** |
-| AC3 | `PATCH /admin/regulatory-changes/:id` acknowledge/dismiss with optional notes | **No ATDD checklist** | — | P1 | **NONE** |
-| AC4 | `GET /admin/platform-settings` admin only | **No ATDD checklist** | — | P2 | **NONE** |
-| AC5 | `PATCH /admin/platform-settings/:key` manages configuration | **No ATDD checklist** | — | P2 | **NONE** |
-| AC6 | Enforce admin-only access; tests for Celery task, CRUD, settings | **No ATDD checklist** | — | P1 | **NONE** |
-
-**Story Coverage:** 0/6 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required
-
----
-
-### S11.11 — EU Grant Tools Frontend — Eligibility & Budget Panels
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Grant Eligibility Panel: trigger button, loading spinner, results as programme list sorted by eligibility score | **No ATDD checklist** | — | P2 | **NONE** |
-| AC2 | Budget Builder Panel: input form; results as editable table with cost categories, co-financing split; recalculated totals | **No ATDD checklist** | — | P2 | **NONE** |
-| AC3 | Wire up React Query mutations; handle loading, error, empty states | **No ATDD checklist** | — | P2 | **NONE** |
-
-**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
-
----
-
-### S11.12 — EU Grant Tools Frontend — Consortium Finder & Logframe Panels
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Consortium Finder Panel: tag input, multi-select countries, partner cards with collaboration score | **No ATDD checklist** | — | P2 | **NONE** |
-| AC2 | Logframe Display Panel: logical framework table, work package cards, Gantt chart (Recharts), deliverable table | **No ATDD checklist** | — | P2 | **NONE** |
-| AC3 | Reporting Template tab: project selector, generation, editable fields, Download DOCX button | **No ATDD checklist** | — | P2 | **NONE** |
-
-**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
-
----
-
-### S11.13 — ESPD Profile Management & Auto-Fill Frontend
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | ESPD Profile List Page: table with profiles, create/edit/delete actions, empty state | **No ATDD checklist** | — | P2 | **NONE** |
-| AC2 | ESPD Profile Editor: multi-step form mapped to ESPD Parts II-V with inline validation and help tooltips | **No ATDD checklist** | — | P2 | **NONE** |
-| AC3 | ESPD Auto-Fill Page: side-by-side preview (original vs auto-filled), changed fields highlighted, accept/reject individual changes, XML/PDF download | **No ATDD checklist** | — | P2 | **NONE** |
-
-**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
-
----
-
-### S11.14 — Compliance Admin — Framework Management Frontend
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Framework List Page: data table with name, country, regulation type, active status toggle, filters, pagination | **No ATDD checklist** | — | P2 | **NONE** |
-| AC2 | Framework Editor Page: form with country dropdown, regulation type radio, dynamic rules editor (add/remove/reorder), preview panel | **No ATDD checklist** | — | P2 | **NONE** |
-
-**Story Coverage:** 0/2 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
-
----
-
-### S11.15 — Compliance Admin — Assignment, Suggestions & Regulation Tracker Frontend
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | Framework Assignment Page: opportunity selector, assigned frameworks panel, add/remove assignments | **No ATDD checklist** | — | P2 | **NONE** |
-| AC2 | Auto-Suggestion Queue: table of pending suggestions with confidence bars, accept/override/dismiss actions, batch processing | **No ATDD checklist** | — | P2 | **NONE** |
-| AC3 | Regulation Tracker Dashboard: feed of detected changes, acknowledge/dismiss actions with notes, filter by status/severity/date | **No ATDD checklist** | — | P2 | **NONE** |
-
-**Story Coverage:** 0/3 ACs → **NONE** | 0 tests | ⚠️ ATDD checklist required (frontend/E2E)
-
----
-
-### S11.16 — E2E Integration Testing & Agent Error Handling Hardening
-
-| AC | Description | Test(s) | Level | Priority | Coverage |
-|----|-------------|---------|-------|----------|----------|
-| AC1 | E2E Journey 1: company runs eligibility check → budget builder | **No ATDD checklist** | — | P3 | **NONE** |
-| AC2 | E2E Journey 2: company creates ESPD profile → auto-fill → XML export | **No ATDD checklist** | — | P3 | **NONE** |
-| AC3 | E2E Journey 3: admin creates framework → assigns → proposal validated (reuses E07 compliance checker) | **No ATDD checklist** | — | P3 | **NONE** |
-| AC4 | E2E Journey 4: opportunity ingested → suggestion generated → admin accepts → framework assigned | **No ATDD checklist** | — | P3 | **NONE** |
-| AC5 | E2E Journey 5: regulation tracker fires → admin views → acknowledges → reviews framework | **No ATDD checklist** | — | P3 | **NONE** |
-| AC6 | Agent error hardening: standardised timeout (30s), retry logic (1 retry + exp backoff), graceful degradation, consistent error format across all E11 endpoints | **No ATDD checklist** *(partial coverage in S11.03–S11.07 for 6 agents)* | — | P0 | **PARTIAL** |
-
-**Story Coverage:** 0/6 ACs FULL, 1 PARTIAL (AC6 via S11.03–S11.07) | 0 E2E tests | ⚠️ ATDD checklist required (fullstack/E2E)
-
----
-
-## 4. Epic Test ID Coverage Matrix
-
-### P0 — Critical (10 test IDs, 38 assertions required)
-
-| Test ID | Requirement | Tests | TDD Phase | Coverage |
-|---------|-------------|-------|-----------|----------|
-| **E11-P0-001** | ESPD profile company RLS — Company A JWT cannot GET/PATCH/DELETE Company B profile (404, not 403) | S11.02: `test_company_a_cannot_get_company_b_profile_returns_404` (1), `test_company_a_cannot_patch_company_b_profile_returns_404` (1), `test_company_a_cannot_delete_company_b_profile_returns_404` (1); S11.03: `test_autofill_cross_company_returns_404` (1), `test_export_cross_company_returns_404` (1) | 🔴 RED | **FULL** (5 tests, all 3 RLS vectors) |
-| **E11-P0-002** | ESPD Auto-Fill: timeout → structured 503 (not raw 500) | S11.03: `test_autofill_gateway_timeout_returns_503`, `test_autofill_gateway_500_returns_503_not_500`, `test_autofill_gateway_503_returns_503_with_standard_body` | 🔴 RED | **FULL** (3 tests: timeout + 500 + 503) |
-| **E11-P0-003** | ESPD XML export validates against EU ESPD XSD (Parts II-V all present) | S11.03: `test_export_xml_is_well_formed`, `test_export_xml_root_has_correct_namespace`, `test_export_xml_contains_all_parts_present_in_espd_data` | 🔴 RED | **PARTIAL** *(structural + namespace checked; full lxml XSD conformance test scheduled weekly per test-design exit criteria)* |
-| **E11-P0-004** | Grant Eligibility Agent: structured 503 on timeout; structured list returned on success | S11.04: `test_eligibility_check_returns_200_with_response_structure`, `test_gateway_timeout_returns_503_agent_unavailable` | 🔴 RED | **FULL** |
-| **E11-P0-005** | Budget Builder: line items sum to total_budget; overhead correctly applied; co-financing split sums to total_requested_funding | S11.05: `test_valid_solo_budget_arithmetic_passes`, `test_inconsistent_line_item_total_returns_422`, `test_inconsistent_co_financing_sum_returns_422`, `test_overhead_inconsistency_returns_422` | 🔴 RED | **FULL** (4 tests: valid + 3 invalid) |
-| **E11-P0-006** | Compliance Framework: non-admin JWT returns 403 on POST/GET/PATCH/DELETE /admin/compliance-frameworks | **No tests** (S11.08 has no ATDD checklist) | ⚫ NO TESTS | **NONE** — 🚨 BLOCKER |
-| **E11-P0-007** | Framework Suggestion admin-only: company JWT returns 403 on GET/PATCH /admin/framework-suggestions | **No tests** (S11.09 has no ATDD checklist) | ⚫ NO TESTS | **NONE** — 🚨 BLOCKER |
-| **E11-P0-008** | Agent error handling: all 8 E11 agent types return AGENT_UNAVAILABLE structure on agent 503 | S11.03 (ESPD Auto-Fill): 3 tests; S11.04 (Grant Eligibility): 3 tests; S11.05 (Budget Builder): 3 tests; S11.06 (Consortium Finder): 3 tests; S11.07 (Logframe + Reporting Template): 4+3 tests. **Missing:** Framework Suggestion (S11.09) + Regulation Tracker (S11.10) | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
-| **E11-P0-009** | AI Gateway mock: all 8 E11 agent types return deterministic fixture responses in CI | S11.03–S11.07: all 6 implemented agents have deterministic fixture responses. **Missing:** Framework Suggestion (S11.09) + Regulation Tracker (S11.10) | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
-| **E11-P0-010** | 30s timeout enforced on all E11 agent endpoints; request does not hang | S11.03: timeout test; S11.04: `test_gateway_timeout_returns_503_agent_unavailable`; S11.05: timeout test; S11.06: timeout test; S11.07: logframe + reporting template timeout tests. **Missing:** Framework Suggestion + Regulation Tracker | 🔴 RED (6/8) | **PARTIAL** (6 of 8 agents covered) |
-
-**P0 Summary:** 4 FULL · 4 PARTIAL · 2 NONE (BLOCKERS) | P0 FULL%: **40%**
-
----
-
-### P1 — High (18 test IDs, 42 assertions required)
-
-| Test ID | Requirement | Tests | TDD Phase | Coverage |
-|---------|-------------|-------|-----------|----------|
-| **E11-P1-001** | Grant Eligibility: full-match, partial-match, no-match; filter params applied | S11.04: `TestAC3ResponseParsing` (4 tests), `test_eligibility_check_with_programme_type_filter`, `test_eligibility_check_with_funding_range_filter` | 🔴 RED | **FULL** |
-| **E11-P1-002** | Budget Builder: per-partner breakdown present when consortium_size > 1; co_financing_split visualizable | S11.05: `TestAC5ConsortiumBudget` (4 tests) | 🔴 RED | **FULL** |
-| **E11-P1-003** | Consortium Finder: paginated results; capability overlap ranking; single-country filter; max_results honoured | S11.06: `TestAC3AC5ResponseParsing` (6 tests): sorting, total_results, required fields, single-country, max_results, ranking | 🔴 RED | **FULL** |
-| **E11-P1-004** | Logframe Generator: all 4 output fields present (logical_framework, work_packages, gantt_data, deliverable_table) | S11.07: `test_all_four_logframe_fields_present_in_response`, `test_logical_framework_rows_*`, `test_work_packages_*`, `test_gantt_tasks_*`, `test_deliverables_*` | 🔴 RED | **FULL** |
-| **E11-P1-005** | Logframe: gantt_data absent → partial result with null gantt_data (no 500) | S11.07: `test_gantt_data_absent_returns_null_not_error` + `test_gantt_data_present_empty_list_not_null` | 🔴 RED | **FULL** |
-| **E11-P1-006** | Reporting Template Generator: project data loaded from DB; agent called; pre-filled report returned as JSON | S11.07: `test_reporting_template_returns_200_with_json_structure`, `test_reporting_template_agent_payload_includes_project_data`, `test_reporting_template_x_caller_service_header_sent` | 🔴 RED | **FULL** |
-| **E11-P1-007** | Reporting Template: DOCX export generated, correct Content-Type, download succeeds | S11.07: `test_export_returns_docx_content_type`, `test_export_has_content_disposition_attachment`, `test_export_body_is_non_empty` | 🔴 RED | **FULL** |
-| **E11-P1-008** | ESPD CRUD: create, list, get, update, delete — all 5 endpoints functional | S11.02: `TestAC1`–`TestAC5` (smoke: each endpoint has a working test); S11.03: snapshot profile accessible via GET after auto-fill | 🔴 RED | **FULL** |
-| **E11-P1-009** | ESPD espd_data validation: missing Part III → 422 with field detail | S11.02 notes: "Not in scope for S11.02; completeness enforced at export time in S11.03." S11.03: `TestAC10EmptyEspdValidation` covers empty espd_data → 422. S11.02: `test_post_invalid_part_type_returns_422` covers non-dict Part → 422. **Missing:** missing Part III specifically → 422 with field detail | 🔴 RED | **PARTIAL** *(empty + non-dict Part covered; specific missing Part III validation gap)* |
-| **E11-P1-010** | Compliance Framework CRUD: create, list with filters, get, update, soft-delete (admin JWT) | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-011** | Framework assignment: assign 1 framework to opportunity, list, remove | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-012** | Hybrid assignment: assign 2 frameworks (national + EU) to same opportunity; list returns both | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-013** | Framework auto-suggestion: Framework Suggestion Agent called on opportunity ingest; stored with confidence | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-014** | Suggestion accept flow: PATCH → status=accepted + opportunity framework assignment created atomically | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-015** | Suggestion reject flow: PATCH → status=rejected; no auto-assignment created | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-016** | Regulation Tracker Celery task: fires with mocked agent; regulatory_changes records created | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-017** | Regulation Tracker: acknowledge + dismiss flows; acknowledged change links to affected framework | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P1-018** | Framework deletion guard: cannot DELETE framework assigned to active opportunity → 409 Conflict | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
-
-**P1 Summary:** 8 FULL · 1 PARTIAL · 9 NONE | P1 FULL%: **44.4%**
-
----
-
-### P2 — Medium (20 test IDs, 37 assertions required)
-
-| Test ID | Requirement | Tests | Phase | Coverage |
-|---------|-------------|-------|-------|----------|
-| **E11-P2-001** | Budget Builder: missing optional params → defaults applied or clear validation error | S11.05: `TestAC2OptionalParams` (6 tests) | 🔴 RED | **FULL** |
-| **E11-P2-002** | Consortium Finder: empty results; contact_info absent → null, not crash | S11.06: `TestAC6GracefulDegradation` (4 tests) | 🔴 RED | **FULL** |
-| **E11-P2-003** | Logframe: DOCX reporting export returns valid DOCX | S11.07: `test_export_is_valid_word_document` (python-docx parse) | 🔴 RED | **FULL** |
-| **E11-P2-004** | ESPD CRUD cross-company: Company A cannot PATCH/DELETE Company B profile → 404 | S11.02: `test_company_a_cannot_patch_company_b_profile_returns_404`, `test_company_a_cannot_delete_company_b_profile_returns_404` | 🔴 RED | **FULL** |
-| **E11-P2-005** | ESPD espd_data: all 4 Parts can be independently patched without overwriting other Parts | S11.02: `test_patch_espd_data_part_level_merge` (Part-level merge semantics) | 🔴 RED | **FULL** |
-| **E11-P2-006** | Compliance Framework rules JSONB: invalid rule schema → 422 | **No tests** (S11.08 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-007** | Framework suggestion: override with alternative framework_id → override framework assigned | **No tests** (S11.09 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-008** | Regulation tracker: GET /admin/regulatory-changes filters (status, severity, date_range) functional | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-009** | Platform settings: GET /admin/platform-settings (admin only); PATCH merges value | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-010** | Platform settings: invalid key → 404; invalid JSON value → 422 | **No tests** (S11.10 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-011** | Grant Eligibility Panel E2E: loading spinner, error state on 503, empty state | **No tests** (S11.11 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-012** | Budget Builder Panel E2E: editable table cells recalculate totals on input | **No tests** (S11.11 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-013** | Consortium Finder Panel E2E: tag input + multi-select; partner card grid | **No tests** (S11.12 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-014** | Logframe Panel E2E: Gantt chart renders; deliverable table sortable | **No tests** (S11.12 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-015** | ESPD Profile List E2E: empty state; "Create New Profile" navigates | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-016** | ESPD Profile Editor E2E: multi-step form + exclusion grounds checkboxes | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-017** | ESPD Auto-Fill Preview E2E: side-by-side diff; download XML functional | **No tests** (S11.13 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-018** | Compliance Framework List E2E: filter + search + pagination | **No tests** (S11.14 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-019** | Framework Assignment Page E2E: add 2 frameworks; remove 1; list shows remaining | **No tests** (S11.15 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P2-020** | Auto-Suggestion Queue E2E: batch accept; confidence bar colour-coded; filter | **No tests** (S11.15 no ATDD) | ⚫ NO TESTS | **NONE** |
-
-**P2 Summary:** 5 FULL · 0 PARTIAL · 15 NONE | P2 FULL%: **25%**
-
----
-
-### P3 — Low (8 test IDs)
-
-| Test ID | Requirement | Tests | Phase | Coverage |
-|---------|-------------|-------|-------|----------|
-| **E11-P3-001** | E2E Journey 1 (S11.16): eligibility check → budget builder | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-002** | E2E Journey 2 (S11.16): ESPD profile → auto-fill → preview → XML export | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-003** | E2E Journey 3 (S11.16): admin creates framework → assigns → proposal validated | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-004** | E2E Journey 4 (S11.16): opportunity ingested → suggestion → admin accepts → auto-assign | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-005** | E2E Journey 5 (S11.16): regulation tracker fires → admin acknowledges → reviews framework | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-006** | Reporting Template DOCX: valid Word document with structured sections | S11.07: `test_export_is_valid_word_document` (P2/P3: python-docx parse, paragraphs > 0) | 🔴 RED | **PARTIAL** *(structural parse verified; full section/heading content deferred)* |
-| **E11-P3-007** | Regulation Tracker Frontend E2E: feed renders; acknowledge/dismiss functional | **No tests** (S11.15/S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-| **E11-P3-008** | k6: 10 concurrent agent endpoint calls; p95 < 5s on mock; no 500s | **No tests** (S11.16 no ATDD) | ⚫ NO TESTS | **NONE** |
-
-**P3 Summary:** 0 FULL · 1 PARTIAL · 7 NONE | P3 FULL%: **0%**
-
----
-
-## 5. Coverage Heuristics Analysis
-
-### Endpoint Coverage
-
-| Category | Endpoints Exercised | Endpoints Without Tests |
-|----------|--------------------|-----------------------|
-| ESPD Profiles (S11.01–S11.03) | POST, GET(list), GET(detail), PATCH, DELETE `/espd-profiles/*`; POST `auto-fill`; POST `export` | None — all covered |
-| Grant Tools (S11.04–S11.07) | POST `/grants/eligibility-check`; POST `/grants/budget-builder`; POST `/grants/consortium-finder`; POST `/grants/logframe-generate`; POST `/grants/reporting-template`; POST `/grants/reporting-template/export` | None — all covered |
-| Compliance Admin (S11.08–S11.10) | — | POST/GET/PATCH/DELETE `/admin/compliance-frameworks/*`; POST/GET/DELETE `/admin/opportunities/:id/compliance-frameworks/*`; GET/PATCH `/admin/framework-suggestions/*`; GET/PATCH `/admin/regulatory-changes/*`; GET/PATCH `/admin/platform-settings/*` |
-| Frontend Pages (S11.11–S11.15) | — | `/grants/tools`, `/espd`, `/admin/compliance`, `/admin/compliance/assign`, `/admin/compliance/suggestions`, `/admin/compliance/regulations` |
-
-**Endpoints Without Tests:** 15+ admin endpoints (S11.08–S11.10) + all frontend pages (S11.11–S11.15)
-
-### Auth / Authz Coverage
-
-| Auth Scenario | Covered | Missing |
-|---------------|---------|---------|
-| ESPD RLS (company-scoped): 404 not 403 on cross-company | ✅ S11.02 + S11.03 (5 tests) | — |
-| ESPD API auth: unauthenticated → 401 | ✅ S11.02 + S11.03 | — |
-| ESPD API auth: low-privilege → 403 on write | ✅ S11.02 TestAC9 (13 parametrized cases) | — |
-| Agent API auth: unauthenticated → 401 | ✅ S11.04, S11.05, S11.06, S11.07 | — |
-| Agent API auth: all roles permitted (no role gate) | ✅ S11.04–S11.07: read_only role → 200 | — |
-| Admin API auth: company JWT → 403 | ❌ **Missing** — S11.08 (framework CRUD), S11.09 (suggestions), S11.10 (tracker) | E11-P0-006, E11-P0-007 |
-| Admin API auth: expired admin JWT → 401 | ❌ **Missing** — S11.08–S11.10 | E11-P0-006 (scope) |
-
-### Error Path Coverage
-
-| Error Scenario | Covered | Missing |
-|----------------|---------|---------|
-| AI Gateway timeout → 503 AGENT_UNAVAILABLE | ✅ S11.03–S11.07 (6 of 8 agents) | Framework Suggestion + Regulation Tracker |
-| AI Gateway 500 → 503 (not raw 500) | ✅ S11.03–S11.07 | Framework Suggestion + Regulation Tracker |
-| AI Gateway 503 → 503 with standard body | ✅ S11.03–S11.07 | Framework Suggestion + Regulation Tracker |
-| Empty agent response graceful degradation | ✅ S11.04 (empty programmes list), S11.06 (missing keys) | — |
-| Budget arithmetic inconsistency → 422 | ✅ S11.05 (3 inconsistency types) | — |
-| Missing partner breakdown → 422 | ✅ S11.05 | — |
-| Cross-company access → 404 (not 403) | ✅ S11.02 + S11.03 | — |
-| Framework deletion guard → 409 | ❌ **Missing** — E11-P1-018 | S11.08 ATDD required |
-| Suggestion accept atomicity failure | ❌ **Missing** — E11-R-007 | S11.09 ATDD required |
-| Celery Beat task agent timeout | ❌ **Missing** — E11-R-006 | S11.10 ATDD required |
-
----
-
-## 6. Gap Analysis
-
-### Critical Gaps (P0 — Gate Blockers)
-
-| Gap ID | Test ID | Story | Description | Risk |
-|--------|---------|-------|-------------|------|
-| **GAP-001** | E11-P0-006 | S11.08 | No tests for admin-only enforcement on compliance framework CRUD endpoints | E11-R-003 (SEC, score 6) |
-| **GAP-002** | E11-P0-007 | S11.09 | No tests for admin-only enforcement on framework suggestion endpoints | E11-R-003 (SEC, score 6) |
-| **GAP-003** | E11-P0-008 (partial) | S11.09, S11.10 | Framework Suggestion Agent + Regulation Tracker Agent error handling untested | E11-R-001 (TECH, score 6) |
-| **GAP-004** | E11-P0-009 (partial) | S11.09, S11.10 | Framework Suggestion + Regulation Tracker not in CI smoke gate | E11-R-001 (TECH, score 6) |
-| **GAP-005** | E11-P0-010 (partial) | S11.09, S11.10 | 30s timeout not verified for Framework Suggestion + Regulation Tracker | E11-R-001 (TECH, score 6) |
-| **GAP-006** | E11-P0-003 (partial) | S11.03 | Full EU ESPD XSD conformance validation (lxml) not in per-PR suite | E11-R-002 (DATA, score 6) |
-
-### High Gaps (P1 — Must Address Before Sprint Gate)
-
-| Gap ID | Test IDs | Stories | Description |
-|--------|----------|---------|-------------|
-| **GAP-007** | E11-P1-010 | S11.08 | Zero coverage on Compliance Framework CRUD (admin): create, list, get, update, soft-delete |
-| **GAP-008** | E11-P1-018 | S11.08 | Zero coverage on framework deletion guard (cannot delete if assigned to active opportunity) |
-| **GAP-009** | E11-P1-011, E11-P1-012 | S11.09 | Zero coverage on framework assignment CRUD (single + hybrid national+EU) |
-| **GAP-010** | E11-P1-013, E11-P1-014, E11-P1-015 | S11.09 | Zero coverage on auto-suggestion lifecycle (generate, accept, reject) |
-| **GAP-011** | E11-P1-016, E11-P1-017 | S11.10 | Zero coverage on Regulation Tracker Celery task + acknowledge/dismiss flows |
-| **GAP-012** | E11-P1-009 (partial) | S11.02/S11.03 | ESPD Part III missing specifically → 422 with field detail not fully tested |
-
-### Medium Gaps (P2 — Frontend + Admin Edge Cases)
-
-| Gap ID | Test IDs | Stories | Description |
-|--------|----------|---------|-------------|
-| **GAP-013** | E11-P2-006 | S11.08 | Rules JSONB validation (invalid schema → 422) |
-| **GAP-014** | E11-P2-007 | S11.09 | Suggestion override with alternative framework_id |
-| **GAP-015** | E11-P2-008, E11-P2-009, E11-P2-010 | S11.10 | Regulation tracker + platform settings edge cases |
-| **GAP-016** | E11-P2-011, E11-P2-012 | S11.11 | Grant Eligibility + Budget Builder frontend panels (E2E) |
-| **GAP-017** | E11-P2-013, E11-P2-014 | S11.12 | Consortium Finder + Logframe frontend panels (E2E) |
-| **GAP-018** | E11-P2-015, E11-P2-016, E11-P2-017 | S11.13 | ESPD Profile management frontend (E2E) |
-| **GAP-019** | E11-P2-018 | S11.14 | Compliance Framework List + Editor (E2E) |
-| **GAP-020** | E11-P2-019, E11-P2-020 | S11.15 | Framework Assignment + Auto-Suggestion Queue (E2E) |
-
-### Low Gaps (P3 — Deferred / Nightly)
-
-| Gap ID | Test IDs | Stories | Description |
-|--------|----------|---------|-------------|
-| **GAP-021** | E11-P3-001 to E11-P3-005 | S11.16 | All 5 E2E integration journeys (eligibility→budget, ESPD, framework admin, suggestion, regulation tracker) |
-| **GAP-022** | E11-P3-007 | S11.15/S11.16 | Regulation Tracker Frontend E2E |
-| **GAP-023** | E11-P3-008 | S11.16 | k6 agent load test (10 concurrent, p95 < 5s) |
-
----
-
-## 7. Phase 2 — Quality Gate Decision
-
-### Gate Criteria Evaluation
-
-| Criterion | Threshold | Actual | Status |
-|-----------|-----------|--------|--------|
-| P0 FULL coverage | **100%** | **40%** | ❌ NOT MET |
-| P1 FULL coverage (PASS) | ≥ 90% | 44.4% | ❌ NOT MET |
-| P1 FULL coverage (minimum) | ≥ 80% | 44.4% | ❌ NOT MET |
-| Overall FULL coverage | ≥ 80% | 30.4% | ❌ NOT MET |
-
-### Risk Context (from test-design-epic-11.md)
-
-| Risk ID | Category | Score | Status | Mitigation Tests |
-|---------|----------|-------|--------|-----------------|
-| E11-R-001 | TECH — AI Gateway error handling (8 agents) | 6 | ⚠️ PARTIAL | 6/8 agents covered; Framework Suggestion + Regulation Tracker missing |
-| E11-R-002 | DATA — ESPD XML schema non-conformance | 6 | ⚠️ PARTIAL | Structural tests written; full XSD weekly only |
-| E11-R-003 | SEC — Admin endpoint authorization gaps | 6 | ❌ NONE | GAP-001, GAP-002 — zero coverage on admin auth |
-| E11-R-004 | BUS — Budget arithmetic consistency | 6 | ✅ FULL | S11.05 covers all 3 inconsistency types |
-| E11-R-005 | SEC — ESPD company-scoped RLS | 6 | ✅ FULL | S11.02 + S11.03: 5 RLS tests |
-| E11-R-006 | OPS — Regulation Tracker Celery reliability | 4 | ❌ NONE | S11.10 ATDD required |
-| E11-R-007 | DATA — Framework suggestion atomicity | 4 | ❌ NONE | S11.09 ATDD required |
-| E11-R-008 | DATA — Logframe parser field completeness | 4 | ✅ FULL | S11.07 covers gantt_data null vs empty list |
-| E11-R-009 | BUS — Framework deletion guard | 4 | ❌ NONE | S11.08 ATDD required |
-| E11-R-010 | TECH — Hybrid framework assignment | 4 | ❌ NONE | S11.09 ATDD required |
-
-### Blocking Issues
-
-| Priority | Issue | Description | Story | Status |
-|----------|-------|-------------|-------|--------|
-| **P0** | GAP-001 — Admin auth zero coverage | No tests verify company JWT → 403 on `/admin/compliance-frameworks` | S11.08 | ⚫ OPEN |
-| **P0** | GAP-002 — Suggestion auth zero coverage | No tests verify company JWT → 403 on `/admin/framework-suggestions` | S11.09 | ⚫ OPEN |
-| **P0** | GAP-003/004/005 — 2 agent types not in CI gate | Framework Suggestion + Regulation Tracker have no mock responses, error handling, or timeout tests | S11.09, S11.10 | ⚫ OPEN |
-| **P1** | GAP-007 to GAP-011 | Zero coverage on S11.08, S11.09, S11.10 admin backend stories (9 P1 test IDs) | S11.08–S11.10 | ⚫ OPEN |
-
-### Recommendations
-
-**[URGENT — Before Gate Can Move]**
-
-1. **Run `bmad-testarch-atdd` for S11.08** — Compliance Framework CRUD API (Admin). Target: E11-P0-006, E11-P1-010, E11-P1-018, E11-P2-006 + admin auth tests for all framework endpoints.
-
-2. **Run `bmad-testarch-atdd` for S11.09** — Framework Assignment & Auto-Suggestion. Target: E11-P0-007, E11-P1-011 through E11-P1-015, E11-P2-007 + admin auth tests for suggestion endpoints.
-
-3. **Run `bmad-testarch-atdd` for S11.10** — Regulation Tracker & Platform Settings. Target: E11-P1-016, E11-P1-017, E11-P2-008 through E11-P2-010 + Celery Beat task tests.
-
-**[HIGH — This Sprint]**
-
-4. **Run `bmad-testarch-atdd` for S11.11–S11.15** — All 5 frontend stories (Playwright E2E). Target: E11-P2-011 through E11-P2-020.
-
-5. **Run `bmad-testarch-atdd` for S11.16** — E2E Integration + Agent Error Hardening. Target: E11-P3-001 through E11-P3-008 + AC6 agent error hardening for Framework Suggestion + Regulation Tracker.
-
-6. **Complete ESPD Part III validation gap** (GAP-012 / E11-P1-009) — Add specific test: `POST /espd-profiles` with espd_data missing `part_iii` → 422 with field-level error detail.
-
-**[MEDIUM — Deferred / Nightly]**
-
-7. **Add full EU ESPD XSD lxml validation** to per-PR suite (currently weekly-only per GAP-006). Risk E11-R-002 score 6 — consider promoting to per-PR for MVP milestone confidence.
-
-8. **Run `bmad-testarch-atdd` for S11.16 k6 load test** — E11-P3-008: 10 concurrent agent calls, p95 < 5s on mock.
-
----
-
-## 8. Sign-Off
+## 10. Sign-Off
 
 **Phase 1 — Traceability Assessment:**
 
-- Total Test IDs Tracked: 56 (P0: 10 · P1: 18 · P2: 20 · P3: 8)
-- Total Tests Written: 210 (🔴 RED phase, S11.01–S11.07 only)
-- Stories with Coverage: 7/16
-- Stories Without Coverage: 9/16 (S11.08–S11.16)
-- Overall FULL Coverage: 30.4% (17/56)
-- Critical Gaps (P0): 6 (2 NONE + 4 PARTIAL)
-- High Gaps (P1): 6 gap groups covering 9 test IDs
+- Overall Coverage: **91.5%** (54/59 FULL)
+- P0 Coverage: **100%** ✅ PASS
+- P1 Coverage: **96%** ✅ PASS
+- P2 Coverage: **73%** ⚠️ WARN (4 PARTIAL — operational meta-criteria)
+- Critical Gaps (P0 NONE): **0** ✅
+- High Priority Gaps (P1 PARTIAL): **1** (SSE latency — non-blocking)
 
 **Phase 2 — Gate Decision:**
 
-- **Decision**: ❌ FAIL
-- **P0 Evaluation**: ❌ ONE OR MORE FAILED (40% FULL, 2 blockers with zero coverage)
-- **P1 Evaluation**: ❌ FAILED (44.4% FULL, 9 test IDs uncovered)
-- **Overall Status**: ❌ FAIL
+- **Decision:** PASS ✅
+- **P0 Evaluation:** ✅ ALL PASS (17/17 FULL)
+- **P1 Evaluation:** ✅ PASS (24/25 FULL, 96% ≥ 90%)
+
+**Overall Status: PASS ✅**
 
 **Next Steps:**
+- ✅ **PASS:** Proceed to test implementation (`bmad-testarch-atdd` for S04.01–S04.10)
+- Address 1 P1 concern (SSE latency assertion) during implementation of S04.05
+- Address E04-R-003 gap (Redis XADD failure test) during implementation of S04.07
+- Re-run TRACE_GATE after tests implemented and CI GREEN
 
-- If FAIL ❌: Block deployment, run `bmad-testarch-atdd` for S11.08–S11.16, re-run this gate.
-- Priority order: S11.08 → S11.09 → S11.10 → S11.11–S11.15 → S11.16
+**Generated:** 2026-04-14
+**Workflow:** bmad-testarch-trace (Create mode)
+**Epic:** E04 — AI Gateway Service
 
 ---
-
-## TRACE_GATE: FAIL
-
-**Generated:** 2026-04-11
-**Workflow:** bmad-testarch-trace (Epic 11 — EU Grant Specialization & Compliance)
 
 <!-- Powered by BMAD-CORE™ -->

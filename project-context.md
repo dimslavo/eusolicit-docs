@@ -1,7 +1,7 @@
 ---
 project_name: 'EU Solicit'
-date: '2026-04-09'
-last_updated_by: 'retrospective-epic-3'
+date: '2026-04-14'
+last_updated_by: 'retrospective-epic-4'
 ---
 
 # Project Context for AI Agents
@@ -80,6 +80,15 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 29. **All UI strings use `useTranslations()` / `getTranslations()` from next-intl.** Never hardcode display strings in components. All namespaces are: `common`, `nav`, `auth`, `forms`, `errors`, `wizard`. BG/EN message files must have identical key sets — enforced by the key-parity check test.
 30. **Shell components are server-compatible wrappers.** `<AppShell>`, `<Sidebar>`, `<TopBar>` are server components. Only the interactive leaves (`<SidebarToggle>`, `<UserAvatarMenu>`, `<LanguageSelector>`) carry `'use client'`. Keep this boundary discipline in all feature components.
 31. **Wizard state persists in Zustand across page reload.** The `wizardStore` uses `persist` middleware. If `user?.companyId` is undefined at wizard submission, show a validation error — never fall back to a hardcoded stub ID.
+
+### AI Gateway & External Service Integration
+
+47. **All outbound HTTP calls to external services must use the two-layer resilience pattern.** Circuit breaker (outer, per-logical-name) wraps retry (inner, exponential backoff). Never call an external API with only retry or only circuit breaking. The `call_kraftdata()` function in `ai-gateway` is the reference implementation.
+48. **Webhook signature validation must use `hmac.compare_digest()`, never `==`.** Applies to all inbound webhooks regardless of provider. Always read the raw request body bytes BEFORE parsing JSON (body bytes are required for HMAC). Unit test must verify both `hmac.compare_digest` is used in source AND that timing difference between valid/invalid signatures is < 1ms.
+49. **Agent/service registry YAML must fail fast on startup.** If `config/agents.yaml` is missing, has duplicate entries, or fails Pydantic validation, the service must raise an error and refuse to start. Never silently ignore registry loading failures — this would cause all downstream AI calls to return 404.
+50. **Streaming endpoints (`run-stream`) must enforce idle timeout (120s), total timeout (600s), and heartbeat (15s).** Without heartbeat, proxies/load balancers may drop idle SSE connections with no signal to the client. Without timeouts, an abandoned stream holds a semaphore permit indefinitely, blocking subsequent requests.
+51. **SSE `StreamingResponse` requires `Cache-Control: no-cache` and `X-Accel-Buffering: no`.** These headers prevent nginx and CDN intermediaries from buffering SSE chunks. Always set on any endpoint returning `text/event-stream`.
+52. **`X-Caller-Service` header is required on all AI Gateway execution endpoints.** Used for execution logging, rate limit attribution, and debugging. Return 400 with a descriptive error if missing. Generating services must always pass this header when calling the gateway.
 
 ### Authentication & Security
 
@@ -160,6 +169,46 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 
 - **Toast notifications via `useToast()` from `packages/ui`.** Call `toast.success(title)`, `toast.error(title)`, `toast.info(title)` — not custom alert patterns. The toast system handles stacking, auto-dismiss timers, and portal rendering.
 
+### From Epic 4 Retrospective
+
+- **All outbound HTTP calls use a two-layer resilience pattern: circuit breaker (outer) wrapping retry (inner).** `circuit.call(lambda: with_retry(http_factory, agent_name=...))` — circuit rejects immediately when OPEN; retry applies exponential backoff (1s → 2s → 4s, ±25% jitter) for 5xx/timeout/connection errors only. 4xx and `CircuitOpenError` are non-retryable and propagate immediately through both layers. Apply this pattern to any new outbound HTTP client in subsequent epics.
+
+- **YAML-driven registry pattern decouples business logical names from external provider IDs.** `config/<service>.yaml` maps logical names to UUIDs/identifiers/types; loaded at startup via Pydantic models; fails fast on missing/duplicate entries; supports hot-reload via admin endpoint guarded by `asyncio.Lock`. Use for any integration where external IDs may be rotated independently of business logic.
+
+- **All inbound webhook signatures must use `hmac.compare_digest()` — not string equality (`==`).** Naive string comparison is vulnerable to timing attacks. Import from stdlib `hmac` module. Unit test must inspect source code for `compare_digest` usage AND verify constant-time behavior with an off-by-one-byte signature under a timing assertion (< 1ms difference). Required for any webhook endpoint regardless of perceived risk.
+
+- **Audit and logging writes must use `asyncio.create_task()` (fire-and-forget).** DB writes for audit trails, execution logs, and webhook logs must never block the response path. Wrap in `asyncio.create_task(_write_to_db(...))`. The handler must catch all DB exceptions and emit a structured ERROR log with enough context (execution_id, entity_id) for manual recovery. Logging failure must NOT propagate a 500 to the caller.
+
+- **testcontainers + respx is the mandatory backend integration test stack.** testcontainers provides real PostgreSQL and Redis instances; `respx.MockRouter` mocks all outbound HTTP (KraftData, external APIs); `httpx.AsyncClient(transport=ASGITransport(app, lifespan="on"))` runs the full FastAPI stack in-process. This combination is CI-safe (no live credentials), deterministic (no network flakiness), and exercises the complete request lifecycle including DB writes and Redis publishes. All backend epics must produce an integration test suite using this stack.
+
+- **Admin introspection endpoints are mandatory for all stateful backend services.** Every service that owns stateful resilience mechanisms (circuit breaker, rate limiter, connection pool, async queue) must expose ClusterIP-only admin endpoints: `GET /admin/circuits`, `GET /admin/rate-limit`, `GET /admin/executions`. These are operational observability surfaces — required as acceptance criteria in any story implementing stateful components.
+
+- **SSE streaming responses require `Cache-Control: no-cache`, `X-Accel-Buffering: no` headers.** Without these, nginx/CDN proxy layers buffer SSE chunks and the client never receives events in real time. Always set these response headers on `StreamingResponse` for SSE endpoints. Also forward `X-Request-ID` in response headers.
+
+- **Per-instance (in-memory) circuit breaker state is single-replica only.** Acceptable for initial deployment. When auto-scaling is planned, circuit state must be migrated to Redis so all replicas share the same failure count and cooldown state. Document this limitation explicitly at implementation time; create a pre-scale backlog item.
+
+- **`asyncio.Semaphore` for concurrency control must track active/queued/rejected counts for observability.** Rate limiter state (active requests, queued requests, total rejected) must be exposed via an admin endpoint. Streaming requests hold their semaphore permit for the full stream duration — design for this in capacity planning (streaming load starves sync calls).
+
+### From Epic 12 Retrospective
+
+- **All stories with frontend ACs must have a Playwright E2E spec file before being marked `done`.** A RED-phase spec (test.skip) is the minimum deliverable. The spec must be activated (GREEN) before the epic retrospective. Absence of a spec file is the same as absence of implementation evidence for frontend ACs.
+
+- **Tier gate enforcement requires E2E API tests covering all 4 tiers.** For every Professional+ or Enterprise-gated feature, test all tier combinations: Free→403, Starter→403, Professional→200 (or 403 if Enterprise-only), Enterprise→200. Reuse the `tier-gate-enforcement.api.spec.ts` pattern.
+
+- **Analytics charts (Recharts) must be E2E testable via SVG presence assertion.** When implementing Recharts `<BarChart>`, `<LineChart>`, or `<RadialChart>` inside `<QueryGuard>`, the E2E test should assert: (1) `<svg>` element rendered, (2) at least one data bar/line/point present, (3) hover tooltip appears on mouseover. Empty state must show `<EmptyState>` component from `packages/ui`, not a blank chart area.
+
+- **Async Celery tasks require integration-level end-to-end testing.** It is not sufficient to test the API endpoint that enqueues the task. The test must verify: (1) the Celery task was executed, (2) the side effect occurred (S3 object created, email sent via mock, DB row updated), (3) the job status endpoint reflects completion. Use LocalStack for S3 and a SendGrid mock for email in CI.
+
+- **S3 signed URL delivery must be asserted — not assumed.** Any story that stores output in S3 and returns a signed URL (report generation, proposal export, document uploads) must include a test that: (1) verifies the S3 object exists at the expected key, (2) resolves the signed URL via HTTP and receives a 200 with expected content-type, (3) asserts the URL expires within the specified window (24h for reports).
+
+- **VPN-restricted admin services use a single IPAllowlistMiddleware test suite.** Do not duplicate IP restriction tests per-story. Create one comprehensive `test_ip_allowlist.py` covering all routes in the service, executed once. Reference it in each story's traceability entry.
+
+- **RED-phase ATDD specs require an owner and an activation story at creation time.** When `bmad-testarch-atdd` generates test.skip() specs, the story deliverables must include: (1) the spec file, (2) a reference to the story that will activate it (remove test.skip and achieve GREEN). No RED-phase spec should exist at epic close without a named activation story.
+
+- **Non-functional stories (load testing, security audit) must not be marked `done` until evidence files contain actual results.** A template with placeholder dashes is not done. The `load-test-results.md` must contain real p50/p95/p99 numbers. The `security-audit-checklist.md` must have all checkboxes filled with evidence and a sign-off. Entry criteria include confirming the staging environment and tooling are available before the story begins.
+
+- **TEA automation review is a per-story gate, not an epic-level activity.** Update `tea_status` in sprint-status.yaml for each story as it is reviewed. `tea_status: {}` at retrospective time means the quality validation layer was skipped for the entire epic.
+
 ---
 
 ## Anti-Patterns (Don't Do This)
@@ -195,20 +244,47 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 - **Don't share Zustand persist keys between client and admin apps.** `eusolicit-auth-store` must be `eusolicit-client-auth-store` and `eusolicit-admin-auth-store`. Same-origin deployment (behind a reverse proxy) would cause the admin app to read client user tokens.
 - **Don't fire multiple `POST /auth/refresh` calls concurrently.** E02's token family revocation logs the user out on second refresh. The `apiClient` singleton refresh-lock is the protection. Never bypass or replace it with a simpler retry pattern.
 
+### From Epic 4 Retrospective
+
+- **Don't use naive string equality (`==`) for HMAC signature comparison.** `header_sig == computed_sig` is vulnerable to timing attacks — an attacker can determine the correct signature one byte at a time by measuring response time differences. Always use `hmac.compare_digest()`.
+
+- **Don't skip ATDD checklists for backend epics.** Epic 4 produced zero `atdd-checklist-4-*.md` files across 10 stories. The ATDD cycle (RED tests before implementation) is the discipline that proves test-driven development — skipping it makes the test design a post-hoc audit rather than a development gate. ATDD checklist scaffold must be created before story development starts, not after.
+
+- **Don't let circuit breaker state live only in memory in multi-replica environments.** In-memory `asyncio.Lock`-guarded state is per-process. When a service scales to N replicas, each instance has independent circuit state: one instance may reject while another continues to hammer a failing agent. Document the limitation at implementation time; do not defer the Redis migration decision beyond the first auto-scaling event.
+
+- **Don't implement SSE proxy without a wall-clock latency benchmark.** Functional tests (events forwarded in order) do not verify the < 100ms per-event latency requirement. SSE latency is a user-experience guarantee — verify it with a controlled mock SSE source with known send timestamps and `time.monotonic()` comparison before marking the story done.
+
+- **Don't close an epic without an NFR assessment when the epic introduces stateful resilience, outbound HTTP clients, or streaming.** Epic 4 had no NFR report. The circuit breaker per-instance gap (E04-R-005), SSE latency unverified (E04-R-002 residual), and Redis publish reliability (E04-R-003 monitoring backlog) are NFR concerns that compound over time if not formally assessed.
+
+- **Don't defer the same security hardening items across more than two consecutive epics.** Items deferred from E01 that remained open through E04 (Prometheus /metrics, Dockerfile USER, Dependabot, bcrypt executor, User.is_active, Redis fail-open, JWT audience/issuer) are now 4 epics overdue. Each additional deferral increases integration risk. Cap deferral at 2 consecutive epics — after that, inject as a mandatory story in the next sprint.
+
+### From Epic 12 Retrospective
+
+- **Don't mark a story `done` if it has frontend ACs and no E2E spec file.** Absence of a spec file means the AC is unverified at the browser level. A backend API test for a frontend AC is not sufficient — it proves the API works, not that the UI renders correctly.
+- **Don't treat a non-functional story (load test, security audit) as done when its output files contain only templates.** Placeholder dashes in load-test-results.md and unchecked boxes in security-audit-checklist.md are not evidence. These stories have hard output artifact requirements.
+- **Don't generate Celery tasks without integration test coverage of their execution.** Testing the endpoint that enqueues a task is not the same as testing the task. The side effects (S3 upload, DB write, SendGrid call) must be verified end-to-end.
+- **Don't leave `test.skip()` decorators in E2E specs at epic close without a named activation story.** RED-phase specs are a deliverable; their activation plan is a separate required deliverable.
+- **Don't skip TEA reviews because a story is "fully covered" or "simple".** Test quality and isolation can only be validated by a formal TEA pass. High test counts do not guarantee test quality.
+- **Don't leave `epic-N: in-progress` in sprint-status.yaml when all stories are `done`.** This is the 4th occurrence of this anti-pattern. It will be enforced by CI going forward.
+- **Don't implement analytics queries without `WHERE company_id = :cid` scoping on every materialized view query.** Cross-tenant data leakage in analytics is an R12.1 (Score 6) risk. Every analytics service method must include a cross-tenant negative test in its test suite.
+- **Don't use `REFRESH MATERIALIZED VIEW` without `CONCURRENTLY` on production tables.** Non-concurrent refresh takes an exclusive lock that blocks all reads during refresh. Always add a `UNIQUE` index on materialized view columns used for filtering before enabling `CONCURRENTLY`.
+
 ---
 
 ## Known Technical Debt
 
-Key items from deferred-work.md (126+ items across E01–E03 — see full list there):
+Key items from deferred-work.md (126+ items across E01–E12 — see full list there):
 
 | Category | Key Items | Priority | Source Epic |
 |----------|-----------|----------|------------|
 | **Security** | No `User.is_active` check in login+refresh; no JWT audience/issuer verification; bcrypt password truncation; no `max_length` on password fields; concurrent token rotation race; Dockerfiles run as root; ports on 0.0.0.0; no Dependabot; no OAuth CSRF state validation; AuthGuard no hydration timeout; Zustand persist keys not namespaced per app | **HIGH** | E01, E02, E03 |
+| **AI Gateway** | Circuit breaker per-instance state (E04-R-005 — must migrate to Redis before multi-replica); SSE latency < 100ms unverified (E04-P1-009 has no wall-clock assertion); `agents.yaml` 29-entry count only verified by nightly P3 test; config negative-path test missing (E04-P2-NEW-001); per-agent concurrency limit observability incomplete | **MEDIUM** | E04 |
 | **Concurrency** | Token rotation race (no SELECT FOR UPDATE); accept_invite TOCTOU; last-admin TOCTOU; rate limiter INCR+EXPIRE non-atomicity; non-atomic DLQ move; multi-tab wizard sync | **HIGH** | E01, E02, E03 |
-| **Performance** | Blocking bcrypt on async event loop; no k6/Lighthouse performance baseline (3 epics); no code-split validation; CPV JSON bundle size unvalidated | MEDIUM | E01, E02, E03 |
-| **Observability** | No Prometheus /metrics endpoint; no frontend error reporting (Sentry); no structured logging in auth_service; no `x-request-id` correlation header; no Grafana/Loki stack; no pnpm audit in CI | **HIGH** | E01, E02, E03 |
+| **Performance** | Blocking bcrypt on async event loop; load test p95 results NOT DOCUMENTED (E12 S12.17 empty template); no k6/Lighthouse performance baseline confirmed across any endpoint; analytics MV query latency under production load unverified | **HIGH** | E01–E12 |
+| **Observability** | No Prometheus /metrics endpoint; no frontend error reporting (Sentry); no structured logging in auth_service; no `x-request-id` correlation header; no Grafana/Loki stack; no pnpm audit in CI; pip-audit not run against services (E12 OWASP A06 unchecked) | **HIGH** | E01, E02, E03 |
 | **Data Integrity** | No UNIQUE on entity_permissions; no UNIQUE on espd_profiles(company_id, version); email case not normalized; `stub-company-id` fallback in wizard | MEDIUM | E02, E03 |
-| **Reliability** | Redis outage blocks all logins; RSA key loss invalidates all JWTs; no circuit breaker in apiClient for repeated 500/503 | **HIGH** | E02, E03 |
+| **Reliability** | Redis outage blocks all logins; RSA key loss invalidates all JWTs; no circuit breaker in apiClient for repeated 500/503; Celery Beat schedule drift/miss undetected (no integration-level firing test) | **HIGH** | E02, E03, E12 |
+| **Test Coverage** | Frontend E2E absent for S12.03, S12.04–S12.08 UI, S12.14, S12.18 (38 ACs uncovered); S12.09 PDF/DOCX + S3 generation untested; S12.10 Celery Beat trigger + SendGrid untested; 12 RED E2E specs never activated; OWASP checklist unsigned | **HIGH** | E12 |
 | **Build/Tooling** | `turbo: latest` in package.json; `@typescript-eslint` v6 EOL; `pnpm engines` mismatch; `@/*` path alias points to non-existent `src/`; UI package no build step | MEDIUM | E03 |
 | **Integration Readiness** | OAuth callback AbortController missing; OAuth error params not surfaced; loginUser response validation; `stub-company-id` removal | **HIGH** | E03 |
 | **Code Quality** | `Mapped[sa.UUID]`/`Mapped[sa.DateTime]` annotations project-wide; global mypy ignore_missing_imports; fragile CI test filter | MEDIUM | E01, E02 |
@@ -345,4 +421,62 @@ const form = useZodForm(mySchema);
 
 ---
 
-**Last updated:** 2026-04-09 (Epic 3 Retrospective)
+---
+
+## Analytics & Admin Platform Reference
+
+_Quick reference for agents working on post-E12 analytics, admin, or enterprise API concerns._
+
+### Analytics Materialized Views
+
+Five MV domains refreshed by Celery Beat in the `notification` service:
+
+| View | Refresh | Source Tables |
+|------|---------|--------------|
+| `client.mv_market_analytics` | Daily | `bid_decisions`, `opportunities` |
+| `client.mv_roi_analytics` | Daily | `bid_preparation_logs`, `bid_outcomes` |
+| `client.mv_team_analytics` | Daily | `bid_preparation_logs` (per user) |
+| `client.mv_competitor_analytics` | Daily | `competitor_records` |
+| `client.mv_usage_analytics` | Hourly | `usage_meters` |
+
+**Critical:** All MVs use `REFRESH MATERIALIZED VIEW CONCURRENTLY` — requires unique index on MV filter columns. Without the unique index, `CONCURRENTLY` fails silently and falls back to locking refresh. Never drop the `ix_mv_*` indexes.
+
+### Tier Access Matrix (Analytics)
+
+| Dashboard | Free | Starter | Professional | Enterprise |
+|-----------|------|---------|--------------|------------|
+| Market Intelligence | ❌ | ✅ | ✅ | ✅ |
+| ROI Tracker | ❌ | ✅ | ✅ | ✅ |
+| Team Performance | ❌ | ✅ | ✅ | ✅ |
+| Usage Dashboard | ❌ | ✅ | ✅ | ✅ |
+| Competitor Intelligence | ❌ | ❌ | ✅ | ✅ |
+| Pipeline Forecasting | ❌ | ❌ | ✅ | ✅ |
+
+Tier gate middleware returns `403 {"error": "tier_required", "minimum_tier": "professional", "upgrade_url": "/billing"}`.
+
+### Admin API (VPN-Restricted)
+
+- **Routing:** Internal service at `admin-api/`, VPN/IP allowlist via `IPAllowlistMiddleware`
+- **Auth:** Admin JWT with `role: admin` claim — different from client API JWTs
+- **Endpoints:** `/admin/tenants/*`, `/admin/crawlers/*`, `/admin/tenants/{id}/white-label`, `/admin/audit-logs/*`, `/admin/analytics/*`
+- **IP Allowlist:** Configured via `ADMIN_IP_ALLOWLIST` env var (comma-separated CIDRs); test with `test_ip_allowlist.py`
+
+### Enterprise API
+
+- **Routing:** `api.eusolicit.com/v1/*` proxies to Client API endpoints
+- **Auth:** `X-API-Key` header validated against SHA-256 hash in DB; associated with `company_id` and tier
+- **Rate Limiting:** Redis token bucket per API key; rate limits vary by tier; 429 + `X-RateLimit-*` headers
+- **API Key Storage:** Full key shown exactly once at creation; only SHA-256 hash stored in DB (`enterprise_api_keys` table)
+- **Docs:** Swagger UI at `/v1/docs`, Redoc at `/v1/redoc` (auto-generated from FastAPI routes)
+
+### Report Generation
+
+- **Engine:** reportlab (PDF) + python-docx (DOCX) — same stack as E07 proposal export (shared code)
+- **Async:** Generated via Celery task; output stored in S3 with 24h signed URL
+- **Types:** pipeline_summary, bid_performance_summary, team_activity, custom_date_range
+- **Scheduled:** Celery Beat triggers weekly (Monday) or monthly (1st) per company admin config; delivered via SendGrid attachment
+- **On-demand:** `POST /reports/generate` → job ID → poll `GET /reports/jobs/{job_id}` → download URL when ready
+
+---
+
+**Last updated:** 2026-04-14 (Epic 4 Retrospective — patterns, anti-patterns, and AI Gateway technical debt added)

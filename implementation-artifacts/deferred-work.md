@@ -2,6 +2,10 @@
 
 Tracked items deferred from code reviews and implementation. Each entry includes source, description, and rationale for deferral.
 
+## Deferred from: code review of story 4-1-fastapi-service-scaffold-and-health-probes (2026-04-14)
+
+- No test/assertion for 3-second startup constraint (AC 3 / E04-P3-002) — the story requires service start in under 3 seconds but no automated test validates this. Test infrastructure for startup-time benchmarking is deferred to S04.10 (integration tests and end-to-end validation). Source: S04.01 acceptance auditor review.
+
 ## Deferred from: code review of story 11-12 (2026-04-10)
 
 - Partner `organisation_name` used as React key and shortlist identifier — not guaranteed unique. If the real API returns duplicate names, React key collision causes rendering bugs and shortlist misbehaves. Address when stub is replaced with real API (S11.06 integration). Source: S11.12 blind+edge review.
@@ -299,3 +303,61 @@ Tracked items deferred from code reviews and implementation. Each entry includes
 ## Deferred from: code review of story 12-3 (2026-04-12)
 
 - `SkeletonCard` and `SkeletonTable` in `@eusolicit/ui` only accept `className` and do not spread rest props. Any `data-testid` passed to them is silently dropped and will not appear in the rendered DOM. Affects all consumers that pass `data-testid` to these components (e.g. market intelligence skeleton loading states). Fix: add `...rest` spread to both components' root div. [packages/ui/src/components/feedback/SkeletonCard.tsx, packages/ui/src/components/feedback/SkeletonTable.tsx]
+
+
+## Deferred from: code review of story 12-6 (2026-04-13)
+
+- N+1 query for sectors in `get_competitor_profiles` — each competitor in the page triggers a separate query for distinct sectors (up to 100 extra queries at max page_size). Consider `array_agg(DISTINCT sector)` for single-query approach. Bounded by page_size, not blocking. [services/client-api/src/client_api/services/analytics_competitor_service.py]
+- No rate limiting on competitor analytics endpoints — no server-side rate limiting. Pre-existing architectural pattern across all analytics endpoints. [services/client-api/src/client_api/api/v1/analytics_competitors.py]
+- Tier gate subscription query on every request — `require_professional_plus_tier` hits the DB per request with no caching. Follows same pattern as `require_paid_tier`. [services/client-api/src/client_api/core/tier_gate.py]
+
+## Deferred from: code review of story 12-7 (2026-04-13)
+
+- `Cache-Control: public` on tenant-scoped pipeline forecast endpoint — AC6 specifies `public`, but responses contain company-specific data behind auth. Shared CDN caches could theoretically serve Company A's data to Company B. Consider changing to `private` or adding `Vary: Authorization`. [services/client-api/src/client_api/api/v1/analytics_pipeline.py]
+- No generic error state for non-403 API errors — 500/502/network errors render empty timeline with no error indication. Add an error banner component for non-403 errors. [frontend/apps/client/app/[locale]/(protected)/analytics/pipeline/components/PipelineForecastDashboard.tsx]
+- Both value columns NULL silently excluded by value range filters — predictions with no value estimate are dropped when value_min or value_max filter is active. Consider adding a third OR branch to include unknown-value rows explicitly. [services/client-api/src/client_api/services/analytics_pipeline_service.py]
+- `confidence_min` query param missing `ge=0, le=100` server-side bounds — out-of-range values return empty results silently. Add FastAPI Query bounds. [services/client-api/src/client_api/api/v1/analytics_pipeline.py]
+- `value_min`/`value_max` missing `ge=0` server-side bounds — negative monetary values accepted despite being semantically invalid. [services/client-api/src/client_api/api/v1/analytics_pipeline.py]
+- Page metadata uses static English strings instead of i18n — requires `generateMetadata()` with `getTranslations()` for localized browser tab titles. [frontend/apps/client/app/[locale]/(protected)/analytics/pipeline/page.tsx]
+- `value_min > value_max` not validated — contradictory range silently returns 0 results instead of 422. [services/client-api/src/client_api/api/v1/analytics_pipeline.py]
+- NaN guard on frontend filter input — `Number('abc')` → NaN bypasses `type="number"` on paste. Guard with `Number.isNaN()` fallback to undefined. [frontend/apps/client/app/[locale]/(protected)/analytics/pipeline/components/PipelineForecastDashboard.tsx]
+
+
+## Deferred from: code review of 12-10-scheduled-on-demand-report-delivery (2026-04-13)
+
+- Hardcoded English strings in ReportScheduleSettings component ("Confirm", "Cancel", error messages, loading text, placeholder) — follow pre-existing pattern in codebase but violate i18n completeness. [frontend/apps/client/app/[locale]/(protected)/settings/reports/components/ReportScheduleSettings.tsx]
+- Schedule form uses local Zod schema without per-email `.email()` validation instead of shared `reportScheduleSchema` from `apps/client/lib/schemas/reports.ts` as specified in AC18. Server validates (422 on invalid email), so functional but missing client-side UX validation. [frontend/apps/client/app/[locale]/(protected)/settings/reports/components/ReportScheduleSettings.tsx]
+
+## Deferred from: code review of 12-12-admin-api-crawler-white-label-management (2026-04-13)
+
+- D1: Cannot clear/unset white-label fields once set — PUT endpoint uses `if field is not None` guards, so `None` (absent) fields are skipped rather than cleared. PUT acts as PATCH semantically. Design decision: requires sentinel value or `exclude_unset` pattern to distinguish "not sent" from "explicitly null". [white_label_service.py:48-57]
+- D2: IntegrityError string matching fragility — subdomain uniqueness 409 relies on matching constraint names in exception string (`white_label_settings_custom_subdomain_key` or `idx_white_label_subdomain`). Fragile across DB drivers. Consider ON CONFLICT or broader IntegrityError catch. [white_label_service.py:70-71]
+- D3: No domain format validation on `email_sender_domain` — only max_length=255 enforced. Relevant when email integration story is implemented. [schemas/white_label.py:39]
+- D4: No validation on `crawler_type`/`status` query params in list endpoint — unlike schedule/trigger which validate, list accepts arbitrary strings and silently returns empty results. [crawlers.py:31-33, crawler_service.py:33-36]
+- D5: Test mocks bypass real service logic for white-label upsert tests — most tests patch `upsert_white_label` entirely; service-layer code paths (IntegrityError handling, DNS check, subdomain change detection) exercised only partially. Integration tests needed. [test_white_label.py]
+- D6: No rate limiting or duplicate-run guard on manual crawler trigger — authenticated admin can trigger unbounded concurrent crawl runs for same type. Add pending/running check before creating new run. [crawler_service.py:110-151]
+- D7: Empty body PUT creates phantom white-label row — `PUT {}` creates a row with all NULL branding fields. Consider requiring at least one field. [white_label_service.py]
+
+## Deferred from: code review of 12-16-enterprise-api-documentation-page-usage-frontend (2026-04-14)
+
+- D1: No max-keys-per-company limit on Enterprise API key creation — POST endpoint allows unbounded key creation. Add a configurable cap (e.g., 50 keys per company). [enterprise_api_keys.py:126-157]
+- D2: No pagination on Enterprise API keys list endpoint — GET loads all active keys into memory. Add limit/offset or cursor pagination. [enterprise_api_keys.py:89-112]
+- D3: Missing `sandbox` attribute on Redoc iframe — `DeveloperPage.tsx:41` has no sandbox attribute. Add `sandbox="allow-scripts allow-same-origin"` for defense-in-depth. [DeveloperPage.tsx:41]
+- D4: setTimeout cleanup on unmount — `ApiKeyManagementPage.tsx:99` setCopied timer not cleaned up on unmount. Use useEffect cleanup or ref. [ApiKeyManagementPage.tsx:99]
+
+## Deferred from: code review of story 4-4-sync-agent-workflow-and-team-execution-endpoints (2026-04-14)
+
+- Missing `KraftDataConnectionError` → HTTP 502 unit test — AC 10 mapping is implemented in `_handle_kraftdata_error()` but has no dedicated test. Story tasks (5.1–5.12) didn't specify one. The code path is structurally identical to the timeout error test. Candidate for S04.10 (integration tests and end-to-end validation) or a test coverage expansion pass.
+
+## Deferred from: code review of story 5-1-pipeline-schema-migration-and-model-layer (2026-04-14)
+
+- Soft-delete event listener not idempotent on module reload — `@event.listens_for(Session, "do_orm_execute")` registers unconditionally; double-fires if module reloaded. Guard with `event.contains()` check. Benign today. [models/opportunity.py:82]
+- Lazy-load of soft-deleted parent returns None for non-Optional `Mapped[Opportunity]` — `SubmissionGuide.opportunity` and `EnrichmentQueueItem.opportunity` typed non-Optional but soft-delete filter can make lazy load return None. Future story S05.10 concern. [models/submission_guide.py:46, models/enrichment_queue.py:46]
+- `cpv_codes` and `errors` columns lack Python-side `default=` — pre-flush attribute is None despite non-Optional type annotation. Add `default=list`/`default=dict`. [models/opportunity.py:47, models/crawler_run.py:40]
+- `db_session` fixture uses rollback-only isolation — any test calling `commit()` permanently dirties the shared testcontainer. Consider savepoint-based wrapper. [tests/conftest.py:80-97]
+- `include_deleted` execution option is a magic string with no typed constant — easy to misspell silently. [models/opportunity.py:87]
+
+## Deferred from: code review of story-5.3 (2026-04-14)
+
+- OBS-001: 4xx errors (e.g. 400 Bad Request) increment circuit breaker failure count via generic `except Exception:` catch-all. Repeated client-side errors could trip the circuit open, masking the real issue. Consider only counting 5xx/transport errors as circuit failures. [ai_gateway_client/circuit_breaker.py:CircuitBreaker.call]
+- OBS-002: `test_timeout_default_values` uses raw `os.environ.pop(var, None)` instead of `monkeypatch.delenv(var, raising=False)`. If test fails mid-execution, env vars may leak. Minor test hygiene. [tests/unit/test_ai_gateway_client.py:test_timeout_default_values]
