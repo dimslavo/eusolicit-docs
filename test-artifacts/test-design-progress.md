@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-15'
+lastSaved: '2026-04-16'
 inputDocuments: [
   '/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/epic-05-data-pipeline-ingestion.md',
   '/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-architecture.md',
@@ -9,9 +9,12 @@ inputDocuments: [
   '/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-epic-04.md',
   '/home/debian/Projects/eusolicit/_bmad/bmm/config.yaml'
 ]
-validatedRun: '2026-04-15'
+validatedRun: '2026-04-16'
+validationResult: 'PASS — all epic-level checklist criteria met (validation run #8, 2026-04-16)'
+validationResult: 'PASS — all epic-level checklist criteria met (validation run #7, 2026-04-16)'
+validationResult: 'PASS — all epic-level checklist criteria met (validation run #6, 2026-04-16)'
+validationResult: 'PASS — all epic-level checklist criteria met (validation run #5, 2026-04-16)'
 validationResult: 'PASS — all epic-level checklist criteria met (validation run #4)'
-validationResult: 'PASS — all epic-level checklist criteria met (validation run #3)'
 ---
 
 # Test Design Progress: Epic 12
@@ -395,3 +398,230 @@ validationResult: 'PASS — all epic-level checklist criteria met (validation ru
   - [x] No browser sessions or CLI automation
   - [x] All artifacts in `eusolicit-docs/test-artifacts/`
 - **Status:** Completed — no edits to output file required
+
+## Epic 5 Validation Run #5: 2026-04-16 (Autopilot)
+
+### Step 1: Detect Mode
+- **Mode:** Epic-Level (Phase 4)
+- **Reason:** User explicitly requested epic-level test design for Epic 5 with epic file path and system-level context; prior output detected (lastSaved: 2026-04-15, validation run #4 PASS)
+- **Status:** Completed
+
+### Step 2: Load Context
+- **Epic:** E05 — Data Pipeline & Opportunity Ingestion (12 stories, 34 pts, Sprints 3–4) — unchanged
+- **Stack:** Python backend (Celery, Celery Beat, SQLAlchemy, PostgreSQL, Redis Streams, httpx)
+- **System-level test design:** Re-loaded (`test-design-architecture.md`, `test-design-qa.md`); risk inheritance R-05 and R-01 re-confirmed
+- **E04 test design:** Loaded as reference format
+- **Knowledge fragments applied:** risk-governance.md, probability-impact.md, test-levels-framework.md, test-priorities-matrix.md
+- **Browser automation:** Not applicable (backend-only pipeline service)
+- **Config flags:** test_stack_type auto-detected as backend; no Playwright/Pact config
+- **Status:** Completed
+
+### Step 3: Risk Validation (Run #5)
+- **9 risks re-validated:** All P×I scores confirmed correct via probability-impact.md thresholds
+- **3 high (≥6):** E05-R-001 (DATA, 2×3=6 ✅), E05-R-002 (TECH, 2×3=6 ✅), E05-R-003 (DATA, 2×3=6 ✅)
+- **4 medium (4):** E05-R-004 (TED pagination), E05-R-005 (chord starvation), E05-R-006 (soft-delete bypass), E05-R-007 (enrichment accumulation) — all MONITOR ✅
+- **2 low (2):** E05-R-008 (UTC/DST), E05-R-009 (testcontainers latency) — DOCUMENT ✅
+- **Gate:** No score=9 blockers — PASS
+- **System inheritance:** E05-R-001 + E05-R-003 → system R-05; E05-R-006 → system R-01 — re-confirmed
+- **Status:** Completed
+
+### Step 4: Coverage Validation (Run #5)
+- **60 tests confirmed across all 12 stories (S05.01–S05.12)**
+- **P0: 9** (~18–30h) — all 3 high-risk scenarios (E05-R-001, E05-R-002, E05-R-003) explicitly covered ✅
+- **P1: 30** (~25–40h) — every story covered at functional level; risk linkages verified ✅
+- **P2: 16** (~10–18h) — edge cases, configuration overrides, secondary flows ✅
+- **P3: 5** (~3–6h) — benchmarks, Prometheus label/gauge accuracy ✅
+- **No duplicate coverage across test levels** ✅
+- **Status:** Completed
+
+### Step 5: Validation Result (Run #5)
+- **Output File:** `/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-epic-05.md`
+- **Execution Mode:** Sequential (autopilot)
+- **Action:** Date updated to 2026-04-16; full checklist re-validated; no content changes required
+- **Full checklist result: PASS — all epic-level criteria met (validation run #5)**
+  - [x] All 9 risks with correct P×I scoring, categories, mitigations, owners, timelines
+  - [x] 3 high-priority mitigation plans (E05-R-001: atomic upsert, E05-R-002: on_failure handler + stale-run cleanup, E05-R-003: isolated publish retry + ERROR log)
+  - [x] 60 test scenarios with unique IDs (E05-P0-001 through E05-P3-005) across all 12 stories
+  - [x] Priority headers criteria-only; note at top of Coverage Plan confirmed
+  - [x] Execution strategy: simple PR / Weekly model ✅
+  - [x] Resource estimates all range-based (~56–94h total, ~1.5–2.5 weeks) ✅
+  - [x] Quality gates: 100% P0, ≥95% P1, ≥80% task coverage, ≥85% model/client coverage ✅
+  - [x] Not-in-scope (7 items), entry criteria (7), exit criteria (7)
+  - [x] Interworking table (6 services), system-level risk inheritance documented
+  - [x] Prerequisites: 4 factories, 6 tooling items, 7 environment variables documented
+  - [x] Assumptions (6), dependencies (5 rows), risks-to-plan (2 contingencies)
+  - [x] Follow-on workflows listed (bmad-testarch-atdd, bmad-testarch-automate, bmad-testarch-ci)
+  - [x] No browser sessions or CLI automation
+  - [x] All artifacts in `eusolicit-docs/test-artifacts/`
+- **Status:** Completed — date updated, no content changes required
+
+## Epic 5 Validation Run #6: 2026-04-16 (Autopilot)
+
+### Step 1: Detect Mode
+- **Mode:** Epic-Level (Phase 4)
+- **Reason:** User explicitly requested epic-level test design for Epic 5 with epic file path, config path, and system-level context; prior output detected (lastSaved: 2026-04-16, validation run #5 PASS)
+- **Status:** Completed
+
+### Step 2: Load Context
+- **Epic:** E05 — Data Pipeline & Opportunity Ingestion (12 stories, 34 pts, Sprints 3–4) — unchanged
+- **Stack:** Python backend (Celery, Celery Beat, SQLAlchemy, PostgreSQL, Redis Streams, httpx)
+- **System-level test design:** Re-loaded (`test-design-architecture.md`, `test-design-qa.md`); risk inheritance R-05 and R-01 re-confirmed
+- **E04 test design:** Referenced as dependency epic
+- **Knowledge fragments applied:** risk-governance.md, probability-impact.md, test-levels-framework.md, test-priorities-matrix.md
+- **Browser automation:** Not applicable (backend-only pipeline service)
+- **Config flags:** test_stack_type auto-detected as backend; no Playwright/Pact config
+- **Status:** Completed
+
+### Step 3: Risk Validation (Run #6)
+- **9 risks re-validated:** All P×I scores confirmed correct via probability-impact.md thresholds
+- **3 high (≥6):** E05-R-001 (DATA, 2×3=6 ✅), E05-R-002 (TECH, 2×3=6 ✅), E05-R-003 (DATA, 2×3=6 ✅)
+- **4 medium (4):** E05-R-004 (TED pagination), E05-R-005 (chord starvation), E05-R-006 (soft-delete bypass), E05-R-007 (enrichment accumulation) — all MONITOR ✅
+- **2 low (2):** E05-R-008 (UTC/DST), E05-R-009 (testcontainers latency) — DOCUMENT ✅
+- **Gate:** No score=9 blockers — PASS
+- **System inheritance:** E05-R-001 + E05-R-003 → system R-05; E05-R-006 → system R-01 — re-confirmed
+- **Status:** Completed
+
+### Step 4: Coverage Validation (Run #6)
+- **60 tests confirmed across all 12 stories (S05.01–S05.12)**
+- **P0: 9** (~18–30h) — all 3 high-risk scenarios (E05-R-001, E05-R-002, E05-R-003) explicitly covered ✅
+- **P1: 30** (~25–40h) — every story covered at functional level; risk linkages verified ✅
+- **P2: 16** (~10–18h) — edge cases, configuration overrides, secondary flows ✅
+- **P3: 5** (~3–6h) — benchmarks, Prometheus label/gauge accuracy ✅
+- **P0 = 15% of total scenarios** — within acceptable bounds ✅
+- **No duplicate coverage across test levels** ✅
+- **Status:** Completed
+
+### Step 5: Validation Result (Run #6)
+- **Output File:** `/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-epic-05.md`
+- **Execution Mode:** Sequential (autopilot)
+- **Action:** Validation only — document is current and complete; no content changes required
+- **Full checklist result: PASS — all epic-level criteria met (validation run #6)**
+  - [x] All 9 risks with correct P×I scoring, categories, mitigations, owners, timelines
+  - [x] 3 high-priority mitigation plans (E05-R-001: atomic upsert, E05-R-002: on_failure handler + stale-run cleanup, E05-R-003: isolated publish retry + ERROR log)
+  - [x] 60 test scenarios with unique IDs (E05-P0-001 through E05-P3-005) across all 12 stories
+  - [x] Priority headers criteria-only; note at top of Coverage Plan confirmed
+  - [x] Execution strategy: simple PR / Weekly model ✅
+  - [x] Resource estimates all range-based (~56–94h total, ~1.5–2.5 weeks) ✅
+  - [x] Quality gates: 100% P0, ≥95% P1, ≥80% task coverage, ≥85% model/client coverage ✅
+  - [x] Not-in-scope (7 items), entry criteria (7), exit criteria (7)
+  - [x] Interworking table (6 services), system-level risk inheritance documented
+  - [x] Prerequisites: 4 factories, 6 tooling items, 7 environment variables documented
+  - [x] Assumptions (6), dependencies (5 rows), risks-to-plan (2 contingencies)
+  - [x] Follow-on workflows listed (bmad-testarch-atdd, bmad-testarch-automate, bmad-testarch-ci)
+  - [x] No browser sessions or CLI automation
+  - [x] All artifacts in `eusolicit-docs/test-artifacts/`
+- **Status:** Completed — no edits to output file required
+
+## Epic 5 Validation Run #7: 2026-04-16 (Autopilot)
+
+### Step 1: Detect Mode
+- **Mode:** Epic-Level (Phase 4)
+- **Reason:** User explicitly requested epic-level test design for Epic 5 with epic file path, config path, and system-level test design context; prior output detected (lastSaved: 2026-04-16, validation run #6 PASS)
+- **Status:** Completed
+
+### Step 2: Load Context
+- **Epic:** E05 — Data Pipeline & Opportunity Ingestion (12 stories, 34 pts, Sprints 3–4) — unchanged
+- **Stack:** Python backend (Celery, Celery Beat, SQLAlchemy, PostgreSQL, Redis Streams, httpx)
+- **System-level test design:** Re-loaded (test-design-architecture.md, test-design-qa.md); risk inheritance R-05 and R-01 re-confirmed
+- **E04 test design:** Referenced as dependency epic
+- **Knowledge fragments applied:** risk-governance.md, probability-impact.md, test-levels-framework.md, test-priorities-matrix.md
+- **Browser automation:** Not applicable (backend-only pipeline service)
+- **Config flags:** test_stack_type auto-detected as backend; no Playwright/Pact config
+- **Status:** Completed
+
+### Step 3: Risk Validation (Run #7)
+- **9 risks re-validated:** All P×I scores confirmed correct
+- **3 high (≥6):** E05-R-001 (DATA, 2×3=6), E05-R-002 (TECH, 2×3=6), E05-R-003 (DATA, 2×3=6)
+- **4 medium (4):** E05-R-004 (TED pagination), E05-R-005 (chord starvation), E05-R-006 (soft-delete bypass), E05-R-007 (enrichment accumulation) — all MONITOR
+- **2 low (2):** E05-R-008 (UTC/DST), E05-R-009 (testcontainers latency) — DOCUMENT
+- **Gate:** No score=9 blockers — PASS
+- **System inheritance:** E05-R-001 + E05-R-003 → system R-05; E05-R-006 → system R-01 — re-confirmed
+- **Status:** Completed
+
+### Step 4: Coverage Validation (Run #7)
+- **60 tests confirmed across all 12 stories (S05.01–S05.12)**
+- **P0: 9** (~18–30h) — all 3 high-risk scenarios covered
+- **P1: 30** (~25–40h) — every story covered at functional level
+- **P2: 16** (~10–18h) — edge cases, configuration overrides, secondary flows
+- **P3: 5** (~3–6h) — benchmarks, Prometheus label/gauge accuracy
+- **P0 = 15% of total** — within acceptable bounds for data pipeline epic
+- **No duplicate coverage across test levels**
+- **Status:** Completed
+
+### Step 5: Validation Result (Run #7)
+- **Output File:** eusolicit-docs/test-artifacts/test-design-epic-05.md
+- **Execution Mode:** Sequential (autopilot)
+- **Action:** Validation only — document is current and complete; no content changes required
+- **Full checklist result: PASS — all epic-level criteria met (validation run #7, 2026-04-16)**
+  - [x] Risk assessment: 9 risks with correct P×I scoring, categories, mitigations, owners, timelines
+  - [x] 3 high-priority mitigation plans (E05-R-001, E05-R-002, E05-R-003)
+  - [x] 60 test scenarios with unique IDs across all 12 stories
+  - [x] Priority headers criteria-only; note at top of Coverage Plan confirmed
+  - [x] Execution strategy: simple PR / Weekly model
+  - [x] Resource estimates all range-based (~56–94h total, ~1.5–2.5 weeks)
+  - [x] Quality gates: 100% P0, ≥95% P1, ≥80% task coverage, ≥85% model/client coverage
+  - [x] Not-in-scope (7), entry criteria (7), exit criteria (7)
+  - [x] Interworking table (6 services), system-level risk inheritance documented
+  - [x] Prerequisites: 4 factories, 6 tooling items, 7 environment variables
+  - [x] Assumptions (6), dependencies (5), risks-to-plan (2)
+  - [x] Follow-on workflows listed
+  - [x] No browser sessions or CLI automation
+  - [x] All artifacts in eusolicit-docs/test-artifacts/
+- **Status:** Completed — no edits to output file required
+
+## Epic 5 Validation Run #8: 2026-04-16 (Autopilot)
+
+### Step 1: Detect Mode
+- **Mode:** Epic-Level (Phase 4)
+- **Reason:** User explicitly requested epic-level test design for Epic 5 with epic file path, config path, and system-level test design context; prior output detected (lastSaved: 2026-04-16, validation run #7 PASS)
+- **Status:** Completed
+
+### Step 2: Load Context
+- **Epic:** E05 — Data Pipeline & Opportunity Ingestion (12 stories, 34 pts, Sprints 3–4) — unchanged
+- **Stack:** Python backend (Celery, Celery Beat, SQLAlchemy, PostgreSQL, Redis Streams, httpx)
+- **System-level test design:** Re-loaded (test-design-architecture.md, test-design-qa.md); risk inheritance R-05 and R-01 re-confirmed
+- **E04 test design:** Referenced as dependency epic
+- **Knowledge fragments applied:** risk-governance.md, probability-impact.md, test-levels-framework.md, test-priorities-matrix.md
+- **Browser automation:** Not applicable (backend-only pipeline service)
+- **Config flags:** test_stack_type auto-detected as backend; no Playwright/Pact config
+- **Status:** Completed
+
+### Step 3: Risk Validation (Run #8)
+- **9 risks re-validated:** All P×I scores confirmed correct
+- **3 high (≥6):** E05-R-001 (DATA, 2×3=6), E05-R-002 (TECH, 2×3=6), E05-R-003 (DATA, 2×3=6)
+- **4 medium (4):** E05-R-004 (TED pagination), E05-R-005 (chord starvation), E05-R-006 (soft-delete bypass), E05-R-007 (enrichment accumulation) — all MONITOR
+- **2 low (2):** E05-R-008 (UTC/DST), E05-R-009 (testcontainers latency) — DOCUMENT
+- **Gate:** No score=9 blockers — PASS
+- **System inheritance:** E05-R-001 + E05-R-003 → system R-05; E05-R-006 → system R-01 — re-confirmed
+- **Status:** Completed
+
+### Step 4: Coverage Validation (Run #8)
+- **60 tests confirmed across all 12 stories (S05.01–S05.12)**
+- **P0: 9** (~18–30h) — all 3 high-risk scenarios covered
+- **P1: 30** (~25–40h) — every story covered at functional level
+- **P2: 16** (~10–18h) — edge cases, configuration overrides, secondary flows
+- **P3: 5** (~3–6h) — benchmarks, Prometheus label/gauge accuracy
+- **P0 = 15% of total** — within acceptable bounds for data pipeline epic
+- **No duplicate coverage across test levels**
+- **Status:** Completed
+
+### Step 5: Validation Result (Run #8)
+- **Output File:** eusolicit-docs/test-artifacts/test-design-epic-05.md
+- **Execution Mode:** Sequential (autopilot)
+- **Action:** Validation only — document is current and complete; no content changes required
+- **Full checklist result: PASS — all epic-level criteria met (validation run #8, 2026-04-16)**
+  - [x] Risk assessment: 9 risks with correct P×I scoring, categories, mitigations, owners, timelines
+  - [x] 3 high-priority mitigation plans (E05-R-001, E05-R-002, E05-R-003)
+  - [x] 60 test scenarios with unique IDs across all 12 stories
+  - [x] Priority headers criteria-only; note at top of Coverage Plan confirmed
+  - [x] Execution strategy: simple PR / Weekly model
+  - [x] Resource estimates all range-based (~56–94h total, ~1.5–2.5 weeks)
+  - [x] Quality gates: 100% P0, ≥95% P1, ≥80% task coverage, ≥85% model/client coverage
+  - [x] Not-in-scope (7), entry criteria (7), exit criteria (7)
+  - [x] Interworking table (6 services), system-level risk inheritance documented
+  - [x] Prerequisites: 4 factories, 6 tooling items, 7 environment variables
+  - [x] Assumptions (6), dependencies (5), risks-to-plan (2)
+  - [x] Follow-on workflows listed
+  - [x] No browser sessions or CLI automation
+  - [x] All artifacts in eusolicit-docs/test-artifacts/
+- **Status:** Completed — no edits to output file required (run #8)
