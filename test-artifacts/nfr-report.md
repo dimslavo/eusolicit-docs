@@ -6,45 +6,61 @@ stepsCompleted:
   - 'step-04-evaluate-and-score'
   - 'step-05-generate-report'
 lastStep: 'step-05-generate-report'
-lastSaved: '2026-04-07'
+lastSaved: '2026-04-17'
 workflowType: 'testarch-nfr-assess'
-epicNumber: 2
+epicNumber: 6
 inputDocuments:
-  - 'eusolicit-docs/planning-artifacts/epic-02-authentication-identity.md'
+  - 'eusolicit-docs/planning-artifacts/epics/E06-opportunity-discovery.md'
   - 'eusolicit-docs/EU_Solicit_PRD_v1.md'
   - 'eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md'
-  - 'eusolicit-docs/test-artifacts/test-design-epic-02.md'
-  - 'eusolicit-docs/test-artifacts/traceability-matrix.md'
-  - 'eusolicit-docs/implementation-artifacts/sprint-status.yaml'
-  - 'eusolicit-docs/implementation-artifacts/deferred-work.md'
-  - 'eusolicit-docs/test-artifacts/atdd-checklist-2-*.md (12 files)'
+  - 'eusolicit-docs/test-artifacts/test-design-epic-06.md'
+  - 'eusolicit-docs/test-artifacts/atdd-checklist-6-2-tier-gated-response-serialization.md'
+  - 'eusolicit-docs/test-artifacts/atdd-checklist-6-3-usage-metering-middleware-redis.md'
+  - 'eusolicit-docs/test-artifacts/atdd-checklist-6-6-document-upload-api-s3-clamav.md'
+  - 'eusolicit-docs/test-artifacts/atdd-checklist-6-8-ai-summary-generation-api-sse-streaming.md'
+  - 'eusolicit-docs/implementation-artifacts/6-2-tier-gated-response-serialization.md'
+  - 'eusolicit-docs/implementation-artifacts/6-8-ai-summary-generation-api-sse-streaming.md'
+  - 'eusolicit-docs/test-artifacts/nfr-report.md (E02 reference)'
+  - '_bmad/bmm/config.yaml'
 ---
 
-# NFR Assessment - Epic 2: Authentication & Identity
+# NFR Assessment — Epic 6: Opportunity Discovery & Intelligence
 
-**Date:** 2026-04-07
-**Epic:** E02 - Authentication & Identity (12 stories, 34 points, Sprints 1-2)
-**Overall Status:** PASS (with CONCERNS)
+**Date:** 2026-04-17
+**Epic:** E06 — Opportunity Discovery & Intelligence (14 stories, 55 points, Sprints 5–6)
+**Overall Status:** CONCERNS ⚠️
 
 ---
 
-Note: This assessment summarizes existing evidence from test artifacts, code reviews, and implementation artifacts; it does not run tests or CI workflows.
+> Note: This assessment summarises existing evidence from epic specification, architecture decisions, test design, and ATDD checklists. No production deployment exists; no tests are in GREEN phase yet. Evidence is design-time only. Assessment follows the same evidence-based methodology applied to E01 and E02.
 
 ## Executive Summary
 
-**Assessment:** 5 PASS, 3 CONCERNS, 0 FAIL
+**Assessment:** 4 PASS, 4 CONCERNS, 0 FAIL
 
 **Blockers:** 0
 
-**High Priority Issues:** 4 (missing `is_active` check, no JWT audience/issuer verification, blocking bcrypt on async loop, Redis outage blocks logins)
+**High Priority Issues:** 5
+- E06-R-001: TierGate bypass (revenue leakage / data access violation, Score 6) — mitigated by design; 0 tests passing yet
+- E06-R-002: Redis usage counter race condition (billing integrity, Score 6) — atomic Lua script specified; 0 tests passing yet
+- E06-R-003: S3/ClamAV pre-scan download gap (malware serving, Score 6) — pending-state enforcement specified; 0 tests passing yet
+- E06-R-004: SSE connection exhaustion (API availability under concurrent AI summary load, Score 6) — semaphore cap designed; not implemented yet
+- Missing k6 performance baseline for opportunity search, listing, and SSE endpoints
 
-**Recommendation:** Epic 2 authentication and identity layer meets NFR requirements for its defined scope. All three high-priority security risks (E02-R-001, E02-R-002, E02-R-003) are fully mitigated with comprehensive test coverage. CONCERNS items are tracked as deferred work with clear remediation paths. **Proceed to Epic 3.** Address HIGH-priority deferred items in Sprint 3 as a security hardening pass.
+**Recommendation:** Epic 6 is the **primary revenue-sensitive surface** of EU Solicit — all four subscription tiers are enforced here. The design is comprehensive, all 14 ATDD checklists have been generated in RED phase (today), all 4 high-risk items have clear mitigation strategies specified in story acceptance criteria, and the architecture foundation from E02 (JWT, RBAC, audit trail) is solid. **No HALT conditions.** The gate is CONCERNS pending: (1) ATDD RED→GREEN transition across all 14 stories, (2) TierGate + UsageGate P0 tests verified in CI with testcontainers Redis, (3) ClamAV pre-scan download gate verified. Address HIGH-priority items during Sprint 5 implementation. Proceed to development.
 
 ---
 
 ## Scope Context
 
-Epic 2 is the **security foundation epic** — it delivers the full authentication and identity layer: email/password registration, JWT RS256 token lifecycle, Google OAuth2, password reset, company profile CRUD, team member management, entity-level RBAC, audit trail middleware, and ESPD profile CRUD. All 12 stories are implemented and code-reviewed. This is the first epic with user-facing API endpoints, making it the first point where security, performance, and data integrity NFRs become directly measurable.
+Epic 6 is the **revenue enforcement surface** — it delivers the full client-facing opportunity access layer on top of the E05 data pipeline: tier-gated search/listing/detail APIs (S06.01–05), S3-presigned document upload with ClamAV scanning (S06.06–07), AI executive summary generation via SSE streaming with Redis usage metering (S06.08), and the complete Next.js frontend (S06.09–14). Dependencies: E02 (auth/JWT/RBAC), E03 (frontend shell), E04 (AI Gateway), E05 (pipeline.opportunities data).
+
+**Current State (2026-04-17):**
+- All 14 stories are written with complete acceptance criteria (status: `done` in story specs)
+- All 14 ATDD checklists generated today in 🔴 RED phase (tests written with `@pytest.mark.skip`, awaiting implementation)
+- All 4 high-risk mitigations are **architecturally specified** in story ACs but **not yet verified** by passing tests
+- E02 foundation (JWT RS256, RBAC middleware, audit trail) is GREEN and carried forward
+- No implementation code written for any E06 story yet
 
 ---
 
@@ -52,27 +68,38 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 ### Response Time (p95)
 
-- **Status:** CONCERNS
-- **Threshold:** < 200ms REST, < 500ms TTFB SSE (PRD Section 4)
-- **Actual:** Not measured under load — no k6 performance baseline executed yet
-- **Evidence:** E02-P3-004 (k6 auth latency test) defined in test design but not yet implemented; test-design-epic-02.md schedules it as nightly performance test
-- **Findings:** Auth endpoints are functional and passing all 287+ test functions, but no p95 latency measurement exists. Known bottleneck: **blocking `bcrypt.hashpw` on the async event loop** (~200-400ms CPU-bound at cost=12) affects `/auth/register`, `/auth/accept-invite`, and any password-setting flow. This blocks the entire event loop and all concurrent requests during hashing. Deferred work items from Stories 2.2, 2.3, and 2.9 all track this.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** < 200ms REST (p95), < 500ms TTFB SSE (PRD Section 4)
+- **Actual:** Not measured — no implementation, no k6 baseline
+- **Evidence:** PRD Section 4 defines targets; test-design-epic-06.md documents performance test scope; no load test evidence exists
+- **Findings:** Three performance concerns at design time:
+  1. **Full-text search cost**: `GET /api/v1/opportunities/search` uses PostgreSQL `ts_vector`/`ts_query` against `pipeline.opportunities`. With 10K+ active tenders (PRD success metric), unindexed FTS can exceed 200ms p95 under concurrent load. Architecture confirms PostgreSQL as the sole DB with no Elasticsearch equivalent until post-MVP.
+  2. **SSE connection exhaustion (E06-R-004, score 6)**: `POST /api/v1/opportunities/{id}/ai-summary` holds an HTTP connection open for the full AI Gateway streaming duration. Professional and Enterprise users can trigger simultaneous SSE connections. Story 6.8 specifies `max_concurrent_sse_streams: int = Field(default=10)` in config and a semaphore gate, but this is not yet implemented.
+  3. **Cursor-based pagination efficiency**: Listing and search APIs must evaluate TierGate on every item before serialization. With max 100 results per page and scope-filtered results, effective result count may be lower than requested, requiring over-fetching.
 
 ### Throughput
 
-- **Status:** CONCERNS
-- **Threshold:** 10K+ active tenders, concurrent agent execution per tenant (PRD Section 4)
-- **Actual:** Not measured — no concurrent load testing performed
-- **Evidence:** Rate limiter implemented (5 failed login attempts per email per 15-min window via Redis INCR/EXPIRE); HPA templates from E01 still in place (3-20 pods for client-api)
-- **Findings:** The rate limiter itself has a known non-atomicity issue: `INCR` + `EXPIRE` as separate commands under extreme concurrency near key expiry could theoretically create an immortal counter (deferred from Story 2.3). Redis-backed rate limiting is functional for MVP scale.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Concurrent agent execution per tenant; supports 10K+ active tenders (PRD Section 4)
+- **Actual:** Not measured
+- **Evidence:** HPA 3-20 pods (client-api) from E01/E02; architecture Section 3 (Service 1: Client API, HPA 3-20)
+- **Findings:** E02 confirmed the blocking bcrypt concern; E06 adds SSE as a new throughput bottleneck. Long-lived SSE connections do not release uvicorn worker slots until the AI Gateway response is complete (~30s for a 100-page document per PRD Section 5.1). The semaphore cap from S06.08 addresses this for the SSE endpoint specifically but no load test confirms the REST endpoints meet throughput targets under realistic AI summary concurrent load.
 
 ### Resource Usage
 
-- **Status:** CONCERNS
-- **Threshold:** Docker images < 200MB per service; Helm resource limits 256Mi-1Gi
-- **Actual:** Not validated under real auth workload; E01 infrastructure resource limits still apply
-- **Evidence:** Redundant queries identified in ESPD CRUD (`_get_latest_or_none` + `_get_next_version` both query same table for same company_id — deferred from Story 2.12); bypass RBAC path executes 2 sequential queries instead of 1 optimized query (deferred from Story 2.10)
-- **Findings:** No new resource-intensive operations beyond bcrypt hashing. Query optimization items are tracked but not blocking.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** HPA 3-20 pods client-api; Redis rate limits and usage counters
+- **Actual:** Not measured; Redis counters use atomic Lua scripts with TTL-bounded keys
+- **Evidence:** Architecture Section 4.3: Redis 7 for usage counters; S06.03 Lua script design for atomic counter
+- **Findings:** Redis memory consumption for usage counters: each key pattern `user:{user_id}:usage:{feature}:{YYYY-MM}` expires at billing period end — bounded by design. S3 presigned URL overhead is stateless. The `client.documents` table adds an append-only workload; no partitioning or archival strategy defined at E06 level.
+
+### Scalability
+
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Not explicitly defined for E06 beyond PRD targets
+- **Actual:** Not measured
+- **Evidence:** Architecture: HPA 3-20 pods (client-api), HPA 2-10 pods (ai-gateway); K8s topology (Section 14.1)
+- **Findings:** The AI Gateway HPA scales on SSE stream count (architecture Section 14.1). The Client API HPA scales on CPU/memory. When MAX_CONCURRENT_SSE_STREAMS is hit, the endpoint returns 503 (S06.08 design) — this is correct fail-fast behaviour but no load test verifies the threshold value (default=10) is appropriate for the expected concurrent user base.
 
 ---
 
@@ -80,80 +107,48 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 ### Authentication Strength
 
-- **Status:** PASS
+- **Status:** PASS ✅
 - **Threshold:** JWT RS256, TLS 1.3 (PRD Section 4)
-- **Actual:** JWT RS256 implemented with 15-min access tokens + 7-day refresh tokens; bcrypt cost=12 password hashing; Google OAuth2 with CSRF state validation; rate limiting on login
-- **Evidence:**
-  - `test_register.py` (11 tests GREEN): verifies bcrypt cost=12, hashed_password excluded from responses, verification token SHA-256 hashed
-  - `test_login.py` (11 tests GREEN): verifies RS256 signing, correct JWT claims (sub, company_id, role, exp, iat, jti), 15-min expiry, rate limiting
-  - `test_auth_middleware.py` (16 tests GREEN): verifies expired tokens → 401 `token_expired`, tampered tokens → 401 `token_invalid`, missing header → 401
-  - `test_auth_google.py` (15 tests GREEN): verifies CSRF state validation, account linking, token issuance
-  - `test_auth_password_reset.py` (17 tests GREEN): verifies single-use tokens, SHA-256 hash before storage, 1-hour expiry, anti-enumeration (always 200)
-- **Findings:** Authentication is comprehensively implemented and tested. **Deferred security concerns:**
-  - **Missing `User.is_active` check in login AND token refresh** (Stories 2.3, 2.5) — deactivated users can authenticate and refresh tokens for up to 7 days. This is a real security gap tracked in deferred work.
-  - **No `audience`/`issuer` claim verification on JWT decode** (Story 2.4) — a JWT from another service sharing the same RSA key pair would be silently accepted.
-  - **bcrypt silently truncates passwords at 72 bytes** (Story 2.2) — no `max_length` enforced on password fields; passwords longer than 72 bytes accepted but only first 72 bytes verified on login.
+- **Actual:** JWT RS256 carried from E02 (E02 NFR: PASS); all endpoints require valid Bearer JWT; tier claim (`subscription_tier`) in JWT issued by E02 auth service
+- **Evidence:** E02 NFR report (2026-04-07): Authentication PASS — 287+ tests GREEN; ATDD-6-2 preflight: `eusolicit_common.exceptions.AppException` ✅ EXISTS; JWT fixtures confirmed in conftest.py for all four tiers
+- **Findings:** The E02 auth foundation is solid. E06 adds tier-claim consumption — `subscription_tier` must be present in all issued tokens. The E06 test design confirms `subscription_tier` JWT claim is a dependency entry criterion. One forward-looking concern: S06.08 ATDD confirms `UsageGateContext.user_tier` is sourced from the JWT, not from a live DB subscription query. If a subscription is downgraded between JWT issuance and next refresh (15-min window), a user could consume AI summaries at their old tier's quota. This is an accepted design trade-off (not a FAIL — it matches the 15-min JWT expiry window from E02).
 
-### Authorization Controls
+### Authorization Controls (TierGate)
 
-- **Status:** PASS
-- **Threshold:** Entity-level RBAC with company role ceiling; per-entity permissions (Architecture ADR 1.13)
-- **Actual:** Two-tier RBAC implemented: company-wide role ceiling + entity-level permissions; 5 roles × 3 permissions fully enforced; admin/bid_manager bypass for own-company entities
-- **Evidence:**
-  - `test_rbac.py` (35 unit tests GREEN): exhaustive parametrized permission matrix across all role/permission combinations
-  - `test_rbac_middleware.py` (16 API tests GREEN): integration tests for ceiling enforcement, bypass roles, cross-company isolation, denial audit logging, per-request caching
-  - `test_security.py` (19 unit tests GREEN): role hierarchy verification, `require_role` enforcement across all 5 roles
-- **Findings:** **Risk E02-R-001 (RBAC ceiling, Score 6): FULLY MITIGATED.** All 5 roles × 3 permissions × own/cross-company combinations are tested. Contributor cannot exceed `write` ceiling; reviewer/read_only cannot exceed `read`. Admin/bid_manager bypass works only for own-company entities. **Deferred items:**
-  - Bypass roles can access unclaimed entities (zero entity_permissions rows) — design decision documented
-  - No UNIQUE constraint on `entity_permissions(user_id, company_id, entity_type, entity_id, permission)` — duplicate grants cause 500 error
-  - Bypass path executes 2 queries instead of AC5's single-query requirement
-
-### Cross-Tenant Data Isolation
-
-- **Status:** PASS
-- **Threshold:** Company A cannot access Company B data under any circumstances (Architecture ADR 1.5, Epic AC)
-- **Actual:** Cross-tenant isolation verified for all auth-related endpoints: company profiles, team members, ESPD profiles, entity permissions
-- **Evidence:**
-  - `test_company_profile.py` (24 tests GREEN): cross-tenant GET returns 403
-  - `test_team_members.py` (34 tests GREEN): cross-company member operations return 403/404
-  - `test_espd_profile.py` (28 tests GREEN): cross-tenant ESPD access returns 403
-  - `test_rbac_middleware.py`: Company A admin → 403 for Company B entity
-  - Traceability: E02-P0-012 FULL coverage across 3 stories (9 cross-tenant tests)
-- **Findings:** **Risk E02-R-002 (Cross-tenant isolation, Score 6): FULLY MITIGATED.** All protected endpoints reject cross-company access with 403. Every story with company-scoped data includes cross-tenant negative tests.
-
-### Token Security
-
-- **Status:** PASS
-- **Threshold:** RS256 signing; refresh token rotation with breach detection (Epic AC, Story 2.5)
-- **Actual:** Refresh token family tracking implemented; consumed token reuse triggers family-wide revocation + audit breach entry; logout revokes refresh tokens; password reset revokes all refresh tokens
-- **Evidence:**
-  - `test_auth_refresh.py` (13 tests GREEN): valid rotation, consumed token → 401, family revocation on replay, expired → 401, logout → revoked, idempotent logout
-  - Traceability: E02-P0-010 (rotation), E02-P0-011 (breach detection) both FULL
-- **Findings:** **Risk E02-R-003 (Token security, Score 6): FULLY MITIGATED.** Token tampering, expiry, rotation, family revocation, and breach detection are all tested. **Deferred items:**
-  - **Race condition in concurrent token rotation** (Story 2.5) — no `SELECT ... FOR UPDATE`; two concurrent requests can both rotate the same token, forking the family. Requires pessimistic locking.
-  - Logout revocation indistinguishable from rotation revocation — replayed logged-out tokens trigger false-positive breach detection and noisy audit entries.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Subscription tier must gate every opportunity response; no free-tier data may reach paid fields; no paid-tier user may access out-of-scope opportunities (Architecture ADR 1.13 / E06 acceptance criteria)
+- **Actual:** TierGate designed as FastAPI dependency on every opportunity route; field-level enforcement via separate Pydantic models; 30 ATDD tests specified (S06.02) — all in RED phase
+- **Evidence:** S06.02 ATDD (6-2 checklist): `OpportunityFreeResponse`, `OpportunityFullResponse`, `opportunity_tier_gate.py` — all ❌ NOT IMPLEMENTED; TierGate design confirmed in S06.02 ACs; E06-R-001 (score 6) mitigation strategy specified
+- **Findings:** **Risk E06-R-001 (TierGate bypass, Score 6): DESIGNED but NOT YET VERIFIED.** The design correctly applies TierGate as a per-route FastAPI dependency (not middleware) so it cannot be accidentally omitted. `OpportunityFreeResponse` is a strict 6-field-only Pydantic model — the test `test_free_response_has_exactly_six_model_fields` verifies this at model level. The listing endpoint silently removes out-of-scope items (no 403) while the detail endpoint returns 403 for free-tier users — both are correct revenue-protection patterns. **Before Sprint 5 close, P0 tests E06-P0-001/002/003 must be GREEN.**
+  - **Deferred concern:** Cursor forgery (E06-R-005, score 4): TierGate must be re-applied on every paginated request; cursor integrity test (E06-P2-003) is in RED.
+  - **Deferred concern:** `budget_max=None` case — specified as in-scope for Starter; test `test_starter_budget_max_none_is_treated_as_in_scope` documents the edge case.
 
 ### Data Protection
 
-- **Status:** PASS
-- **Threshold:** AES-256 at rest; GDPR compliance (PRD Section 4)
-- **Actual:** Password reset tokens SHA-256 hashed before storage; verification tokens SHA-256 hashed; invite tokens SHA-256 hashed; `hashed_password` never returned in API responses; audit log captures before/after state for all mutations
-- **Evidence:**
-  - `test_register.py`: hashed_password absent from response body
-  - `test_auth_password_reset.py`: raw token not stored in DB; token_hash is 64-char hex
-  - `test_audit_trail.py` (15 tests GREEN): before/after captured for update/delete; IP address recorded
-- **Findings:** Token storage security is production-grade. **Deferred:** `IntegrityError` on concurrent ESPD version collision propagates raw SQLAlchemy error details including table/constraint names (Story 2.12). This is a minor information disclosure risk.
+- **Status:** PASS ✅
+- **Threshold:** AES-256 at rest; GDPR compliance; EU data residency (PRD Section 4 / Architecture ADR 1.9)
+- **Actual:** Architecture ADR 1.9: all data in EU data centres (AWS eu-central-1); ADR 1.10: document retention policy defined (opportunity lifetime + 2 years); ClamAV scanning for all uploaded files; S3 presigned URLs with 15-min (upload) and 10-min (download) expiry
+- **Evidence:** Architecture Section 1.9 (data residency); Section 1.10 (document retention with weekly Celery soft-delete); S06.06 AC6/AC7: scan_status defaults to `pending`, not `clean`; Architecture Section 4.4: External Secrets Operator for all service secrets
+- **Findings:** Data protection design is comprehensive at E06 scope. Three specific findings:
+  1. **ClamAV pre-scan gap (E06-R-003, score 6)**: The critical invariant — `scan_status` MUST be `pending` immediately after the confirm callback, never `clean` by default — is specified in S06.06 AC6 and verified by E06-P0-006. Not yet tested.
+  2. **ClamAV timeout (E06-R-008, score 4)**: No background job is specified in E06 to mark documents `failed` after a configurable scan timeout. This is noted as out-of-scope for S06.06 but carries risk: a ClamAV outage leaves documents perpetually `pending` and un-downloadable without a retry mechanism.
+  3. **S3 presigned URL reuse**: The presigned PUT URL is valid for 15 minutes and can technically be reused by the recipient to upload a different file. This is an accepted risk for S3 presigned URL patterns; the scan flow mitigates post-upload malware.
 
 ### Vulnerability Management
 
-- **Status:** CONCERNS
-- **Threshold:** No critical vulnerabilities; dependency scanning (PRD Section 4)
-- **Actual:** No Dependabot/Snyk configured (deferred from E01 NFR report); no max_length on password fields; no payload size validation on JSONB fields
-- **Evidence:** deferred-work.md tracks: unbounded password length (Stories 2.2, 2.3), no size/depth limit on ESPD `field_values` JSONB (Story 2.12), no max_length on `cpv_sectors`/`regions`/`certifications` (Story 2.8)
-- **Findings:** The E01 NFR report recommended configuring Dependabot before E02 start — this has not been done. Key unbounded-input vulnerabilities:
-  - **bcrypt HashDoS**: No `max_length` on `LoginRequest.password` or `RegisterRequest.password` — large payloads fed to CPU-intensive bcrypt hash (deferred from Stories 2.2, 2.3)
-  - **JSONB storage bloat**: No size limits on ESPD field_values, CPV sectors, regions, certifications arrays
-  - **Dependency vulnerabilities**: 20+ Python dependencies across all projects unscanned
+- **Status:** CONCERNS ⚠️
+- **Threshold:** No critical vulnerabilities; dependency scanning required (PRD Section 4); carried from E01 NFR outstanding
+- **Actual:** No Dependabot/Snyk scan executed (outstanding from E01/E02 NFR reports); no SAST/DAST run on E06 code (not yet implemented)
+- **Evidence:** E02 NFR report (2026-04-07): Vulnerability Management — CONCERNS; carried forward: "20+ Python dependencies across all projects unscanned"
+- **Findings:** The E01 and E02 NFR reports both recommended configuring Dependabot before the next epic — this has not been done (3rd consecutive carry-forward). E06 adds new dependencies: `pyclamd`, `boto3`/`moto`, `fakeredis`, `testcontainers` — all unscanned. **This is the most persistent deferred risk across all epics.**
+
+### Compliance (GDPR)
+
+- **Status:** PASS ✅
+- **Threshold:** GDPR right to erasure, DPAs with KraftData, EU data residency (PRD Section 4)
+- **Actual:** Architecture ADR 1.9 (EU data centres); ADR 1.10 (retention policy, soft-delete → 30-day hard-delete); audit trail for all document events (S06.07 AC8 audit log); PRD Section 4 explicitly lists GDPR as NFR
+- **Evidence:** Architecture Sections 1.9–1.10; S06.07 AC8 (download audit event); S06.06 AC7 (infected document soft-delete)
+- **Findings:** GDPR posture is sound at the design level. AI summary content is stored in `client.ai_summaries` — this includes AI-generated text derived from opportunity data, which is not PII. User-uploaded documents in `client.documents` are subject to the retention policy. The right-to-erasure implementation (user/company account deletion) is not in E06 scope — it was established in E02 user management flows.
 
 ---
 
@@ -161,54 +156,46 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 ### Availability (Uptime)
 
-- **Status:** CONCERNS
+- **Status:** CONCERNS ⚠️
 - **Threshold:** 99.5% uptime (PRD Section 4)
 - **Actual:** Not measurable — no production deployment
-- **Evidence:** Docker Compose dev environment operational; HPA + PDB templates from E01 in place; health endpoints (`/healthz`) functional
-- **Findings:** Auth endpoints are functional in dev environment. No production uptime monitoring exists. **Critical concern:** Redis outage propagates as unhandled 500 to all login attempts — `rate_limiter.check()` and `record_failure()` raise `ConnectionError` with no catch handler (deferred from Story 2.3). A Redis outage would make authentication completely unavailable even though the core auth logic (bcrypt + JWT) does not require Redis.
+- **Evidence:** Architecture Section 15: Grafana Alerting for per-service health checks, SLA tracking (99.5%); K8s HPA and PDB templates from E01/E02 in place
+- **Findings:** No production uptime monitoring exists. E06 introduces availability dependencies on: (1) Redis availability for UsageGate — **same fail-closed Redis risk as E02** — if Redis is unreachable, all metered AI summary requests fail; (2) AI Gateway availability — circuit breaker is implemented (Architecture Section 11, architecture ADR 1.11: fail-open on 5 consecutive failures after 30s reset), so AI Gateway outages cause SSE endpoint failures gracefully; (3) ClamAV sidecar availability — if ClamAV is unavailable, uploads complete with `scan_status=pending` indefinitely (see E06-R-008).
 
 ### Error Rate
 
-- **Status:** PASS
-- **Threshold:** 0 test failures for E02 authentication code
-- **Actual:** 287+ test functions across 15 files, all GREEN; 0 active skip/xfail decorators
-- **Evidence:**
-  - sprint-status.yaml: all 12 stories "done", tea_status: all 12 stories "done"
-  - Test file headers confirm GREEN phase (skip decorators removed after implementation)
-  - Traceability matrix: TRACE_GATE PASS — P0 100%, P1 100%, P2 100%, P3 75%
-  - Test breakdown:
-    - API tests: 200 functions (11 files, 9,518 lines)
-    - Unit tests: 59 functions (3 files, 1,369 lines)
-    - Integration tests: 28 functions (1 file, 1,036 lines)
-- **Findings:** Zero error rate in test suite. All 12 ATDD checklists complete. All code reviews completed with deferred items documented.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** 0 test failures for E06 code in CI (same criterion as E02)
+- **Actual:** 0 tests passing (all ATDD in RED phase) — no test evidence yet
+- **Evidence:** All 14 ATDD checklists dated 2026-04-17 with TDD phase: 🔴 RED; all test functions `@pytest.mark.skip`
+- **Findings:** Cannot assess error rate — no implementation. The target post-implementation is 100% P0 pass rate (test-design-epic-06.md Exit Criteria). 10 P0 tests are defined covering: TierGate enforcement (3 tests), UsageGate race + 429 (3 tests), document pre-scan download gate (2 tests), SSE event order (1 test), E2E tier flow (1 test).
 
 ### Fault Tolerance
 
-- **Status:** CONCERNS
-- **Threshold:** Graceful degradation; non-blocking audit writes (Architecture)
-- **Actual:** Audit writes are non-blocking (try/except suppresses failures, returns 403/200 not 500); RBAC denial audit writes do not block 403 responses
-- **Evidence:** `test_audit_service.py` (5 unit tests GREEN): error suppression verified; `test_rbac_middleware.py`: denial audit write does not affect 403 response
-- **Findings:** Audit middleware correctly fails silently. **However:**
-  - Redis outage blocks ALL logins (no graceful degradation on rate limiter) — deferred from Story 2.3
-  - Concurrent token rotation race condition can fork token families — deferred from Story 2.5
-  - Concurrent `accept_invite` TOCTOU can cause IntegrityError → 500 — deferred from Story 2.9
-  - Concurrent admin removal TOCTOU on last-admin check — deferred from Story 2.9
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Graceful degradation on dependency failures; circuit breaker on AI Gateway; non-blocking audit writes
+- **Actual:** Circuit breaker specified in architecture (AI Gateway); audit writes non-blocking (E02 pattern inherited); UsageGate Redis failure handling not explicitly specified for fail-open in S06.03
+- **Evidence:** Architecture Section 11: AI Gateway circuit breaker (fail-open after 5 failures, retry after 30s); E02 NFR: audit writes non-blocking (PASS); S06.03 ACs: no explicit fail-open for Redis outage in UsageGate
+- **Findings:** Three fault-tolerance gaps:
+  1. **UsageGate Redis fail-open**: S06.03 does not specify behaviour when Redis is unavailable. If the Lua script call fails (connection refused), what happens? E02's rate-limiter had the same gap — a quick win there was adding fail-open. **Same quick win applies to UsageGate.** Without fail-open, a Redis outage blocks ALL paid-tier AI summary requests.
+  2. **SSE generator DB session**: ATDD-6-8 notes "DB Session in SSE Generator: Generator must create its own session from session_factory — request-scoped session may be torn down before generator completes." This is a design-time implementation constraint documented in S06.08 architecture notes — if not followed, the SSE generator will raise `sqlalchemy.orm.exc.DetachedInstanceError` mid-stream.
+  3. **ClamAV timeout → perpetual pending**: E06-R-008 (score 4): no timeout-to-failed transition defined in E06 scope; documents stuck in `pending` are undownloadable indefinitely if ClamAV silently fails.
 
 ### CI Burn-In (Stability)
 
-- **Status:** PASS
-- **Threshold:** All tests pass consistently; no flaky tests
-- **Actual:** Weekly burn-in configured (from E01); all E02 tests integrated into CI matrix build
-- **Evidence:** .github/workflows/test.yml includes weekly burn-in schedule; ci.yml 8-job matrix covers client-api service
-- **Findings:** E02 tests are deterministic (no timing dependencies, no external service calls in unit tests). OAuth2 tests use authlib mock/stub pattern. Rate limiting tests use per-test Redis key namespacing.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** All tests pass consistently; E06 integrated into CI matrix
+- **Actual:** No E06 tests in CI (all in RED phase); CI matrix from E01/E02 covers services but E06 test files not yet integrated
+- **Evidence:** `.github/workflows/ci.yml` and `test.yml` from E01/E02; E06 test files not yet created/registered
+- **Findings:** CI integration is a follow-on step after RED → GREEN transition. The test design execution strategy defines: every PR runs P0/P1/P2 API + integration + unit tests (~5-8 min); every PR runs frontend component tests (~3-5 min); nightly runs P0/P1 E2E tests (Playwright, ~10-20 min). This is well-designed but currently inoperative.
 
 ### Disaster Recovery
 
-- **Status:** CONCERNS
-- **Threshold:** Not defined for E02
-- **Actual:** Not measurable — no production deployment; same as E01
-- **Evidence:** Terraform scaffold unchanged from E01; no new DR mechanisms added in E02
-- **Findings:** DR posture unchanged from E01. Auth-specific recovery concerns: if the RSA private key is lost, all issued JWTs become unverifiable. Key management is environment-variable based — no rotation mechanism exists.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Not defined for E06
+- **Actual:** No production deployment; same as E01/E02
+- **Evidence:** Architecture Section 14.1: CronJob `db-backup` (daily pg_dump to S3); no RTO/RPO definitions added in E06
+- **Findings:** E06 adds `client.documents` and `client.ai_summaries` as new data stores with distinct recovery requirements. Document recovery requires both DB metadata and S3 object recovery. If S3 objects are lost but DB metadata survives, documents appear as records but are undownloadable. AI summaries in DB are regenerable (at quota cost). No formal DR plan exists (persistent across E01→E02→E06).
 
 ---
 
@@ -216,320 +203,338 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 ### Test Coverage
 
-- **Status:** PASS
-- **Threshold:** >= 90% branch coverage on auth and RBAC modules (Epic AC); P0 100%, P1 >= 95%
-- **Actual:** 287+ test functions across 15 files; P0 100% (12/12), P1 100% (18/18), P2 100% (18/18), P3 75% (3/4); overall 96.2% FULL, 98.1% covered
-- **Evidence:** traceability-matrix.md: TRACE_GATE PASS; 12 ATDD checklists with 100% story-level AC coverage for all 12 stories; test-design-epic-02.md defines 52 epic-level test IDs
-- **Findings:** Test coverage exceeds all thresholds. Test pyramid:
-  - Unit: 59 tests (3 files) — RBAC logic, middleware, audit service
-  - API/Integration: 200 tests (11 files) — auth flows, token lifecycle, CRUD, cross-tenant
-  - Integration: 28 tests (1 file) — migration validation, schema structure
-  - Performance: 0 tests (k6 deferred)
+- **Status:** CONCERNS ⚠️
+- **Threshold:** ≥80% line coverage on routes/middleware; ≥90% on TierGate + UsageGate (test-design-epic-06.md Exit Criteria); ≥75% on frontend components
+- **Actual:** 0% — no implementation code, no coverage data
+- **Evidence:** All 14 ATDD checklists in RED phase; test-design-epic-06.md defines: P0: 10 tests, P1: 30 tests, P2: 15 tests, P3: 5 tests = 60 total; coverage targets explicitly set in Exit Criteria
+- **Findings:** Test design is thorough and well-structured. The test pyramid is correctly designed:
+  - **Unit tests**: TierGate context logic (23 functions), UsageGate Lua/TTL/tier logic (22 functions)
+  - **API tests**: endpoint HTTP integration (30+ functions across 14 files)
+  - **Integration tests**: concurrent Redis race (3 functions, testcontainers), document upload flow, SSE streaming (15 functions)
+  - **E2E tests**: E2E tier flow (1 Playwright test, nightly)
+  - **Frontend component tests**: all 6 frontend components (S06.09–S06.14)
+  - Total: 60 test scenarios defined, ~65-106 hours estimated
+
+  **Post-implementation coverage projection**: ≥90% for TierGate+UsageGate is achievable given 53 unit+API tests covering those modules. ≥80% for routes is achievable given comprehensive P0/P1 coverage.
 
 ### Code Quality
 
-- **Status:** PASS
-- **Threshold:** ruff lint zero tolerance; mypy type check pass (CI quality gate)
-- **Actual:** CI enforces ruff + mypy on every PR; service layer pattern consistently applied (auth_service.py, member_service.py, company_service.py, espd_service.py)
-- **Evidence:** All 12 stories code-reviewed; deferred-work.md tracks code quality items; Pydantic v2 schemas for all request/response validation
-- **Findings:** Code quality is consistent across all auth stories. Known quality items tracked:
-  - `Mapped[sa.UUID]`/`Mapped[sa.DateTime]` type annotations should be `Mapped[uuid.UUID]`/`Mapped[datetime]` (pre-existing project-wide pattern)
-  - Duplicated CPV validator in Story 2.8 (DRY concern, low divergence risk)
-  - No structlog logging in auth_service.py or security.py (observability gap)
+- **Status:** PASS ✅
+- **Threshold:** ruff lint zero tolerance; mypy type check pass; CI quality gate (inherited from E02)
+- **Actual:** No E06 code yet; CI quality gates from E01/E02 enforced on every PR
+- **Evidence:** CI quality gates: ruff + mypy on every PR (E01/E02 CI config); E06 stories specify Pydantic v2 models, structlog logging, FastAPI dependency pattern
+- **Findings:** Code quality patterns established in E02 (Pydantic v2, service layer, async SQLAlchemy) are specified in all E06 story tasks. Two quality risks to watch:
+  1. **SSE generator complexity**: The S06.08 SSE generator must manage: UsageGate check, StreamingResponse creation, AI Gateway streaming, DB persistence, error event emission — all in one async generator. This is the most complex single unit in E06 and should be reviewed with particular attention to exception propagation.
+  2. **TierGate + EntityPermission interaction**: E06 adds TierGate on top of the E02 EntityPermission middleware. The interaction between `check_scope` (tier-level) and `check_entity_permission` (RBAC level) must be sequenced correctly — tier check first (cheaper), RBAC second.
 
 ### Technical Debt
 
-- **Status:** PASS
+- **Status:** PASS ✅
 - **Threshold:** Tracked and triaged; no unacknowledged debt
-- **Actual:** 61+ deferred items tracked across 9 code review sessions (Stories 2.1, 2.2, 2.3, 2.4, 2.5, 2.8, 2.9, 2.10, 2.12) in deferred-work.md
-- **Evidence:** eusolicit-docs/implementation-artifacts/deferred-work.md — each item has source story, description, and rationale
-- **Findings:** Technical debt is well-managed. Key debt categories:
-  - **Security hardening** (7 items): is_active check, JWT audience/issuer, bcrypt truncation, password max_length, concurrent rotation race, HashDoS, empty-role edge case
-  - **Concurrency** (5 items): token rotation race, accept_invite TOCTOU, last-admin TOCTOU, rate limiter non-atomicity, lost update on company CRUD
-  - **Performance** (3 items): blocking bcrypt, redundant ESPD queries, bypass 2-query path
-  - **Observability** (3 items): no structlog in auth/security, no structured logging for rate limits
-  - **Data integrity** (4 items): missing UNIQUE constraints, email case sensitivity, JSONB size limits
-  - No uncontrolled debt accumulation; all items have documented rationale
+- **Actual:** All known design-time risks tracked in test-design-epic-06.md with risk IDs, owners, and mitigation plans; E06 deferred items identified (E06-R-005 cursor forgery, E06-R-006 concurrent upload size race, E06-R-007 stale AI cache, E06-R-008 ClamAV timeout)
+- **Evidence:** test-design-epic-06.md: 10 risks catalogued with probability × impact scoring; mitigation plans for all 4 high-risk items (E06-R-001 through E06-R-004)
+- **Findings:** Technical debt is well-catalogued pre-implementation. The carry-forward from E02 (Dependabot, Prometheus /metrics, bcrypt executor, k6 baseline) continues to accumulate. **E06 adds 4 new risks to the deferred backlog** but all are specifically documented. The design for atomic UsageGate (Lua script), pre-scan enforcement, TierGate-as-dependency, and SSE concurrency cap addresses the core risks architecturally before implementation begins.
 
 ### Documentation Completeness
 
-- **Status:** PASS
-- **Threshold:** Epic definition, test design, ATDD checklists, traceability documented
-- **Actual:** Complete documentation suite for E02
+- **Status:** PASS ✅
+- **Threshold:** Epic definition, test design, ATDD checklists, implementation artifacts documented
+- **Actual:** Complete documentation suite for E06
 - **Evidence:**
-  - Epic definition: planning-artifacts/epic-02-authentication-identity.md (12 stories, 34 points)
-  - Test design: test-artifacts/test-design-epic-02.md (52 test IDs, 9 risks, resource estimates)
-  - ATDD checklists: 12 files (one per story)
-  - Traceability matrix: test-artifacts/traceability-matrix.md (TRACE_GATE: PASS)
-  - Implementation artifacts: 12 story files + sprint-status.yaml
-  - Deferred work: 61+ items across 9 code review sessions
-- **Findings:** Documentation is comprehensive. No gaps identified.
-
-### Test Quality
-
-- **Status:** PASS
-- **Threshold:** Deterministic, isolated, no external dependencies for unit tests
-- **Actual:** Tests are deterministic; OAuth2 uses authlib mock; rate limiting uses per-test Redis keys; DB state uses per-test transaction rollback
-- **Evidence:** Test file analysis: no `time.sleep`, no external HTTP calls in unit tests, no cross-test state leakage; pytest-asyncio fixtures provide isolated DB sessions; Redis keys namespaced per test
-- **Findings:** Test quality is high. Each test level covers distinct aspects:
-  - Unit tests: pure logic (RBAC ceiling map, role hierarchy, audit write/suppress)
-  - API tests: HTTP integration (endpoint behavior, status codes, response bodies)
-  - Integration tests: DB-level (migration correctness, schema structure, constraints)
+  - Epic definition: `planning-artifacts/epics/E06-opportunity-discovery.md` (14 stories, 55 points)
+  - Test design: `test-artifacts/test-design-epic-06.md` (60 test scenarios, 10 risks, execution strategy, resource estimates)
+  - ATDD checklists: 14 files (one per story, all generated 2026-04-17)
+  - Implementation specs: 14 story files (all with status: done in spec)
+  - PRD: Section 3.1 covers E06 scope; Section 4 defines NFR targets
+- **Findings:** Documentation is comprehensive. E06 test design is notably strong — it documents not only test scenarios but also fixture factories (OpportunityFactory, UserJWTFactory, DocumentFactory, AISummaryFactory), tooling (fakeredis, testcontainers, respx, moto, freezegun), and explicit mock strategies per component.
 
 ---
 
-## Custom NFR Assessments
+## Custom NFR Assessments (ADR Quality Readiness Checklist)
 
-### Testability & Automation (ADR Checklist Category 1)
+### 1. Testability & Automation
 
-- **Status:** PASS
+- **Status:** CONCERNS ⚠️
 - **Threshold:** CI pipeline operational; automated tests for all P0/P1 scenarios; test infrastructure ready
-- **Actual:** 287+ automated tests; 15 test files; CI matrix build covers client-api; ATDD checklists for all 12 stories
-- **Evidence:** .github/workflows/ci.yml (8-job matrix); traceability-matrix.md (P0 100%, P1 100%)
-- **Findings:** All 4 criteria met. Auth-specific test infrastructure additions: RSA key pair fixtures, authlib OAuth2 mock, Redis rate limit teardown fixtures, per-test DB sessions, user/company factories.
+- **Actual:** 14 ATDD checklists generated, 0 tests passing; test fixtures and factories specified but not built; CI integration pending
+- **Evidence:** test-design-epic-06.md Prerequisites section: OpportunityFactory, UserJWTFactory, DocumentFactory, AISummaryFactory all defined; conftest.py fixtures (starter_user_token, free_user_token, test_redis_client) confirmed from E02
+- **Findings:** 2/4 criteria met. Test isolation approach is well-designed (fakeredis for unit, testcontainers for integration, moto for S3, respx for AI Gateway). One gap: `fakeredis[aioredis]` and `testcontainers[redis]` are not yet in `pyproject.toml` dev dependencies (flagged in S06.03 ATDD checklist). This is a blocking action for UsageGate tests.
 
-### Test Data Strategy (ADR Checklist Category 2)
+### 2. Test Data Strategy
 
-- **Status:** PASS
-- **Threshold:** Factories, fixtures, and seeding mechanisms available
-- **Actual:** Per-test transaction rollback for DB isolation; `_register_and_verify_with_role` helper creates user+company+membership in single API call; `CapturingEmailService` stub captures verification/reset tokens
-- **Evidence:** test conftest.py: `client_api_session_factory`, `rsa_env_setup`, `test_redis_client`; shared fixtures across test files
-- **Findings:** All 3 criteria met. Auth-specific additions: JWT token factories for expired/tampered/valid tokens; Google OAuth2 mock responses; rate limiter key flush; multi-company test seeding.
+- **Status:** PASS ✅
+- **Threshold:** Factories, fixtures, seeding mechanisms available; synthetic data; test isolation
+- **Actual:** Per-test transaction rollback from E02 inherited; JWT fixtures for all four tiers in conftest.py; factory patterns specified for all four new entity types
+- **Evidence:** test-design-epic-06.md Prerequisites: 4 factory types defined; S06.03 ATDD: fakeredis for unit, testcontainers for race tests; S06.06 ATDD: `_mock_s3_client()` helper, `patch("...dispatch_document_scan")` for Celery
+- **Findings:** All 3 criteria met. Test data strategy is strong — faker-based synthetic data, no production data dependency, auto-cleanup fixtures, and dedicated factories for each new entity type. The `asyncio.gather` pattern for race condition tests (E06-P0-004, E06-P2-004) is explicitly specified with testcontainers Redis to avoid fakeredis concurrency limitations.
 
-### Scalability & Availability (ADR Checklist Category 3)
+### 3. Scalability & Availability
 
-- **Status:** CONCERNS
-- **Threshold:** HPA 3-20 pods (client-api); graceful degradation under component failure
-- **Actual:** HPA templates from E01 unchanged; no auth-specific scaling validation; Redis SPOF for login rate limiting
-- **Evidence:** Helm values for client-api: minReplicas=3, maxReplicas=20; rate limiter depends on single Redis instance
-- **Findings:** Auth endpoints add the first real scaling dimension. Blocking bcrypt on async loop limits per-pod throughput. Redis SPOF for rate limiting means Redis outage = login unavailability. k6 performance baseline needed to establish per-pod capacity.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** HPA 3-20 pods (client-api); graceful degradation under component failure; SSE concurrency bounded
+- **Actual:** HPA templates from E01/E02 unchanged; SSE concurrency cap designed (`MAX_CONCURRENT_SSE_STREAMS`, semaphore) but not implemented; no load test for E06 endpoints
+- **Evidence:** Architecture Section 14.1: client-api HPA 3-20 pods; ai-gateway HPA 2-10 pods (scales on SSE stream count); S06.08 Config: `max_concurrent_sse_streams: int = Field(default=10)`
+- **Findings:** 2/4 criteria met. The AI Gateway scaling model correctly uses SSE stream count as an HPA metric — this is architecturally sound. The client-api semaphore cap (default=10 per pod) means at 20 pods, the theoretical max concurrent SSE streams is 200, which should be sufficient for early-stage usage. **No load test confirms this.** The Redis SPOF for UsageGate (same pattern as E02 rate limiter) remains the weakest link.
 
-### Disaster Recovery (ADR Checklist Category 4)
+### 4. Disaster Recovery
 
-- **Status:** CONCERNS
-- **Threshold:** Not defined for E02
-- **Actual:** Same as E01; no auth-specific DR mechanisms
-- **Evidence:** RSA keys in environment variables; no key rotation mechanism; refresh tokens in DB (recoverable with DB backup)
-- **Findings:** Auth-specific DR concerns:
-  - RSA private key loss invalidates all issued JWTs (users must re-login)
-  - No JWK rotation mechanism — changing keys requires coordinated deployment
-  - Refresh tokens survive DB restore but may be inconsistent with revocation state
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Not defined for E06 (same as E02)
+- **Actual:** Same as E01/E02; no RTO/RPO definitions added; daily pg_dump to S3 from E01
+- **Evidence:** Architecture Section 14.1: CronJob db-backup (daily); no DR procedures added for documents/ai_summaries tables
+- **Findings:** 0/3 criteria met. E06-specific DR risk: `client.documents` records are useless without the corresponding S3 objects. If S3 versioning/cross-region replication is not configured, a file deletion/corruption event loses user-uploaded documents permanently. Architecture specifies S3/MinIO but does not define S3 versioning or replication policy. **Recommended action: enable S3 versioning and document recovery procedure before GA.**
 
-### Security (ADR Checklist Category 5)
+### 5. Security
 
-- **Status:** PASS
-- **Threshold:** JWT RS256 + TLS 1.3; RBAC enforced; audit trail; cross-tenant isolation
-- **Actual:** All 4 criteria substantially met; 3 high-priority risks fully mitigated with comprehensive tests
-- **Evidence:** E02-R-001 (RBAC ceiling, Score 6): MITIGATED — 51+ RBAC tests; E02-R-002 (Cross-tenant, Score 6): MITIGATED — 9+ cross-tenant tests; E02-R-003 (Token security, Score 6): MITIGATED — 13+ token lifecycle tests
-- **Findings:** Security is the strongest category in E02. All P0 security tests pass. Deferred items are tracked and none are exploitable without authenticated access to the system.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** JWT RS256 + TLS 1.3; RBAC enforced; tier enforcement at every endpoint; audit trail; ClamAV scanning; GDPR
+- **Actual:** JWT RS256 from E02 (GREEN); TierGate designed as per-route dependency; ClamAV scanning specified; audit trail extended for document downloads; Dependabot still not configured
+- **Evidence:** E02 NFR: Security PASS; S06.02 ACs: TierGate on every opportunity endpoint; S06.07 AC8: audit log for downloads; Architecture Section 4.4: External Secrets Operator; ADR 1.9: EU data residency
+- **Findings:** 3/4 criteria met (4th = vulnerability scanning still outstanding). Key security design decisions are correct:
+  - TierGate-as-dependency (not middleware): ensures it cannot be accidentally skipped on new routes — highest-impact security design decision in E06
+  - Strict Pydantic response models: `OpportunityFreeResponse` with exactly 6 fields prevents accidental field leak via model evolution
+  - Atomic Lua script for UsageGate: prevents billing bypass via concurrent requests
+  - `scan_status = pending` default (not `clean`): prevents pre-scan download
+  - **Deferred**: Dependabot/Snyk (3rd consecutive carry-forward); this is now a HIGH-priority action.
 
-### Monitorability, Debuggability & Manageability (ADR Checklist Category 6)
+### 6. Monitorability, Debuggability & Manageability
 
-- **Status:** CONCERNS
-- **Threshold:** Structured logging; metrics endpoint; audit trail queryable
-- **Actual:** Audit trail operational (append-only, all mutations logged); no structlog in auth/security modules; no Prometheus /metrics endpoint (deferred from E01 NFR report)
-- **Evidence:** `test_audit_trail.py` (15 tests GREEN): all mutation types logged with full context (user_id, ip_address, before/after, action_type); deferred-work: no structlog in auth_service.py, security.py
-- **Findings:** Audit trail is production-ready. However:
-  - No structured logging for auth events (login attempts, failures, rate limit hits)
-  - Prometheus /metrics endpoint not yet bootstrapped (E01 recommendation not addressed)
-  - Auth events logged to audit_log with `auth.` prefix — queryable but no dashboard
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Structured logging; Prometheus /metrics endpoint; audit trail queryable; distributed tracing
+- **Actual:** structlog specified in all E06 stories; Prometheus /metrics not yet bootstrapped (carry-forward from E01/E02); OpenTelemetry + Jaeger in architecture but not yet instrumented; audit trail for document downloads specified in S06.07
+- **Evidence:** Architecture Section 15: Prometheus + Grafana + Loki (structlog → Loki) + OpenTelemetry + Jaeger; S06.07 AC8: download audit log entry; S06.08 architecture notes: `AiGatewayClient.stream_agent()` logs latency to gateway schema
+- **Findings:** 2/4 criteria met. E06 adds valuable audit trail entries for document operations (download events). The AI Gateway execution log (`gateway.agent_executions`) captures latency metrics for SSE streams. Key gaps:
+  - **No Prometheus /metrics endpoint** (3rd consecutive carry-forward from E01)
+  - **No distributed tracing instrumentation** in client-api service (OpenTelemetry is in the architecture but not implemented yet)
+  - **Redis usage counter visibility**: no Grafana dashboard for usage meter data — `shared.usage_meters` table is planned but no materialized view query exists yet for tier consumption analytics
 
-### QoS/QoE (ADR Checklist Category 7)
+### 7. QoS & QoE
 
-- **Status:** CONCERNS
-- **Threshold:** p95 < 200ms REST; clear error messages; anti-enumeration
-- **Actual:** Anti-enumeration verified (login: generic error for wrong/nonexistent, password reset: always 200); clear error codes (token_expired, token_invalid); p95 not measured
-- **Evidence:** `test_login.py`: wrong password and nonexistent email return identical 401; `test_auth_password_reset.py`: request always returns 200
-- **Findings:** Error handling UX is good. Specific QoE concerns:
-  - 429 rate-limit response body format inconsistent with other error responses (HTTPException vs JSONResponse pattern — deferred from Story 2.3)
-  - No Retry-After header standardization across all rate-limited endpoints
-  - p95 latency unknown — bcrypt blocking likely pushes auth endpoints above 200ms target under load
+- **Status:** CONCERNS ⚠️
+- **Threshold:** p95 < 200ms REST; SSE TTFB < 500ms; user-friendly error messages; tier upgrade prompts on 403/429
+- **Actual:** p95 not measured; upgrade prompt modal (S06.14) specified for 403 tier_limit and 429 usage_limit_exceeded; loading skeletons for listing page (S06.09) and AI summary panel (S06.13) specified
+- **Evidence:** test-design-epic-06.md: E06-P0-010 (E2E tier flow with blurred/locked fields); S06.14 ACs: global API interceptor for 403/429; S06.09 ACs: loading skeletons; S06.13 ACs: typing animation for SSE text
+- **Findings:** QoE design is strong — the upgrade prompt modal, tier-gated blurred fields, and streaming typing animation all contribute to a polished user experience. QoS latency remains unmeasured. **The p95 REST target (<200ms) is at risk for the search endpoint** given PostgreSQL FTS without Elasticsearch. Performance test E06-P3-001 (OpenAPI schema) and manual SSE concurrency test (E06-R-004 mitigation verification) are the two outstanding QoS measurement actions.
 
-### Deployability (ADR Checklist Category 8)
+### 8. Deployability
 
-- **Status:** PASS
-- **Threshold:** Docker builds, Helm charts, CI/CD pipeline, configuration management
-- **Actual:** Auth configuration via environment variables (RSA keys, Google OAuth credentials, Redis URL); CI matrix covers client-api; Docker builds unchanged
-- **Evidence:** ci.yml matrix build includes client-api service; RSA key pair loaded from environment at startup; Google OAuth credentials in environment
-- **Findings:** All 3 criteria met. Auth adds RSA key management as a deployment concern — private key must be available at container startup. No new deployment complexity beyond environment variable management.
+- **Status:** PASS ✅
+- **Threshold:** Docker builds, Helm charts, CI/CD pipeline, Alembic migrations, configuration management
+- **Actual:** K8s HPA + Helm from E01/E02; two new Alembic migrations required (`client.documents`, `client.ai_summaries`); new env vars: `MAX_CONCURRENT_SSE_STREAMS`, `CLAMAV_SCAN_TIMEOUT`, `AI_SUMMARY_CACHE_TTL_HOURS`, `INTERNAL_SERVICE_KEY` (for ClamAV callback auth)
+- **Evidence:** Architecture Section 14.4: CI/CD pipeline (GitHub Actions matrix); S06.06 ATDD: migration `019_documents`; S06.08 ATDD: migration `018_ai_summaries` (noted as already applied from S06.05); config.py additions in S06.08 story
+- **Findings:** All 3 criteria met. Alembic migrations are explicitly referenced in ATDD checklists — test infrastructure requires them applied before tests run. New environment variables are configuration-externalized (External Secrets Operator pattern). `INTERNAL_SERVICE_KEY` for ClamAV callback authentication is a new secret that must be provisioned in AWS Secrets Manager.
 
 ---
 
 ## Quick Wins
 
-4 quick wins identified for immediate implementation:
+5 quick wins identified for immediate implementation:
 
-1. **Add `max_length=128` to all password fields** (Security) - LOW effort - 30 minutes
-   - Add `max_length=128` to `LoginRequest.password`, `RegisterRequest.password`, `PasswordResetConfirmRequest.new_password`, and `AcceptInviteRequest.password`
-   - Prevents bcrypt HashDoS and documents the 72-byte truncation boundary
-   - No behavior change for legitimate passwords (< 128 chars)
+1. **Add `fakeredis[aioredis]>=2.21` and `testcontainers[redis]>=4.7` to pyproject.toml** (Maintainability) — CRITICAL — 15 minutes
+   - Identified in S06.03 ATDD checklist as missing dev dependencies
+   - Without these, UsageGate unit and concurrency tests cannot run
+   - No code changes, just dependency declaration
 
-2. **Add `User.is_active` check to login query** (Security) - LOW effort - 1 hour
-   - Add `User.is_active == True` filter to the login JOIN query in `auth_service.py`
-   - Add same check to `refresh_token()` method
-   - Prevents deactivated users from authenticating or refreshing tokens
-   - Verify with 2 new test cases
+2. **Add UsageGate Redis fail-open** (Reliability) — HIGH — 1 hour
+   - Wrap `await redis.eval(...)` in `try/except` `(ConnectionError, RedisError)`
+   - On Redis failure: log warning, set `X-Usage-Remaining: -1` (degraded), allow the request
+   - Prevents Redis outage from blocking ALL paid-tier AI summary requests
+   - Same pattern as E02 rate-limiter quick win (established pattern)
 
-3. **Wrap `bcrypt.hashpw` in executor** (Performance) - LOW effort - 1 hour
-   - Replace `bcrypt.hashpw(...)` with `await asyncio.get_event_loop().run_in_executor(None, bcrypt.hashpw, ...)`
-   - Affects: `auth_service.py` register, `member_service.py` accept_invite
-   - Unblocks event loop during ~200-400ms bcrypt computation
+3. **Configure Dependabot for Python services** (Security) — HIGH — 30 minutes
+   - Create `.github/dependabot.yml` with `package-ecosystem: pip` for each service
+   - This is the 3rd consecutive NFR report recommending this — it must be done before Beta milestone
+   - Unblocks vulnerability management CONCERNS category
 
-4. **Add fail-open on Redis rate limiter** (Reliability) - LOW effort - 1 hour
-   - Wrap `rate_limiter.check()` and `record_failure()` in try/except `ConnectionError`
-   - On Redis failure, log warning and allow login (fail-open)
-   - Prevents Redis outage from blocking all authentication
+4. **Set `scan_status = pending` as column server_default in migration** (Security) — MEDIUM — 15 minutes
+   - In `019_documents` migration: `Column("scan_status", ..., server_default="pending")`
+   - Prevents accidental `null` or `clean` default if application-level assignment fails
+   - Defense-in-depth for E06-R-003
+
+5. **Bootstrap Prometheus /metrics endpoint** (Monitorability) — MEDIUM — 4 hours
+   - Add `prometheus-fastapi-instrumentator` to client-api (carry-forward from E01/E02)
+   - Enables p95 latency measurement for opportunity search and SSE endpoints
+   - Prerequisite for verifying PRD Section 4 latency targets
 
 ---
 
 ## Recommended Actions
 
-### Immediate (Before E03 starts) - HIGH Priority
+### Immediate (Sprint 5 start — before any P0 test can go GREEN)
 
-1. **Add `User.is_active` check to login and refresh** - HIGH - 2 hours - Backend Lead
-   - Login query and refresh token query must filter on `is_active=True`
-   - Currently deactivated users can authenticate for up to 7 days
-   - Validate: deactivated user login → 401; deactivated user refresh → 401
+1. **Add missing test dependencies to pyproject.toml** — CRITICAL — 15 min — Backend Dev
+   - `fakeredis[aioredis]>=2.21`, `testcontainers[redis]>=4.7` in `[project.optional-dependencies] dev`
+   - Blocks: UsageGate unit tests (22 functions) and concurrency integration tests (3 functions)
+   - Validation: `pip install -e ".[dev]"` completes without error
 
-2. **Add JWT `audience`/`issuer` claim verification** - HIGH - 2 hours - Backend Lead
-   - Add `issuer="eusolicit"` and `audience="eusolicit-api"` to JWT encode/decode
-   - Prevents cross-service JWT confusion if RSA key pair is shared
-   - Validate: JWT with wrong issuer/audience → 401 `token_invalid`
+2. **Implement TierGate dependency with P0 tests RED→GREEN (E06-R-001 mitigation)** — CRITICAL — 8 hours — Backend Dev
+   - Implement `OpportunityFreeResponse`, `OpportunityFullResponse`, `opportunity_tier_gate.py` per S06.02 tasks
+   - Remove `@pytest.mark.skip` from 30 test functions in `test_tier_gate_context.py` + `test_opportunity_tier_gate.py`
+   - Must pass: E06-P0-001 (free-tier → 403), E06-P0-002 (field-level enforcement), E06-P0-003 (Starter scope boundary)
+   - Validation: `pytest tests/unit/test_tier_gate_context.py tests/api/test_opportunity_tier_gate.py -v` → all GREEN
 
-3. **Offload bcrypt to thread pool executor** - HIGH - 1 hour - Backend Lead
-   - `await loop.run_in_executor(None, bcrypt.hashpw, ...)` in auth_service.py and member_service.py
-   - Unblocks async event loop during password hashing
-   - Validate: concurrent requests not serialized during registration
+3. **Implement UsageGate atomic Lua script with P0 tests RED→GREEN (E06-R-002 mitigation)** — CRITICAL — 6 hours — Backend Dev
+   - Implement `core/usage_gate.py` with `_USAGE_LUA` module-level Lua script constant
+   - Must use `redis.eval(script, 1, key, limit, ttl)` pattern — no separate GET + INCR round-trips
+   - Must pass: E06-P0-004 (concurrent race test with testcontainers Redis) and E06-P0-005 (429 body/header schema)
+   - Validation: `pytest tests/unit/test_usage_gate.py tests/integration/test_usage_gate_concurrency.py -v` → all GREEN
 
-4. **Add Redis rate limiter fail-open** - HIGH - 1 hour - Backend Lead
-   - Wrap rate_limiter calls in try/except ConnectionError; log + allow on failure
-   - Prevents Redis outage from blocking all authentication
-   - Validate: kill Redis → login still works (with warning log)
+4. **Enforce `scan_status = pending` before ClamAV result; document download gate (E06-R-003 mitigation)** — CRITICAL — 4 hours — Backend Dev
+   - In `confirm_upload` service: set `scan_status = "pending"` before dispatching Celery task
+   - In `download` endpoint: return 422 if `scan_status != "clean"`
+   - Must pass: E06-P0-006 (pending blocks download), E06-P0-007 (infected → soft-delete)
+   - Validation: `pytest tests/api/test_document_upload.py tests/api/test_document_download.py -v` → all GREEN
 
-### Short-term (Sprints 3-4) - MEDIUM Priority
+5. **Configure Dependabot for all Python services** — HIGH — 30 min — DevOps
+   - Create `.github/dependabot.yml` (all 5 services + frontend)
+   - No further deferrals acceptable — 3rd consecutive carry-forward
+   - Validation: Dependabot creates first security advisory PRs within 48 hours
 
-1. **Add `SELECT FOR UPDATE` to token rotation** - MEDIUM - 2 hours - Backend Lead
-   - Pessimistic lock on refresh token row during rotation to prevent family forking
-   - Add unique partial constraint on `(family_id, is_revoked=false)` as defense-in-depth
+### Short-term (Sprint 5–6) — MEDIUM Priority
 
-2. **Add UNIQUE constraint on entity_permissions** - MEDIUM - 1 hour - Backend Lead
-   - `UNIQUE(user_id, company_id, entity_type, entity_id, permission)` via Alembic migration
-   - Prevents duplicate grants that cause `MultipleResultsFound` → 500
+1. **Add UsageGate Redis fail-open** — MEDIUM — 1 hour — Backend Dev
+   - `try/except (redis.exceptions.ConnectionError, redis.exceptions.RedisError)` around Lua eval
+   - On Redis failure: allow request, log `structlog.warning("usage_gate_redis_unavailable")`, set header `X-Usage-Remaining: -1`
+   - Validation: mock Redis to raise ConnectionError; assert 200 returned with warning log
 
-3. **Implement k6 performance baseline** - MEDIUM - 4 hours - QA
-   - E02-P3-004: 50 concurrent users sustained 2 min on auth endpoints
-   - Establish p95 baseline for login, register, token refresh
-   - Configure nightly k6 run in CI
+2. **Add ClamAV scan timeout background job** — MEDIUM — 3 hours — Backend Dev
+   - Celery Beat task: `SELECT id FROM client.documents WHERE scan_status='pending' AND uploaded_at < NOW() - INTERVAL 'N minutes'`; set `scan_status = 'failed'`
+   - Add to notification or data-pipeline Beat schedule
+   - Validation: `freezegun` test advancing clock past timeout; assert `scan_status = 'failed'`; download returns 422
 
-4. **Bootstrap Prometheus /metrics endpoint** - MEDIUM - 4 hours - Backend Lead
-   - Add `prometheus-fastapi-instrumentator` to client-api (E01 recommendation, still outstanding)
-   - Enables p95 latency measurement for auth endpoints
+3. **Implement SSE concurrency semaphore (E06-R-004 mitigation)** — MEDIUM — 4 hours — Backend Dev
+   - `MAX_CONCURRENT_SSE_STREAMS` env var (default 10); asyncio.Semaphore in `ai-summary` endpoint
+   - On semaphore acquisition failure: return 503 with `Retry-After: 5`
+   - Validation: fire `MAX_CONCURRENT_SSE_STREAMS + 1` concurrent requests; verify last returns 503; verify non-SSE endpoints respond within SLA
 
-5. **Normalize email case sensitivity** - MEDIUM - 2 hours - Backend Lead
-   - Add `LOWER(email)` functional unique index or normalize on input
-   - Prevents `User@Example.com` and `user@example.com` creating separate accounts
+4. **Bootstrap Prometheus /metrics endpoint** — MEDIUM — 4 hours — Backend Dev
+   - Add `prometheus-fastapi-instrumentator` to client-api
+   - Instrument: request duration histograms per endpoint, SSE active connections gauge, tier gate rejection counter, usage gate 429 rate
+   - Carry-forward from E01 NFR report (3rd consecutive recommendation)
 
-### Long-term (Backlog) - LOW Priority
+5. **Implement k6 performance baseline for E06 endpoints** — MEDIUM — 6 hours — QA
+   - k6 smoke test: 50 concurrent users × 2 min on `/opportunities/search`, `/opportunities/{id}`, `/opportunities/{id}/ai-summary`
+   - Verify p95 < 200ms for REST endpoints; establish SSE TTFB baseline
+   - Prerequisite for verifying PRD Section 4 targets
 
-1. **Add structlog to auth_service.py and security.py** - LOW - 3 hours - Backend Lead
-   - Structured logging for login attempts, failures, rate limit hits, token events
+### Long-term (Backlog) — LOW Priority
 
-2. **Add `revocation_reason` column to refresh_tokens** - LOW - 2 hours - Backend Lead
-   - Distinguish logout vs. rotation revocation to reduce false breach detection
+1. **Enable S3 versioning and cross-region replication for client.documents** — LOW — 8 hours — DevOps
+   - Terraform module update for S3 bucket versioning
+   - Defines DR posture for user-uploaded documents
+   - Pre-GA requirement
 
-3. **Add `IntegrityError` handler to ESPD CRUD** - LOW - 1 hour - Backend Lead
-   - Catch concurrent version collision → 409 instead of 500 with raw error details
+2. **Add stale AI summary cache invalidation based on opportunity.updated_at** — LOW — 3 hours — Backend Dev
+   - E06-R-007 (score 4): compare `ai_summaries.generated_at` vs `pipeline.opportunities.updated_at`
+   - Currently not specified in S06.08 GET implementation; ATDD test E06-P2-007 covers regeneration flow
 
-4. **Consolidate RBAC bypass path to single query** - LOW - 2 hours - Backend Lead
-   - Replace 2-query bypass path with single query for AC5 compliance
+3. **Add OpenTelemetry instrumentation to client-api service** — LOW — 8 hours — Backend Dev
+   - Distributed tracing for opportunity search → DB query spans + AI Gateway call spans
+   - Architecture specifies OpenTelemetry → Jaeger but client-api not yet instrumented
 
 ---
 
 ## Monitoring Hooks
 
-4 monitoring hooks recommended to detect issues before failures:
+5 monitoring hooks recommended:
 
 ### Performance Monitoring
 
-- [ ] Prometheus + FastAPI instrumentator — Expose /metrics endpoint with request duration histograms per auth endpoint
-  - **Owner:** Backend Lead
-  - **Deadline:** Sprint 3
+- [ ] **Prometheus histogram: opportunity search duration** — Track p50/p95/p99 for `GET /api/v1/opportunities/search` with FTS vs no-FTS paths
+  - **Owner:** Backend Dev
+  - **Deadline:** Sprint 6
 
-- [ ] bcrypt hashing duration metric — Custom histogram for password hashing latency (target: < 500ms p99)
-  - **Owner:** Backend Lead
-  - **Deadline:** Sprint 4
+- [ ] **SSE active connections gauge** — Track concurrent AI summary SSE connections vs `MAX_CONCURRENT_SSE_STREAMS` cap; alert when utilisation > 80%
+  - **Owner:** Backend Dev / DevOps
+  - **Deadline:** Sprint 6
 
 ### Security Monitoring
 
-- [ ] Auth event structured logging — Login success/failure, rate limit triggers, token breach events logged with correlation_id
-  - **Owner:** Backend Lead
-  - **Deadline:** Sprint 3
+- [ ] **Tier gate rejection counter** — Prometheus counter: `tier_limit_rejected_total{tier, endpoint}`; alert on spike (potential probing/bypass attempts)
+  - **Owner:** Backend Dev
+  - **Deadline:** Sprint 5
+
+- [ ] **UsageGate 429 rate** — Counter: `usage_limit_exceeded_total{tier, feature}`; alert when rate exceeds 5% of metered requests (suggests misconfigured quotas or unexpected surge)
+  - **Owner:** Backend Dev
+  - **Deadline:** Sprint 5
 
 ### Reliability Monitoring
 
-- [ ] Redis connectivity health check — Rate limiter Redis connection monitored; alert on connection failures
+- [ ] **ClamAV scan age alert** — Alert when `SELECT COUNT(*) FROM client.documents WHERE scan_status='pending' AND uploaded_at < NOW() - INTERVAL '30 minutes'` > 0 (indicates ClamAV outage or callback failure)
   - **Owner:** DevOps
-  - **Deadline:** Sprint 3
+  - **Deadline:** Sprint 6
 
 ### Alerting Thresholds
 
-- [ ] Failed login rate alert — Alert when failed login rate exceeds 50/min across all users (potential brute force)
-  - **Owner:** Backend Lead / DevOps
-  - **Deadline:** Sprint 4
+- [ ] **SSE 503 rate alert** — Alert when SSE endpoint 503 rate exceeds 1% over 5-minute window (indicates persistent SSE connection exhaustion)
+  - **Owner:** DevOps
+  - **Deadline:** Sprint 6
 
 ---
 
 ## Fail-Fast Mechanisms
 
-4 fail-fast mechanisms recommended to prevent failures:
+4 fail-fast mechanisms recommended:
 
-### Rate Limiting (Security)
+### Circuit Breaker (Reliability)
 
-- [ ] Redis-backed rate limiter with fail-open — Convert current fail-closed to fail-open on Redis outage; log degraded state
-  - **Owner:** Backend Lead
-  - **Estimated Effort:** 1 hour
-
-### Token Validation (Security)
-
-- [ ] JWT audience/issuer enforcement — Reject tokens missing or mismatching `iss`/`aud` claims before processing
-  - **Owner:** Backend Lead
+- [ ] **AI Gateway circuit breaker for SSE endpoint** — Already in architecture (5 failures → fail-open, 30s reset). Verify SSE-specific error types (httpx.RemoteProtocolError, asyncio.TimeoutError) are included in failure counter.
+  - **Owner:** Backend Dev
   - **Estimated Effort:** 2 hours
 
-### Input Validation (Security)
+### Rate Limiting (Performance / Security)
 
-- [ ] Password max_length gate — Reject passwords > 128 chars before bcrypt to prevent HashDoS
-  - **Owner:** Backend Lead
-  - **Estimated Effort:** 30 minutes
+- [ ] **UsageGate fail-open on Redis outage** — Wrap Lua eval in try/except; allow request on ConnectionError; log degraded state; never block legitimate users due to Redis infrastructure failure.
+  - **Owner:** Backend Dev
+  - **Estimated Effort:** 1 hour
 
-### Concurrency Guards (Reliability)
+### Validation Gates (Security)
 
-- [ ] Pessimistic lock on token rotation — `SELECT FOR UPDATE` prevents concurrent rotation from forking token families
-  - **Owner:** Backend Lead
+- [ ] **Server-default `pending` on documents.scan_status** — DB-level enforcement (`server_default="pending"`) as defense-in-depth so no code path can accidentally insert a `clean` record without a ClamAV scan.
+  - **Owner:** Backend Dev
+  - **Estimated Effort:** 15 minutes
+
+### Smoke Tests (Maintainability)
+
+- [ ] **E06 P0 smoke test in CI** — Post-deploy smoke test: hit `/api/v1/opportunities/search?limit=1` with each tier JWT; verify response schema and tier enforcement. Block deployment if smoke test fails.
+  - **Owner:** QA
   - **Estimated Effort:** 2 hours
 
 ---
 
 ## Evidence Gaps
 
-3 evidence gaps identified - action required:
+5 evidence gaps identified — action required:
 
-- [ ] **p95 API latency measurement for auth endpoints** (Performance)
-  - **Owner:** QA / Backend Lead
-  - **Deadline:** Sprint 4 (when k6 baseline is established)
-  - **Suggested Evidence:** k6 load test: 50 concurrent users × 2 min on /auth/login, /auth/register, /auth/refresh
-  - **Impact:** Cannot verify PRD target of < 200ms REST until load tested; bcrypt blocking likely pushes p95 above target
+- [ ] **p95 API latency for opportunity search and listing endpoints** (Performance)
+  - **Owner:** QA / Backend Dev
+  - **Deadline:** Sprint 6 (when staging environment has E05 seed data)
+  - **Suggested Evidence:** k6 load test: 50 concurrent users × 2 min; report p95 for `/search`, `/`, `/{id}`
+  - **Impact:** Cannot verify PRD target of <200ms REST until load tested; FTS on `pipeline.opportunities` may exceed target
 
-- [ ] **Branch coverage percentage for auth/RBAC modules** (Maintainability)
+- [ ] **SSE TTFB latency under concurrent load** (Performance)
   - **Owner:** QA
-  - **Deadline:** Sprint 3
-  - **Suggested Evidence:** pytest-cov report with `--cov=client_api.core.security --cov=client_api.core.rbac --cov=client_api.services.auth_service`
-  - **Impact:** Epic AC requires >= 90% branch coverage; test volume suggests this is met but no coverage report confirms it
+  - **Deadline:** Sprint 6
+  - **Suggested Evidence:** k6 test with `http.get` on SSE endpoint + 20 concurrent connections; measure time-to-first-byte
+  - **Impact:** PRD target <500ms TTFB SSE unverifiable; E06-R-004 mitigation unverifiable without load test
+
+- [ ] **TierGate + UsageGate P0 tests GREEN in CI** (Security / Reliability)
+  - **Owner:** Backend Dev / QA
+  - **Deadline:** Sprint 5 close (non-negotiable — revenue-critical)
+  - **Suggested Evidence:** CI run showing E06-P0-001/002/003/004/005/006/007/008/009 all PASS
+  - **Impact:** Without passing P0 tests, TierGate bypass and Redis race risks are unmitigated; Epic 6 must not ship without 100% P0 pass rate
 
 - [ ] **Dependency vulnerability scan results** (Security)
   - **Owner:** DevOps
-  - **Deadline:** Sprint 3 (carried over from E01 NFR report)
-  - **Suggested Evidence:** Dependabot/Snyk scan report showing 0 critical, 0 high vulnerabilities
-  - **Impact:** Unknown vulnerability exposure in authlib, PyJWT, bcrypt, redis-py, and other auth dependencies
+  - **Deadline:** Sprint 5 (carried over from E01/E02 NFR reports — 3rd consecutive carry-forward)
+  - **Suggested Evidence:** Dependabot PR scan or `pip-audit` report showing 0 critical, 0 high vulnerabilities across all 5 services
+  - **Impact:** Unknown vulnerability exposure in pyclamd, boto3, stripe SDK, and existing auth dependencies
+
+- [ ] **ClamAV scan flow integration test GREEN** (Security)
+  - **Owner:** Backend Dev
+  - **Deadline:** Sprint 6
+  - **Suggested Evidence:** E06-P0-006 (`test_pending_document_not_downloadable_state`) and E06-P0-007 (`test_infected_scan_marks_deleted`) passing in CI
+  - **Impact:** Without these tests GREEN, malware serving via pre-scan download is an unmitigated risk (E06-R-003, score 6)
 
 ---
 
@@ -539,17 +544,19 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 | Category | Criteria Met | PASS | CONCERNS | FAIL | Overall Status |
 |---|---|---|---|---|---|
-| 1. Testability & Automation | 4/4 | 4 | 0 | 0 | PASS |
-| 2. Test Data Strategy | 3/3 | 3 | 0 | 0 | PASS |
-| 3. Scalability & Availability | 2/4 | 1 | 3 | 0 | CONCERNS |
-| 4. Disaster Recovery | 1/3 | 0 | 3 | 0 | CONCERNS |
-| 5. Security | 3/4 | 3 | 1 | 0 | PASS |
-| 6. Monitorability, Debuggability & Manageability | 2/4 | 2 | 2 | 0 | CONCERNS |
-| 7. QoS/QoE | 2/4 | 1 | 3 | 0 | CONCERNS |
-| 8. Deployability | 3/3 | 3 | 0 | 0 | PASS |
-| **Total** | **20/29** | **17** | **12** | **0** | **PASS (with CONCERNS)** |
+| 1. Testability & Automation | 2/4 | 2 | 2 | 0 | CONCERNS ⚠️ |
+| 2. Test Data Strategy | 3/3 | 3 | 0 | 0 | PASS ✅ |
+| 3. Scalability & Availability | 2/4 | 1 | 3 | 0 | CONCERNS ⚠️ |
+| 4. Disaster Recovery | 0/3 | 0 | 3 | 0 | CONCERNS ⚠️ |
+| 5. Security | 3/4 | 3 | 1 | 0 | CONCERNS ⚠️ |
+| 6. Monitorability, Debuggability & Manageability | 2/4 | 2 | 2 | 0 | CONCERNS ⚠️ |
+| 7. QoS & QoE | 2/4 | 2 | 2 | 0 | CONCERNS ⚠️ |
+| 8. Deployability | 3/3 | 3 | 0 | 0 | PASS ✅ |
+| **Total** | **17/29** | **16** | **13** | **0** | **CONCERNS ⚠️** |
 
-**Criteria Met Scoring:** 20/29 (69%) — Improvement over E01 (19/29, 66%). 9 of the 12 CONCERNS are carryovers from E01 (no production deployment, no load testing, no monitoring infrastructure). Adjusting for E02 scope: **20/20 applicable criteria = 100% met.** Security category improved from CONCERNS (E01) to PASS (E02) due to concrete JWT + RBAC + audit implementation.
+**Criteria Met Scoring:** 17/29 (59%) — Comparable to E01 (19/29, 66%) adjusted for pre-implementation state. 9 of the 13 CONCERNS are structural carry-forwards (no production deployment, no load testing, no monitoring infrastructure bootstrapped). Adjusting for E06 in-scope criteria: **17/20 applicable criteria = 85% met** (excluding 9 production-deployment-dependent criteria).
+
+**Critical observation:** Unlike E01 and E02 (which were assessed post-implementation), E06 is assessed **pre-implementation**. This explains the lower raw score. The design quality is high — all high-risk mitigations are architecturally specified. The CONCERNS reflect implementation gap, not design failure.
 
 ---
 
@@ -557,95 +564,96 @@ Epic 2 is the **security foundation epic** — it delivers the full authenticati
 
 ```yaml
 nfr_assessment:
-  date: '2026-04-07'
-  epic: 'E02'
-  feature_name: 'Authentication & Identity'
-  adr_checklist_score: '20/29'
-  adr_checklist_score_adjusted: '20/20 (scope-adjusted)'
+  date: '2026-04-17'
+  epic: 'E06'
+  feature_name: 'Opportunity Discovery & Intelligence'
+  adr_checklist_score: '17/29'
+  adr_checklist_score_adjusted: '17/20 (scope-adjusted, pre-implementation)'
+  assessment_phase: 'pre-implementation'
   categories:
-    testability_automation: 'PASS'
+    testability_automation: 'CONCERNS'
     test_data_strategy: 'PASS'
     scalability_availability: 'CONCERNS'
     disaster_recovery: 'CONCERNS'
-    security: 'PASS'
+    security: 'CONCERNS'
     monitorability: 'CONCERNS'
     qos_qoe: 'CONCERNS'
     deployability: 'PASS'
-  overall_status: 'PASS'
+  overall_status: 'CONCERNS'
   critical_issues: 0
-  high_priority_issues: 4
+  high_priority_issues: 5
   medium_priority_issues: 5
-  concerns: 12
+  concerns: 13
   blockers: false
-  quick_wins: 4
-  evidence_gaps: 3
-  high_risks_mitigated:
-    - 'E02-R-001 (RBAC Ceiling Enforcement, Score 6): FULLY MITIGATED - 51+ RBAC tests (unit + API)'
-    - 'E02-R-002 (Cross-Tenant Isolation, Score 6): FULLY MITIGATED - 9+ cross-tenant tests across 3 stories'
-    - 'E02-R-003 (Token Security, Score 6): FULLY MITIGATED - 13+ token lifecycle tests'
-  deferred_security_items:
-    - 'Missing User.is_active check in login + refresh (Stories 2.3, 2.5)'
-    - 'No JWT audience/issuer claim verification (Story 2.4)'
-    - 'bcrypt 72-byte truncation without max_length (Stories 2.2, 2.3)'
-    - 'Concurrent token rotation race condition (Story 2.5)'
-  test_evidence:
-    total_tests: 287
-    total_tests_with_parametrize: '307+'
-    test_files: 15
-    test_lines: 11923
-    passing: 287
-    failing: 0
-    skipped: 0
-    p0_coverage: '100% (12/12)'
-    p1_coverage: '100% (18/18)'
-    p2_coverage: '100% (18/18)'
-    p3_coverage: '75% (3/4)'
-    overall_ac_coverage: '96.2% (50/52 FULL)'
-  deferred_work_items: 61
-  code_review_sessions: 9
+  quick_wins: 5
+  evidence_gaps: 5
+  high_risks_designed:
+    - 'E06-R-001 (TierGate bypass, Score 6): per-route dependency + strict Pydantic models — awaiting P0 tests'
+    - 'E06-R-002 (Redis counter race, Score 6): atomic Lua script specified — awaiting P0 testcontainers test'
+    - 'E06-R-003 (ClamAV pre-scan gap, Score 6): pending-state default specified — awaiting P0 tests'
+    - 'E06-R-004 (SSE exhaustion, Score 6): semaphore cap + 503 specified — awaiting implementation'
+  deferred_items:
+    - 'Dependabot configuration (3rd consecutive carry-forward from E01/E02)'
+    - 'Prometheus /metrics endpoint (3rd consecutive carry-forward from E01/E02)'
+    - 'k6 performance baseline for E06 endpoints'
+    - 'ClamAV scan timeout background job (E06-R-008)'
+    - 'S3 versioning for document DR'
+  atdd_phase: 'RED (all 14 checklists in red phase — 0 tests passing)'
+  test_design_summary:
+    p0_count: 10
+    p1_count: 30
+    p2_count: 15
+    p3_count: 5
+    total_count: 60
+    estimated_effort_hours: '65-106'
   recommendations:
-    - 'Add User.is_active check to login and refresh (HIGH)'
-    - 'Add JWT audience/issuer claim verification (HIGH)'
-    - 'Offload bcrypt to thread pool executor (HIGH)'
-    - 'Add Redis rate limiter fail-open (HIGH)'
-    - 'Implement k6 performance baseline (MEDIUM)'
-    - 'Bootstrap Prometheus /metrics endpoint (MEDIUM, carried from E01)'
+    - 'Add fakeredis + testcontainers to pyproject.toml dev deps BEFORE Sprint 5 day 1 (CRITICAL)'
+    - 'TierGate P0 tests (E06-P0-001/002/003) must be GREEN before Sprint 5 close (CRITICAL)'
+    - 'UsageGate P0 race test (E06-P0-004) must use testcontainers Redis, not fakeredis (CRITICAL)'
+    - 'ClamAV pre-scan gate P0 tests (E06-P0-006/007) must be GREEN before Sprint 6 close (CRITICAL)'
+    - 'Configure Dependabot — no more deferrals (HIGH)'
 ```
 
 ---
 
 ## Related Artifacts
 
-- **Epic File:** eusolicit-docs/planning-artifacts/epic-02-authentication-identity.md
-- **PRD:** eusolicit-docs/EU_Solicit_PRD_v1.md (Section 4: Non-Functional Requirements)
-- **Architecture:** eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md (ADRs 1.8, 1.9, 1.13)
-- **Test Design (Epic):** eusolicit-docs/test-artifacts/test-design-epic-02.md
-- **Traceability Matrix:** eusolicit-docs/test-artifacts/traceability-matrix.md (TRACE_GATE: PASS)
-- **Sprint Status:** eusolicit-docs/implementation-artifacts/sprint-status.yaml (all 12 stories: done)
-- **Deferred Work:** eusolicit-docs/implementation-artifacts/deferred-work.md (61+ tracked items for E02)
-- **Previous NFR (E01):** (superseded by this report; E01 gate: PASS with CONCERNS)
+- **Epic File:** `eusolicit-docs/planning-artifacts/epics/E06-opportunity-discovery.md`
+- **PRD:** `eusolicit-docs/EU_Solicit_PRD_v1.md` (Section 3.1, Section 4)
+- **Architecture:** `eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md` (Sections 3, 10, 11, 14, 15)
+- **Test Design (Epic):** `eusolicit-docs/test-artifacts/test-design-epic-06.md`
+- **ATDD Checklists:** `eusolicit-docs/test-artifacts/atdd-checklist-6-*.md` (14 files, all RED phase)
+- **Implementation Specs:** `eusolicit-docs/implementation-artifacts/6-*.md` (14 files)
+- **Previous NFR (E02):** `eusolicit-docs/test-artifacts/nfr-report.md` (superseded for E02; E02 gate: PASS)
 - **Evidence Sources:**
-  - Test Files: eusolicit-app/services/client-api/tests/ (15 files, 287+ test functions, 11,923 lines)
-  - ATDD Checklists: eusolicit-docs/test-artifacts/atdd-checklist-2-*.md (12 files)
-  - Code Reviews: 9 sessions documented in deferred-work.md
-  - CI Config: eusolicit-app/.github/workflows/ (ci.yml, quality-gates.yml, test.yml)
+  - Test Files: None (RED phase — not yet implemented)
+  - ATDD Checklists: `eusolicit-docs/test-artifacts/atdd-checklist-6-*.md`
+  - Architecture: `eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md`
+  - PRD: `eusolicit-docs/EU_Solicit_PRD_v1.md`
 
 ---
 
 ## Recommendations Summary
 
-**Release Blocker:** None. Epic 2 authentication and identity layer is solid and ready for downstream epics.
+**Release Blocker:** None. The design is sound, no critical failures identified. However, Epic 6 MUST NOT SHIP until all 10 P0 tests are GREEN in CI — this is the release gate (test-design-epic-06.md Exit Criteria Section).
 
-**High Priority:** Add `is_active` check to login/refresh, add JWT audience/issuer verification, offload bcrypt to executor, and add Redis rate limiter fail-open. These 4 items should be addressed at the start of Sprint 3 before E03 begins adding more authenticated endpoints that depend on E02's auth layer.
+**High Priority (Sprint 5 start):**
+1. Add `fakeredis[aioredis]` + `testcontainers[redis]` to pyproject.toml — 15 minutes, zero-code quick win
+2. Implement TierGate with P0 tests GREEN — blocks all E06 revenue protection
+3. Implement UsageGate atomic Lua script with P0 race test GREEN — blocks all AI summary billing integrity
+4. Enforce ClamAV pre-scan download gate with P0 tests GREEN — blocks document security
+5. Configure Dependabot — 3rd consecutive carry-forward; must be done before Beta milestone
 
-**Medium Priority:** Token rotation locking, entity_permissions UNIQUE constraint, k6 baseline, Prometheus /metrics (still outstanding from E01), and email case normalization are Sprint 3-4 improvements that harden the foundation.
+**Medium Priority (Sprint 5–6):**
+UsageGate Redis fail-open, ClamAV timeout background job, SSE semaphore cap, Prometheus /metrics bootstrap, k6 performance baseline.
 
 **Next Steps:**
-1. Proceed to Epic 3 (Frontend Shell & Design System)
-2. Address 4 quick wins (password max_length, is_active check, bcrypt executor, rate limiter fail-open) — < 4 hours total
-3. Implement 4 HIGH priority actions — Sprint 3 start (first 2 days)
-4. Run `*trace` to update traceability matrix with NFR assessment linkage
-5. Implement k6 baseline when staging environment is available
+1. Proceed to Sprint 5 development (E06 implementation)
+2. Address 5 quick wins in first 2 hours of Sprint 5
+3. Implement ATDD RED→GREEN for all 14 stories (following TDD discipline: remove `@pytest.mark.skip` only when implementation is complete)
+4. Run `*trace` to update traceability matrix for E06
+5. Re-run `*nfr-assess` at Demo milestone (Sprint 8) when all core epics are complete and k6 data is available
+6. Do NOT ship E06 until E06-P0-001 through E06-P0-010 are all GREEN in CI
 
 ---
 
@@ -653,38 +661,37 @@ nfr_assessment:
 
 **NFR Assessment:**
 
-- Overall Status: PASS (with CONCERNS)
+- Overall Status: CONCERNS ⚠️
 - Critical Issues: 0
-- High Priority Issues: 4
-- Concerns: 12 (9 carried over from E01; 3 new for E02)
-- Evidence Gaps: 3
-- Deferred Security Items: 4 (all tracked, none exploitable without authenticated access)
+- High Priority Issues: 5
+- Concerns: 13 (9 structural carry-forwards; 4 E06-specific design-verified risks awaiting test verification)
+- Evidence Gaps: 5
 
-**Gate Status:** PASS — Proceed to Epic 3
+**Gate Status:** CONCERNS — Proceed to development with action plan
 
-**Comparison with E01:**
+**Comparison with E02:**
 
-| Metric | E01 | E02 | Trend |
-|--------|-----|-----|-------|
-| ADR Score | 19/29 | 20/29 | ↑ |
-| PASS categories | 5 | 5 | → |
-| CONCERNS categories | 3 | 3 | → |
-| FAIL categories | 0 | 0 | → |
-| Test count | 2,534 | 287+ (E02 only) | — |
-| High risks mitigated | 2 | 3 | ↑ |
-| Critical issues | 0 | 0 | → |
-| High priority issues | 3 | 4 | ↑ (expected: auth surface area) |
-| Security category | CONCERNS | PASS | ↑ |
+| Metric | E01 | E02 | E06 | Notes |
+|--------|-----|-----|-----|-------|
+| ADR Score | 19/29 | 20/29 | 17/29 | E06 pre-implementation; 9 CONCERNS are structural carry-forwards |
+| PASS categories | 5 | 5 | 4 | Testability drops to CONCERNS (RED phase) vs E02 (GREEN) |
+| CONCERNS categories | 3 | 3 | 4 | +1 Testability due to pre-implementation state |
+| FAIL categories | 0 | 0 | 0 | Clean |
+| Tests GREEN | ~2500 (cumulative) | 287 (E02 only) | 0 (E06 in RED) | All 14 ATDD checklists to be implemented |
+| High risks identified | 2 | 3 | 4 | E06 has most complex security surface (tier enforcement + document scanning + SSE) |
+| Critical issues | 0 | 0 | 0 | No critical failures |
+| Security category | CONCERNS | PASS | CONCERNS | E06 security is designed correctly but unverified (RED phase) |
+| Revenue criticality | Low | Low | **Very High** | E06 is the subscription tier enforcement surface — all revenue depends on TierGate |
 
 **Next Actions:**
 
-- PASS: Proceed to Epic 3 development
-- Address HIGH priority items in Sprint 3 (first 2 days)
-- Re-run `*nfr-assess` at Demo milestone (Sprint 8) when all core epics are complete
+- CONCERNS ⚠️: Address HIGH priority items in Sprint 5 (first 2 days)
+- Implement ATDD RED→GREEN across all 14 stories
+- Re-run `*nfr-assess` at Demo milestone (Sprint 8) with k6 evidence and all tests GREEN
 
-**Generated:** 2026-04-07
+**Generated:** 2026-04-17
 **Workflow:** testarch-nfr v4.0
 
 ---
 
-<!-- Powered by BMAD-CORE -->
+<!-- Powered by BMAD-CORE™ -->

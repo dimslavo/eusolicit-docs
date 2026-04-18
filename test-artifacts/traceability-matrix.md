@@ -1,898 +1,578 @@
 ---
+skill: bmad-testarch-trace
+epic: "06"
+title: "Epic 6 — Opportunity Discovery & Intelligence: Traceability Matrix"
+generated: "2026-04-17"
 stepsCompleted:
   - step-01-load-context
-  - step-02-discover-tests
-  - step-03-map-criteria
-  - step-04-analyze-gaps
+  - step-02-test-discovery
+  - step-03-criteria-mapping
+  - step-04-gap-analysis
   - step-05-gate-decision
-lastStep: step-05-gate-decision
-lastSaved: '2026-04-14'
-epic: 4
-epicTitle: 'AI Gateway Service'
-workflowType: bmad-testarch-trace
-inputDocuments:
-  - eusolicit-docs/planning-artifacts/epics/E04-ai-gateway-service.md
-  - eusolicit-docs/test-artifacts/test-design-epic-04.md
-tddPhase: DESIGN — No test files implemented yet. This matrix grades the test DESIGN completeness against story ACs.
+phase: TDD-RED
+gate: "TRACE_GATE: PASS"
 ---
 
 # Traceability Matrix & Quality Gate Report
 
-**Epic:** E04 — AI Gateway Service
-**Generated:** 2026-04-14
-**Scope:** 10 stories (S04.01–S04.10), 59 story-level ACs, 13 epic-level ACs
-**TDD Phase:** DESIGN — Test design complete (`test-design-epic-04.md`); no test files implemented. Coverage grades whether every AC has a planned test in the design.
-**Sprint:** 3–4 | **Points:** 34 | **Dependencies:** E01 | **Milestone:** Demo
-
-> **⚠️ Phase Context:** This is a pre-implementation (test design phase) traceability matrix. "Coverage" means the test design document (`test-design-epic-04.md`) includes at least one planned test case for the AC, not that tests are written or passing. Implementing tests follows via `bmad-testarch-atdd` on each story.
+**Epic:** E06 — Opportunity Discovery & Intelligence
+**Generated:** 2026-04-17
+**Scope:** 14 stories (S06.01–S06.14), 165 story-level ACs, 14 epic-level ACs
+**TDD Phase:** RED — all tests generated, implementations pending
+**Sprint:** 5–6 | **Dependencies:** E01, E02, E03, E05
 
 ---
 
 ## TRACE_GATE: PASS
 
-**Rationale:** P0 FULL coverage is 100% (17/17). All 13 P0-critical tests planned in the design address the highest-risk requirements: health probes, KraftData authentication, agent registry, sync proxy routing, circuit breaker lifecycle (CLOSED→OPEN→HALF_OPEN→CLOSED), retry with backoff, webhook HMAC-SHA256 constant-time validation, Redis Stream publish, and execution audit logging. P1 FULL coverage is 96% (24/25): one PARTIAL item (S04.05-AC1 SSE latency <100ms) lacks an explicit timing-measurement test—functional forwarding is covered but latency is asserted only qualitatively. Overall FULL coverage is 91.5% (54/59), well above the 80% minimum. P2 sits at 73.3% (11/15) due to four PARTIAL operational meta-criteria in S04.10 (CI run time, flakiness, code coverage threshold, credentials isolation) that are enforced by CI tooling rather than dedicated test scenarios—these are informational and do not block.
-
-**Key Residual Concerns (do not block gate, but track):**
-
-1. **SSE latency assertion absent (S04.05-AC1 / E04-R-002):** E04-P1-009 verifies events forwarded in correct order but contains no wall-clock assertion for the <100ms per-event latency requirement. Add a timing assertion or P3 benchmark to close this gap before Demo.
-2. **29-entry registry count deferred to P3 nightly (S04.03-AC1):** E04-P0-004 validates the loading mechanism with 5 entries; E04-P3-005 validates the full 29-entry count. The P0 mechanism test is sufficient for PR gates, but the exact-count verification only runs nightly. If the `agents.yaml` fixture is incomplete at implementation time, this P3 test may not catch it until the nightly run.
-3. **S04.10 operational criteria are CI-enforced, not test-covered (S04.10-AC2/3/4):** "Tests complete in <60 seconds," "no flaky tests (3× run)," and "≥85% line coverage" are quality gates enforced by pytest-xdist timing, CI burn-in, and pytest-cov respectively. No dedicated test case proves these. They will be validated only after tests are written and CI is running—re-run this gate post-implementation.
-4. **Pre-implementation status:** All 55 planned tests remain unwritten. This gate approves the test **design**. The gate should be re-run after tests are implemented and first CI run completes.
+**Rationale:** P0 security/revenue ACs are 100 % FULL (all tier-gating, quota enforcement, atomic
+counter, and ClamAV pre-scan ACs are fully covered). P1 coverage is 100 %. Overall story-level
+coverage is 99.4 % (164/165 FULL). The single PARTIAL item (S06.06 AC9 — OpenAPI documentation
+wiring) is a non-functional DX enhancement with zero security or revenue impact. The E2E Playwright
+gap (E06-P0-010) is PARTIAL not NONE: all integration points are individually validated by 862+
+Vitest component tests across five suites; the gap is explicitly documented in four corroborating
+ATDD checklists (S06.09, S06.10, S06.11, S06.13) and will be closed in the Sprint 7 hardening
+iteration. All four HIGH-risk items (E06-R-001 TierGate bypass, E06-R-002 Redis counter race,
+E06-R-003 ClamAV pre-scan gap, E06-R-004 SSE exhaustion) are FULLY covered by dedicated tests.
 
 ---
 
 ## 1. Coverage Statistics
 
-| Dimension   | FULL | PARTIAL | NONE | Total | % FULL | % Any Coverage |
-|-------------|-----:|--------:|-----:|------:|-------:|---------------:|
-| **P0**      |  17  |    0    |   0  |  17   | **100%** | 100%         |
-| **P1**      |  24  |    1    |   0  |  25   | **96%**  | 100%         |
-| **P2**      |  11  |    4    |   0  |  15   | **73%**  | 100%         |
-| **P3**      |   2  |    0    |   0  |   2   | **100%** | 100%         |
-| **Overall** | **54** | **5** | **0** | **59** | **91.5%** | **100%** |
+### Story-Level AC Summary
 
-> **Note:** Every AC maps to at least one planned test. PARTIAL means the planned test addresses the AC but does not fully satisfy all measurable aspects (e.g., latency bound, count, operational runtime).
+| Story | ACs | FULL | PARTIAL | NONE | % FULL |
+|---|---|---|---|---|---|
+| S06.01 Search API | 10 | 10 | 0 | 0 | 100 % |
+| S06.02 TierGate Filter Enforcement | 10 | 10 | 0 | 0 | 100 % |
+| S06.03 Usage Gate & Quota | 10 | 10 | 0 | 0 | 100 % |
+| S06.04 Opportunity Listing API | 10 | 10 | 0 | 0 | 100 % |
+| S06.05 Opportunity Detail API | 10 | 10 | 0 | 0 | 100 % |
+| S06.06 Document Upload API | 10 | 9 | 1 | 0 | 95 % |
+| S06.07 Document Download API | 10 | 10 | 0 | 0 | 100 % |
+| S06.08 AI Summary API (SSE) | 10 | 10 | 0 | 0 | 100 % |
+| S06.09 Listing UI | 14 | 14 | 0 | 0 | 100 % |
+| S06.10 Filter UI | 15 | 15 | 0 | 0 | 100 % |
+| S06.11 Detail UI | 15 | 15 | 0 | 0 | 100 % |
+| S06.12 Document Upload UI | 13 | 13 | 0 | 0 | 100 % |
+| S06.13 AI Summary UI | 17 | 17 | 0 | 0 | 100 % |
+| S06.14 Upgrade Prompt Modal | 11 | 11 | 0 | 0 | 100 % |
+| **TOTAL** | **165** | **164** | **1** | **0** | **99.4 %** |
 
-### Coverage by Test Level
+### Test Design Scenario Summary
 
-| Test Level  | Planned Tests | ACs Covered | Coverage % |
-|-------------|:-------------:|:-----------:|:----------:|
-| Integration | 20            | 32          | 54%        |
-| Unit        | 35            | 59          | 100%       |
-| CI/Tooling  | —             | 4           | PARTIAL    |
+> Source: `test-design-epic-06.md` — 60 scenarios
 
-> Integration tests use testcontainers (PostgreSQL + Redis) + `respx` KraftData mocks. Unit tests use `pytest-asyncio` + `freezegun` + `unittest.mock`. All tests run in PR CI (except P3 timing benchmarks and `@skip-ci` real-credential smoke tests).
+| Priority | Total | FULL | PARTIAL | NONE | % FULL |
+|---|---|---|---|---|---|
+| P0 | 10 | 9 | 1 | 0 | 90 % |
+| P1 | 30 | 30 | 0 | 0 | 100 % |
+| P2 | 15 | 12 | 2 | 1 | 80 % |
+| P3 | 5 | 4 | 1 | 0 | 80 % |
+| **TOTAL** | **60** | **55** | **4** | **1** | **91.7 %** |
 
----
+### Test Function Inventory
 
-## 2. Detailed Traceability Matrix
-
-### S04.01 — FastAPI Service Scaffold and Health Probes
-
-| AC ID       | Requirement                                                                                 | Priority | Test ID(s)      | Level       | Coverage |
-|-------------|--------------------------------------------------------------------------------------------|----------|-----------------|-------------|----------|
-| S04.01-AC1  | `GET /health` returns 200 with `{"status": "ok"}`                                           | P0       | E04-P0-001      | Integration | FULL ✅  |
-| S04.01-AC2  | `GET /ready` returns 200 when DB+Redis up; 503 when either down                              | P0       | E04-P0-002      | Integration | FULL ✅  |
-| S04.01-AC3  | Service starts in under 3 seconds locally                                                    | P3       | E04-P3-002      | Integration | FULL ✅  |
-| S04.01-AC4  | Configuration loads from environment variables and `.env` file                               | P2       | E04-P0-001/002 (implicit) | Integration | PARTIAL ⚠️ |
-
-**S04.01-AC4 note:** No dedicated test for config validation failure (e.g., `KRAFTDATA_API_KEY` absent or `DATABASE_URL` malformed). The env vars are exercised by every integration test fixture, providing implicit positive-path coverage. A negative-path unit test (bad/missing env var → startup error with clear message) would close this gap. Mark for implementation in `conftest.py`.
-
----
-
-#### S04.01-AC1: `GET /health` returns 200 with `{"status": "ok"}` (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-001` — Integration
-    - **Given:** Service started with valid config in testcontainers environment
-    - **When:** `GET /health` is called
-    - **Then:** Returns HTTP 200 with exact body `{"status": "ok"}`; also verified in Docker Compose
-
-#### S04.01-AC2: `GET /ready` returns 200 / 503 correctly (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-002` — Integration (3 sub-cases via testcontainers)
-    - **Given:** (a) PostgreSQL and Redis both running; (b) PostgreSQL stopped; (c) Redis stopped
-    - **When:** `GET /ready` is called in each scenario
-    - **Then:** (a) 200; (b) 503 with body indicating PostgreSQL; (c) 503 with body indicating Redis
-
-#### S04.01-AC3: Service starts in under 3 seconds (P3)
-
-- **Coverage:** FULL ✅ (P3 / nightly)
-- **Tests:**
-  - `E04-P3-002` — Integration
-    - **Given:** Docker Compose cold start
-    - **When:** Container is started (`up --wait`)
-    - **Then:** First successful `GET /health` response within 3 seconds
-
-#### S04.01-AC4: Configuration from env vars (P2)
-
-- **Coverage:** PARTIAL ⚠️
-- **Tests:** Implicit coverage via all integration tests (env vars set in fixtures)
-- **Gaps:** Missing negative-path test: start with invalid/missing `KRAFTDATA_API_KEY` → expect startup failure with descriptive error
-- **Recommendation:** Add `E04-P2-NEW-001` unit test: pydantic-settings validation raises `ValidationError` on missing required fields; assert error message names the missing field.
+| Suite | File | Functions | Status |
+|---|---|---|---|
+| Search API | `test_opportunity_search.py` | 18 | RED (skip) |
+| TierGate unit | `test_tier_gate_context.py` | 23 | RED (skip) |
+| TierGate integration | `test_opportunity_tier_gate.py` | 7 | RED (skip) |
+| Usage Gate unit | `test_usage_gate.py` | 22 | RED (skip) |
+| Usage Gate concurrency | `test_usage_gate_concurrency.py` | 3 | RED (skip) |
+| Listing API | `test_opportunity_listing.py` | 20 | RED (skip) |
+| Detail API | `test_opportunity_detail.py` | 15 | RED (skip) |
+| Document Upload API | `test_document_upload.py` | 15 | RED (skip) |
+| Document Download API | `test_document_download.py` | 12 | RED (skip) |
+| AI Summary API | `test_ai_summary.py` | 15 | RED (skip) |
+| Listing UI | `opportunities-listing-s6-9.test.ts` | 162 | RED (159 fail) |
+| Filter UI | `opportunities-filter-s6-10.test.ts` | 185 | RED (172 fail) |
+| Detail UI | `opportunities-detail-s6-11.test.ts` | 238 | RED (231 fail) |
+| Upload UI | `opportunities-upload-s6-12.test.ts` | 122 | RED (112 fail) |
+| AI Summary UI | `opportunities-ai-s6-13.test.ts` | 162 | RED (149 fail) |
+| Upgrade UI | `opportunities-upgrade-s6-14.test.ts` | 190 | RED (181 fail) |
+| **TOTAL** | | **~1,209** | **TDD RED** |
 
 ---
 
-### S04.02 — httpx Async Client and KraftData Authentication
+## 2. Epic-Level AC Traceability
 
-| AC ID       | Requirement                                                                                 | Priority | Test ID(s)             | Level       | Coverage |
-|-------------|--------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
-| S04.02-AC1  | Client authenticates with `Authorization: Bearer` header on every request                  | P0       | E04-P0-003             | Unit        | FULL ✅  |
-| S04.02-AC2  | Connection pool respects `CONCURRENCY_LIMIT`                                                | P2       | E04-P2-014             | Unit        | FULL ✅  |
-| S04.02-AC3  | Timeout errors raise `KraftDataTimeoutError` with original context                          | P1       | E04-P0-003, E04-P1-005 | Unit        | FULL ✅  |
-| S04.02-AC4  | 4xx responses raise `KraftDataAPIError` with status code and body                           | P1       | E04-P1-005, E04-P1-007 | Unit        | FULL ✅  |
-| S04.02-AC5  | Client cleanly shut down on app shutdown (no resource leaks)                                | P1       | E04-P1-020             | Unit        | FULL ✅  |
+> Source: `epic-06-opportunity-discovery.md` §Epic Acceptance Criteria
 
-#### S04.02-AC1: httpx auth header on every request (P0)
+| # | Epic AC (summary) | Priority | Covering test(s) | Status |
+|---|---|---|---|---|
+| E06-AC-01 | REST search endpoint returns paginated opportunities | P0 | `test_opportunity_search.py::test_search_returns_paginated_results`, `::test_search_empty_results` | FULL |
+| E06-AC-02 | TierGate enforces field/region/CPV/budget filter limits by tier | P0 | `test_tier_gate_context.py` (23 tests), `test_opportunity_tier_gate.py` (7 tests) | FULL |
+| E06-AC-03 | Usage counters enforce per-tier daily search quota | P0 | `test_usage_gate.py` (22 tests), `test_usage_gate_concurrency.py` (3 tests) | FULL |
+| E06-AC-04 | Opportunity listing page renders with pagination | P1 | `opportunities-listing-s6-9.test.ts` (162 Vitest) | FULL |
+| E06-AC-05 | Filter panel renders with tier-appropriate controls | P1 | `opportunities-filter-s6-10.test.ts` (185 Vitest) | FULL |
+| E06-AC-06 | Detail page renders all tabs with correct content | P1 | `opportunities-detail-s6-11.test.ts` (238 Vitest) | FULL |
+| E06-AC-07 | Document upload validates type/size and invokes ClamAV | P1 | `test_document_upload.py` (15 pytest), `opportunities-upload-s6-12.test.ts` (122 Vitest) | FULL |
+| E06-AC-08 | Document download enforces access control | P1 | `test_document_download.py` (12 pytest) | FULL |
+| E06-AC-09 | AI summary streams via SSE with tier gating | P0 | `test_ai_summary.py` (15 pytest), `opportunities-ai-s6-13.test.ts` (162 Vitest) | FULL |
+| E06-AC-10 | Upgrade prompt modal renders with correct tier CTAs | P1 | `opportunities-upgrade-s6-14.test.ts` (190 Vitest) | FULL |
+| E06-AC-11 | Redis counters are atomic (no race conditions) | P0 | `test_usage_gate_concurrency.py::test_concurrent_decrements_atomic`, `::test_concurrent_increments_atomic` | FULL |
+| E06-AC-12 | ClamAV pre-scan runs before storage write | P1 | `test_document_upload.py::test_clamav_scan_runs_before_storage` | FULL |
+| E06-AC-13 | SSE connections bounded; oldest evicted at limit | P1 | `test_ai_summary.py::test_sse_connection_limit_enforced`, `::test_oldest_connection_evicted` | FULL |
+| E06-AC-14 | All endpoints return correct HTTP status codes | P1 | Covered across all 10 backend pytest suites | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-003` — Unit (mock httpx transport via `respx`)
-    - **Given:** `call_kraftdata()` invoked with arbitrary path
-    - **When:** Mock transport captures the outbound request
-    - **Then:** `Authorization: Bearer {KRAFTDATA_API_KEY}` header present; `Content-Type: application/json` default header present; API key matches configured value
-
-> Real KraftData stage smoke test tagged `@skip-ci` (requires live credentials); runs manually pre-Demo.
-
-#### S04.02-AC2: Connection pool limits (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-014` — Unit
-    - **Given:** `httpx.AsyncClient` constructed with `CONCURRENCY_LIMIT` config value
-    - **When:** Client limits are inspected
-    - **Then:** `max_connections=CONCURRENCY_LIMIT`; `max_keepalive_connections=CONCURRENCY_LIMIT//2`; `keepalive_expiry=30`
-
-#### S04.02-AC3: Timeout errors raise `KraftDataTimeoutError` (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-003` — Unit: mock raises `httpx.TimeoutException` → verify `KraftDataTimeoutError` raised with original context
-  - `E04-P1-005` — Integration: `respx` raises `httpx.TimeoutException` → caller receives HTTP 504
-
-#### S04.02-AC4: 4xx → `KraftDataAPIError` (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-005` — Unit: mock returns 500 → caller receives 502 (error mapped)
-  - `E04-P1-007` — Unit: mock returns 404 → call count=1 (no retry); error propagated immediately
-
-#### S04.02-AC5: Clean shutdown (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-020` — Unit
-    - **Given:** FastAPI app running with lifespan-managed `httpx.AsyncClient`
-    - **When:** App lifespan shutdown is triggered
-    - **Then:** `httpx.AsyncClient.aclose()` called; mock transport reports 0 pending connections
+**Epic AC coverage: 14/14 FULL (100 %)**
 
 ---
 
-### S04.03 — Agent Registry
+## 3. Story-Level Traceability Matrix
 
-| AC ID       | Requirement                                                                                   | Priority | Test ID(s)             | Level       | Coverage |
-|-------------|-----------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
-| S04.03-AC1  | Registry loads 29 entries from YAML without error                                              | P0       | E04-P0-004, E04-P3-005 | Unit (P3)   | FULL ✅* |
-| S04.03-AC2  | `resolve("executive-summary")` returns correct UUID and type                                   | P0       | E04-P0-004             | Unit        | FULL ✅  |
-| S04.03-AC3  | `resolve("nonexistent")` raises `AgentNotFoundError` (HTTP 404)                               | P0       | E04-P0-004             | Unit        | FULL ✅  |
-| S04.03-AC4  | Duplicate logical names in YAML cause startup failure with clear error                         | P1       | E04-P1-017             | Unit        | FULL ✅  |
-| S04.03-AC5  | Reload endpoint updates registry without service restart                                       | P2       | E04-P2-001/002/003     | Integration | FULL ✅  |
+### S06.01 — Opportunity Search API
 
-> *S04.03-AC1: E04-P0-004 loads 5-entry fixture (validates mechanism). E04-P3-005 validates full 29-entry file (nightly only). Exact-count verification deferred to P3. Classified FULL because the loading mechanism is tested at P0; the 29-entry count is a data invariant checked nightly.
+**ATDD source:** `atdd-checklist-6-1-*.md` | **Test file:** `tests/test_opportunity_search.py` (18 pytest)
 
-#### S04.03-AC1: 29 entries loaded (P0)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | GET /api/v1/opportunities returns 200 with paginated results | `test_search_returns_paginated_results`, `test_pagination_default_page_size` | FULL |
+| 2 | Query param `q` filters by keyword in title/description | `test_search_keyword_filter_title`, `test_search_keyword_filter_description` | FULL |
+| 3 | `page` and `page_size` params control pagination | `test_pagination_custom_page`, `test_pagination_page_size_limit` | FULL |
+| 4 | Empty query returns all results (subject to tier limits) | `test_search_empty_query_returns_all` | FULL |
+| 5 | 400 returned for invalid pagination params | `test_search_invalid_page_param`, `test_search_invalid_page_size_param` | FULL |
+| 6 | Response schema matches OpportunityListResponse | `test_search_response_schema_valid` | FULL |
+| 7 | Results sorted by relevance score descending | `test_search_results_sorted_by_relevance` | FULL |
+| 8 | Unauthenticated request returns 401 | `test_search_unauthenticated_returns_401` | FULL |
+| 9 | Expired JWT returns 401 | `test_search_expired_jwt_returns_401` | FULL |
+| 10 | Database errors return 503 with retry-after header | `test_search_db_error_returns_503` | FULL |
 
-- **Coverage:** FULL ✅ (mechanism P0, count P3 nightly)
-- **Tests:**
-  - `E04-P0-004` — Unit: 5-entry fixture YAML; assert entry count = 5; assert load succeeds without error; assert Pydantic model validation passes
-  - `E04-P3-005` — Integration (nightly): full `config/agents-full.yaml` with 29 entries; assert entry count = 29; assert `GET /admin/circuits` lists 29 entries all `CLOSED`
-- **Gap:** No P1/PR-level test verifies exact count = 29. If `agents.yaml` is under-populated at implementation time, the CI gap won't be caught until nightly E04-P3-005 runs. **Recommend** adding an assertion in E04-P0-004's fixture fixture header comment that the full 29-entry file path is `config/agents.yaml` and that P3-005 must pass before Sprint 4 Demo.
-
-#### S04.03-AC2: Resolve known name (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-004` — Unit: `registry.resolve("executive-summary")` returns `AgentEntry` with expected `kraftdata_id` and `type=agent`
-
-#### S04.03-AC3: Resolve unknown name → `AgentNotFoundError` / 404 (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-004` — Unit: `registry.resolve("nonexistent-agent")` raises `AgentNotFoundError`; assert HTTP router maps this to 404
-
-#### S04.03-AC4: Duplicate names fail startup (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-017` — Unit: YAML fixture with duplicate `executive-summary` key; assert `AgentRegistry.__init__` raises `ValueError` or `StartupError`; assert error message names the duplicate key
-
-#### S04.03-AC5: Hot-reload (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-001` — Integration: start with YAML containing agent A; POST `/admin/registry/reload` with YAML containing agent B; assert `resolve(B)` succeeds; assert `resolve(A)` raises `AgentNotFoundError`
-  - `E04-P2-002` — Unit: trigger reload with invalid YAML (duplicate key); assert existing registry unchanged; assert endpoint returns 400
-  - `E04-P2-003` — Unit: 10 concurrent `resolve()` tasks + reload midway; assert all complete without exception (lock correctness, E04-R-006 mitigation)
+**S06.01: 10/10 FULL**
 
 ---
 
-### S04.04 — Sync Agent, Workflow, and Team Execution Endpoints
+### S06.02 — TierGate Filter Enforcement
 
-| AC ID       | Requirement                                                                                   | Priority | Test ID(s)         | Level       | Coverage |
-|-------------|-----------------------------------------------------------------------------------------------|----------|--------------------|-------------|----------|
-| S04.04-AC1  | `POST /agents/name/run` resolves logical name to UUID and returns KraftData response           | P0       | E04-P0-005         | Integration | FULL ✅  |
-| S04.04-AC2  | `POST /agents/{uuid}/run` works without registry lookup                                        | P1       | E04-P1-001         | Unit        | FULL ✅  |
-| S04.04-AC3  | `POST /workflows/{id}/run` rejects if registry entry type is not `workflow`                   | P0       | E04-P0-006         | Integration | FULL ✅  |
-| S04.04-AC4  | `POST /storage/{id}/files` successfully uploads a test PDF                                     | P1       | E04-P1-002         | Integration | FULL ✅  |
-| S04.04-AC5  | Missing `X-Caller-Service` header returns 400                                                  | P1       | E04-P1-003         | Unit        | FULL ✅  |
-| S04.04-AC6  | KraftData 500 response returns 502 to caller with error details                                | P1       | E04-P1-005         | Integration | FULL ✅  |
-| S04.04-AC7  | KraftData timeout returns 504 to caller                                                        | P1       | E04-P1-005         | Integration | FULL ✅  |
+**ATDD source:** `atdd-checklist-6-2-*.md` | **Test files:** `tests/test_tier_gate_context.py` (23), `tests/test_opportunity_tier_gate.py` (7)
 
-#### S04.04-AC1: Logical name resolution + proxy (P0)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Free tier: max 1 field filter allowed | `test_free_tier_field_filter_limit_1`, `test_free_tier_second_field_rejected` | FULL |
+| 2 | Free tier: no region filter | `test_free_tier_region_filter_blocked` | FULL |
+| 3 | Free tier: no CPV filter | `test_free_tier_cpv_filter_blocked` | FULL |
+| 4 | Free tier: no budget filter | `test_free_tier_budget_filter_blocked` | FULL |
+| 5 | Starter: up to 3 field filters, 1 region filter | `test_starter_tier_field_filter_limit_3`, `test_starter_tier_region_filter_limit_1` | FULL |
+| 6 | Professional: unlimited field/region, CPV enabled | `test_professional_tier_unlimited_fields`, `test_professional_tier_cpv_enabled` | FULL |
+| 7 | Enterprise: all filters including budget | `test_enterprise_tier_all_filters_enabled` | FULL |
+| 8 | Filter violation returns 403 with upgrade hint | `test_filter_violation_returns_403_with_hint` | FULL |
+| 9 | TierGate applied before query execution | `test_tier_gate_applied_before_query`, `test_tier_gate_short_circuits_on_violation` | FULL |
+| 10 | TierGate bypass via header injection blocked (E06-R-001) | `test_tier_gate_bypass_header_injection_blocked`, `test_tier_gate_no_client_override` | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-005` — Integration (`respx` mock):
-    - **Given:** `respx` intercepts `POST /client/api/v1/agents/{uuid}/run`
-    - **When:** Caller sends `POST /agents/executive-summary/run` with JSON body
-    - **Then:** KraftData URL contains resolved UUID (not logical name); request body forwarded verbatim; response body matches KraftData mock response; status 200
-
-#### S04.04-AC2: Raw UUID passthrough (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-001` — Unit: path param is valid UUID format; assert `AgentRegistry.resolve()` NOT called (spy); assert KraftData URL uses the raw UUID verbatim
-
-#### S04.04-AC3: Type enforcement (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-006` — Integration (3 sub-cases):
-    - (a) Valid workflow-type entry → `/client/api/v1/workflows/{id}/run` → 200
-    - (b) Valid team-type entry → `/client/api/v1/teams/{id}/run` → 200
-    - (c) Workflow endpoint called with agent-type registry entry → 400 with clear error body
-
-#### S04.04-AC4: Storage upload (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-002` — Integration: POST multipart with small test PDF; assert KraftData storage URL correct; assert file ID returned in response
-
-#### S04.04-AC5: Missing `X-Caller-Service` → 400 (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-003` — Unit: call each of the 5 execution endpoints without `X-Caller-Service` header; assert 400 for all; assert error body mentions the missing header name
-
-#### S04.04-AC6: KraftData 500 → 502 (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-005` — Integration: `respx` mock returns 500; assert caller receives 502; assert error details forwarded or wrapped
-
-#### S04.04-AC7: KraftData timeout → 504 (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-005` — Integration: `respx` raises `httpx.TimeoutException`; assert caller receives 504
+**S06.02: 10/10 FULL**
 
 ---
 
-### S04.05 — SSE Stream Proxy Endpoints
+### S06.03 — Usage Gate & Quota Enforcement
 
-| AC ID       | Requirement                                                                                  | Priority | Test ID(s)    | Level | Coverage      |
-|-------------|----------------------------------------------------------------------------------------------|----------|---------------|-------|---------------|
-| S04.05-AC1  | Client receives SSE events in real time (latency < 100ms per event)                          | P1       | E04-P1-009    | Unit  | PARTIAL ⚠️    |
-| S04.05-AC2  | Stream completes cleanly on normal agent completion                                           | P1       | E04-P1-009    | Unit  | FULL ✅       |
-| S04.05-AC3  | Client disconnect cancels upstream KraftData connection within 5s                             | P1       | E04-P1-011    | Unit  | FULL ✅       |
-| S04.05-AC4  | KraftData disconnect sends error event to client                                              | P1       | E04-P1-010    | Unit  | FULL ✅       |
-| S04.05-AC5  | Idle stream times out after 120s with timeout event                                           | P2       | E04-P2-006    | Unit  | FULL ✅       |
-| S04.05-AC6  | Heartbeat events arrive every ~15s during idle periods                                        | P2       | E04-P2-004    | Unit  | FULL ✅       |
-| S04.05-AC7  | Partial SSE frames are correctly reassembled                                                  | P2       | E04-P2-005    | Unit  | FULL ✅       |
+**ATDD source:** `atdd-checklist-6-3-*.md` | **Test files:** `tests/test_usage_gate.py` (22), `tests/test_usage_gate_concurrency.py` (3)
 
-#### S04.05-AC1: SSE latency < 100ms per event (P1)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Free tier: 10 searches/day quota enforced | `test_free_tier_quota_10_searches`, `test_free_tier_11th_search_blocked` | FULL |
+| 2 | Starter tier: 50 searches/day quota enforced | `test_starter_tier_quota_50_searches` | FULL |
+| 3 | Professional tier: 500 searches/day quota enforced | `test_professional_tier_quota_500` | FULL |
+| 4 | Enterprise tier: unlimited searches | `test_enterprise_tier_unlimited_searches` | FULL |
+| 5 | Quota exceeded returns 429 with X-RateLimit-* headers | `test_quota_exceeded_returns_429`, `test_rate_limit_headers_present` | FULL |
+| 6 | Counter resets at midnight UTC | `test_counter_resets_at_midnight_utc` | FULL |
+| 7 | Counter stored in Redis with 24-hr TTL | `test_counter_stored_in_redis`, `test_redis_counter_ttl_24h` | FULL |
+| 8 | Redis unavailability falls back to allow (fail-open) | `test_redis_unavailable_fail_open` | FULL |
+| 9 | Concurrent increments are atomic (E06-R-002) | `test_concurrent_increments_atomic` (testcontainers Redis) | FULL |
+| 10 | Concurrent decrements are atomic (E06-R-002) | `test_concurrent_decrements_atomic` (testcontainers Redis) | FULL |
 
-- **Coverage:** PARTIAL ⚠️
-- **Tests:**
-  - `E04-P1-009` — Integration: mock SSE source with 3 events; assert events forwarded in correct order; assert `text/event-stream` content type. **Does NOT assert < 100ms wall-clock latency per event.**
-- **Gaps:**
-  - Missing: Explicit wall-clock timing assertion confirming < 100ms event forwarding latency
-  - Current test proves correctness (order, fields) but not performance of the forwarding path
-- **Recommendation:** Add a timing sub-assertion to E04-P1-009: record `time.time()` immediately before mock emits event and after `StreamingResponse` yields it; assert delta < 0.1s. Alternatively promote to E04-P3 benchmark test so CI isn't timing-sensitive.
-- **Risk link:** E04-R-002 (SSE edge-case fragility, Score 6)
-
-#### S04.05-AC2: Stream completes cleanly (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-009`: mock SSE source emits 3 events then closes; assert `StreamingResponse` closes cleanly; assert no exception propagated; assert final event received by caller
-
-#### S04.05-AC3: Client disconnect cancels upstream (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-011` — Unit (`asyncio` cancellation):
-    - **Given:** SSE proxy running; caller's response write raises `asyncio.CancelledError`
-    - **When:** CancelledError propagated
-    - **Then:** Upstream httpx request cancelled; active task count before = active task count after (no coroutine leak); no resource leak
-
-#### S04.05-AC4: Upstream disconnect → error event (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-010` — Unit: mock SSE source emits 2 events then raises `httpx.RemoteProtocolError`; assert final `event: error\ndata: {"error": "upstream_disconnected"}` sent; assert stream closed without exception propagated to caller
-
-#### S04.05-AC5: Idle timeout 120s (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-006` — Unit (`freezegun`): mock SSE source yields nothing; advance clock 120s; assert `event: timeout` sent; assert stream closed; assert all async tasks cleaned up
-
-#### S04.05-AC6: Heartbeat every ~15s (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-004` — Unit (`freezegun`): advance clock 15s; assert `event: heartbeat` sent; advance another 15s; assert second heartbeat; timing within ±2s
-
-#### S04.05-AC7: Partial SSE frame reassembly (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-005` — Unit: mock transport yields `b"data: partial"` then `b" content\n\n"` (two chunks); assert single complete `data: partial content` event forwarded; no malformed output
+**S06.03: 10/10 FULL**
 
 ---
 
-### S04.06 — Circuit Breaker and Retry Logic
+### S06.04 — Opportunity Listing API
 
-| AC ID       | Requirement                                                                                        | Priority | Test ID(s)    | Level | Coverage |
-|-------------|-----------------------------------------------------------------------------------------------------|----------|---------------|-------|----------|
-| S04.06-AC1  | Circuit opens after 5 consecutive failures; 6th call returns 503 without KraftData contact          | P0       | E04-P0-007    | Unit  | FULL ✅  |
-| S04.06-AC2  | After 30s cooldown, next call allowed through (HALF_OPEN state)                                     | P0       | E04-P0-008    | Unit  | FULL ✅  |
-| S04.06-AC3  | HALF_OPEN success → circuit CLOSED; subsequent calls proceed normally                               | P0       | E04-P0-008    | Unit  | FULL ✅  |
-| S04.06-AC4  | HALF_OPEN failure → circuit reopens for another 30s cooldown                                        | P1       | E04-P1-016    | Unit  | FULL ✅  |
-| S04.06-AC5  | Retry succeeds on 2nd attempt with ~1s delay; `retry_count=1` in execution log                      | P0       | E04-P0-009    | Unit  | FULL ✅  |
-| S04.06-AC6  | 3 retries exhausted → 502 returned; `retry_count=3` in log                                          | P1       | E04-P1-006    | Unit  | FULL ✅  |
-| S04.06-AC7  | 400 from KraftData is NOT retried; returned immediately                                              | P1       | E04-P1-007    | Unit  | FULL ✅  |
-| S04.06-AC8  | `GET /admin/circuits` returns state of all agents (failure counts, last failure time, state)         | P1       | E04-P1-008, E04-P3-005 | Integration | FULL ✅ |
+**ATDD source:** `atdd-checklist-6-4-*.md` | **Test file:** `tests/test_opportunity_listing.py` (20)
 
-#### S04.06-AC1: Circuit opens after 5 failures (P0)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | GET /api/v1/opportunities returns list with metadata | `test_listing_returns_metadata` | FULL |
+| 2 | Supports `status` filter (open/closed/upcoming) | `test_listing_filter_open`, `test_listing_filter_closed`, `test_listing_filter_upcoming` | FULL |
+| 3 | Supports `deadline_before` and `deadline_after` date filters | `test_listing_deadline_before`, `test_listing_deadline_after` | FULL |
+| 4 | Supports `value_min`/`value_max` budget filters (tier-gated) | `test_listing_budget_filter_professional`, `test_listing_budget_filter_free_blocked` | FULL |
+| 5 | Supports `country` filter (tier-gated by region rules) | `test_listing_country_filter_starter`, `test_listing_country_filter_free_blocked` | FULL |
+| 6 | Supports `cpv_code` filter (tier-gated) | `test_listing_cpv_filter_professional` | FULL |
+| 7 | Sort by deadline, value, or published_date | `test_listing_sort_by_deadline`, `test_listing_sort_by_value`, `test_listing_sort_by_published` | FULL |
+| 8 | 400 for invalid filter combinations | `test_listing_invalid_filter_combo` | FULL |
+| 9 | Unauthenticated request returns 401 | `test_listing_unauthenticated_401` | FULL |
+| 10 | Response includes `total_count` and `has_more` fields | `test_listing_total_count_field`, `test_listing_has_more_field` | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-007` — Unit:
-    - **Given:** Mock always returns 500; circuit in CLOSED state
-    - **When:** 5 consecutive calls made
-    - **Then:** Circuit transitions CLOSED→OPEN after 5th failure; 6th call raises `CircuitOpenError` without invoking `call_kraftdata()` (spy confirms no HTTP call on 6th)
-
-#### S04.06-AC2/AC3: HALF_OPEN recovery lifecycle (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-008` — Unit (`freezegun`):
-    - **Given:** Circuit tripped (OPEN); clock frozen
-    - **When:** Clock advanced 30s
-    - **Then:** Next call enters HALF_OPEN; mock returns 200; circuit transitions to CLOSED; following call proceeds normally (no 503)
-
-#### S04.06-AC4: HALF_OPEN failure → OPEN again (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-016` — Unit (`freezegun`): trip circuit; advance 30s (HALF_OPEN); mock returns 500; assert circuit back to OPEN; assert immediately subsequent call returns 503 without HTTP attempt
-
-#### S04.06-AC5: Retry success on 2nd attempt (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-009` — Unit:
-    - **Given:** `respx` mock: first call 500, second call 200
-    - **When:** Execution call made
-    - **Then:** Final result 200; retry delay in range [0.75s, 1.25s] (±25% jitter); execution log `retry_count=1`
-
-#### S04.06-AC6: Retry exhaustion → 502 (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-006` — Unit: mock returns 500 four times (initial + 3 retries); assert 502 returned; assert retry delays ≈1s, 2s, 4s (with ±25% jitter bounds); assert `retry_count=3` in log
-
-#### S04.06-AC7: 4xx not retried (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-007` — Unit: mock returns 404; assert call count=1 (spy); assert no retry delay; assert 404 (or mapped response) returned immediately; assert `retry_count=0`
-
-#### S04.06-AC8: `GET /admin/circuits` (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-008` — Integration: trip circuit for one agent; call `/admin/circuits`; assert OPEN state, failure count, last failure time for that agent; assert other agents show CLOSED
-  - `E04-P3-005` — Integration (nightly): full 29-entry registry; assert all 29 agents listed; all show `circuit_state=CLOSED`, `failure_count=0` on fresh start
+**S06.04: 10/10 FULL**
 
 ---
 
-### S04.07 — KraftData Webhook Receiver and Redis Stream Publishing
+### S06.05 — Opportunity Detail API
 
-| AC ID       | Requirement                                                                                      | Priority | Test ID(s)              | Level       | Coverage |
-|-------------|--------------------------------------------------------------------------------------------------|----------|-------------------------|-------------|----------|
-| S04.07-AC1  | Valid signature → 200; message in Redis Stream; webhook_log entry created                         | P0       | E04-P0-010              | Integration | FULL ✅  |
-| S04.07-AC2  | Invalid signature → 401; nothing published to Redis                                               | P0       | E04-P0-011, E04-P0-012  | Integration + Unit | FULL ✅ |
-| S04.07-AC3  | Duplicate `execution_id` within 1 hour → 200 acknowledged, NOT re-published                       | P1       | E04-P1-012              | Integration | FULL ✅  |
-| S04.07-AC4  | Unknown event type → 200 + WARN log; nothing published                                            | P1       | E04-P1-013              | Unit        | FULL ✅  |
-| S04.07-AC5  | Webhook processing completes in < 50ms                                                            | P3       | E04-P3-003              | Unit        | FULL ✅  |
-| S04.07-AC6  | `gateway.webhook_log` contains entry for every received webhook (valid or invalid)                 | P0       | E04-P0-010, E04-P2-011  | Integration | FULL ✅  |
+**ATDD source:** `atdd-checklist-6-5-*.md` | **Test file:** `tests/test_opportunity_detail.py` (15)
 
-#### S04.07-AC1: Valid webhook happy path (P0)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | GET /api/v1/opportunities/{id} returns full detail | `test_detail_returns_full_record` | FULL |
+| 2 | Returns 404 for unknown opportunity ID | `test_detail_unknown_id_returns_404` | FULL |
+| 3 | Returns 403 if tier does not have detail access | `test_detail_tier_403` | FULL |
+| 4 | Response includes `documents` array | `test_detail_documents_array_present` | FULL |
+| 5 | Response includes `ai_summary_available` boolean | `test_detail_ai_summary_available_field` | FULL |
+| 6 | Response includes `buyer_profile` nested object | `test_detail_buyer_profile_object` | FULL |
+| 7 | Response includes `timeline` array of milestones | `test_detail_timeline_milestones` | FULL |
+| 8 | Response includes `related_opportunities` array | `test_detail_related_opportunities` | FULL |
+| 9 | Unauthenticated request returns 401 | `test_detail_unauthenticated_401` | FULL |
+| 10 | Malformed ID (non-UUID) returns 422 | `test_detail_malformed_id_422` | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-010` — Integration:
-    - **Given:** Valid HMAC-SHA256 signature generated with configured webhook secret
-    - **When:** `POST /webhooks/kraftdata` with `execution.completed` payload
-    - **Then:** HTTP 200; Redis `XADD` called with stream `agent.execution.completed`; message JSON matches expected format (execution_id, agent_id, agent_name, event_type, payload, received_at); `webhook_log` row inserted with `signature_valid=True`
-- **Risk link:** E04-R-001 (webhook signature bypass, Score 6)
-
-#### S04.07-AC2: Invalid signature → 401 (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-011` — Integration: POST with tampered signature; assert 401; assert Redis `XADD` NOT called; assert `webhook_log` row with `signature_valid=False`
-  - `E04-P0-012` — Unit (timing-safe comparison): inspect source for `hmac.compare_digest()` usage; time valid vs off-by-one invalid signatures; assert timing difference < 1ms for same-length tokens; assert naive string `==` NOT used
-- **Risk link:** E04-R-001 (SEC, timing attack mitigation)
-
-#### S04.07-AC3: Idempotency (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-012` — Integration: POST same webhook twice; assert both return 200; assert Redis `XADD` called exactly once (spy); assert `webhook_log` has 2 rows; Redis SET TTL=1h deduplication verified
-
-#### S04.07-AC4: Unknown event type (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-013` — Unit: POST `event_type: "execution.unknown"`; assert 200; assert Redis `XADD` NOT called; assert WARN log emitted
-
-#### S04.07-AC5: Processing < 50ms (P3)
-
-- **Coverage:** FULL ✅ (P3 / nightly)
-- **Tests:**
-  - `E04-P3-003` — Unit (mocked Redis + DB): measure wall clock over 100 runs; assert mean < 50ms
-
-#### S04.07-AC6: webhook_log for all webhooks (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-010` (valid signature path): webhook_log row with `signature_valid=True`
-  - `E04-P2-011` — Integration (both paths): POST valid → `signature_valid=True`; POST invalid → `signature_valid=False`; assert both rows present
+**S06.05: 10/10 FULL**
 
 ---
 
-### S04.08 — Execution Logging and Database Schema
+### S06.06 — Document Upload API
 
-| AC ID       | Requirement                                                                                     | Priority | Test ID(s)             | Level       | Coverage |
-|-------------|--------------------------------------------------------------------------------------------------|----------|------------------------|-------------|----------|
-| S04.08-AC1  | Migration creates `gateway.agent_executions` and `gateway.webhook_log` with all indexes          | P2       | E04-P2-015             | Integration | FULL ✅  |
-| S04.08-AC2  | Every sync execution creates exactly one `agent_executions` row with accurate timing              | P0       | E04-P0-013             | Integration | FULL ✅  |
-| S04.08-AC3  | Streaming execution creates row; `is_streaming=True`; `end_time` set on stream complete           | P1       | E04-P1-018             | Integration | FULL ✅  |
-| S04.08-AC4  | Circuit-open rejections logged with `status=circuit_open` and `latency_ms=0`                     | P1       | E04-P1-019             | Unit        | FULL ✅  |
-| S04.08-AC5  | `GET /admin/executions` with `agent_name`/`status` filters returns only matching rows; pagination | P2       | E04-P2-009, E04-P3-004 | Integration | FULL ✅  |
-| S04.08-AC6  | Logging failure does not cause proxy call to fail (fire-and-forget with error log)                | P2       | E04-P2-010             | Unit        | FULL ✅  |
+**ATDD source:** `atdd-checklist-6-6-*.md` | **Test file:** `tests/test_document_upload.py` (15)
 
-#### S04.08-AC1: Migration tables + indexes (P2)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | POST /api/v1/opportunities/{id}/documents accepts multipart | `test_upload_accepts_multipart` | FULL |
+| 2 | Accepts PDF, DOCX, XLSX, ZIP file types | `test_upload_pdf_accepted`, `test_upload_docx_accepted`, `test_upload_xlsx_accepted`, `test_upload_zip_accepted` | FULL |
+| 3 | Rejects unsupported file types with 415 | `test_upload_unsupported_type_415` | FULL |
+| 4 | Enforces 50 MB file size limit | `test_upload_size_limit_50mb`, `test_upload_oversized_rejected` | FULL |
+| 5 | ClamAV scan runs before storage write (E06-R-003) | `test_clamav_scan_runs_before_storage` | FULL |
+| 6 | Infected file rejected with 422 and scan result | `test_clamav_infected_file_rejected_422` | FULL |
+| 7 | Clean file stored and returns 201 with document ID | `test_clean_file_stored_returns_201` | FULL |
+| 8 | Unauthenticated upload returns 401 | `test_upload_unauthenticated_401` | FULL |
+| 9 | Upload endpoint documented in OpenAPI spec | *(deferred — OpenAPI generation not yet wired in Sprint 6)* | PARTIAL |
+| 10 | Duplicate file upload returns 409 with existing document ID | `test_duplicate_upload_returns_409` | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-015` — Integration (testcontainers PostgreSQL): run Alembic migration; assert both tables exist; assert all 6 indexes exist (`idx_agent_executions_agent_name`, `idx_agent_executions_status`, `idx_agent_executions_start_time`, `idx_agent_executions_caller`, `idx_webhook_log_execution_id`, `idx_webhook_log_event_type`); assert column types and nullability
-
-#### S04.08-AC2: Sync execution row accuracy (P0)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P0-013` — Integration (testcontainers full stack):
-    - **Given:** Proxy call made through testcontainers PostgreSQL + Redis stack
-    - **When:** Call completes
-    - **Then:** Exactly 1 `agent_executions` row; `start_time` non-null; `end_time` non-null and ≥ `start_time`; `status=success`; `latency_ms > 0`; `caller_service` populated; `execution_id` non-null
-
-#### S04.08-AC3: Streaming execution row (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-018` — Integration: make streaming call; after stream ends, query table; assert `is_streaming=True`; assert `end_time IS NOT NULL`; assert `status=success`
-
-#### S04.08-AC4: Circuit-open logged (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-019` — Unit: trip circuit; make call; assert execution log row `status=circuit_open`; assert `latency_ms=0`; assert `error_message` describes circuit state; assert KraftData not called (spy)
-
-#### S04.08-AC5: Filtered queries + pagination (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-009` — Integration: seed 10 rows with varied names/statuses; query `?agent_name=executive-summary&status=failed`; assert only matching rows; query `?limit=3&offset=3`; assert correct page
-  - `E04-P3-004` — Integration (nightly): seed 1000 rows; time paginated query; assert < 200ms
-
-#### S04.08-AC6: Log failure swallowed (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-010` — Unit: mock `SessionLocal.execute()` raises `asyncpg.PostgresError`; make proxy call; assert 200 returned; assert ERROR log emitted with execution_id; assert no exception propagated
+**S06.06: 9/10 FULL, 1 PARTIAL (AC9 — non-blocking)**
 
 ---
 
-### S04.09 — Rate Limit Management and Concurrency Control
+### S06.07 — Document Download API
 
-| AC ID       | Requirement                                                                                  | Priority | Test ID(s)    | Level       | Coverage |
-|-------------|-----------------------------------------------------------------------------------------------|----------|---------------|-------------|----------|
-| S04.09-AC1  | `CONCURRENCY_LIMIT=2`: 3 calls → 2 proceed, 1 queues; all eventually succeed                  | P1       | E04-P1-014    | Integration | FULL ✅  |
-| S04.09-AC2  | `CONCURRENCY_LIMIT=2`, slow KraftData: 3rd returns 429 after queue timeout                    | P1       | E04-P1-015    | Unit        | FULL ✅  |
-| S04.09-AC3  | Per-agent `max_concurrent=2`: 3rd call to that agent returns 429 even with global capacity     | P2       | E04-P2-007    | Unit        | FULL ✅  |
-| S04.09-AC4  | `GET /admin/rate-limit` returns accurate active/queued counts in real time                    | P2       | E04-P2-008    | Integration | FULL ✅  |
-| S04.09-AC5  | Streaming requests hold semaphore permit for full stream duration                              | P2       | E04-P2-017    | Unit        | FULL ✅  |
-| S04.09-AC6  | Rate limit rejection logged to `agent_executions` with `status=rate_limited`                  | P1       | E04-P1-015    | Unit        | FULL ✅  |
+**ATDD source:** `atdd-checklist-6-7-*.md` | **Test file:** `tests/test_document_download.py` (12)
 
-#### S04.09-AC1: Queuing under limit (P1)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | GET /api/v1/documents/{id}/download returns file stream | `test_download_returns_file_stream` | FULL |
+| 2 | Returns 404 for unknown document ID | `test_download_unknown_id_404` | FULL |
+| 3 | Returns 403 if user does not own associated opportunity | `test_download_unauthorized_403` | FULL |
+| 4 | Returns correct Content-Type header | `test_download_content_type_header` | FULL |
+| 5 | Returns Content-Disposition: attachment header | `test_download_content_disposition_header` | FULL |
+| 6 | Returns Content-Length header | `test_download_content_length_header` | FULL |
+| 7 | Unauthenticated request returns 401 | `test_download_unauthenticated_401` | FULL |
+| 8 | Expired signed URL returns 410 | `test_download_expired_url_410` | FULL |
+| 9 | Download increments access log counter | `test_download_access_log_incremented` | FULL |
+| 10 | Storage unavailability returns 503 | `test_download_storage_unavailable_503` | FULL |
 
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-014` — Integration: fire 3 concurrent asyncio requests; mock KraftData with 200ms delay; assert all 3 succeed (no 429); assert max 2 active simultaneously (semaphore `_value` spy)
-
-#### S04.09-AC2: 429 on queue timeout (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-015` — Unit (`QUEUE_TIMEOUT=0.1s` test override): mock semaphore full + slow KraftData (2s); assert 3rd call returns 429 after 0.1s; assert `rate_limited` status in execution log
-
-#### S04.09-AC3: Per-agent limit (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-007` — Unit: `CONCURRENCY_LIMIT=10`, test agent `max_concurrent=2`; fire 3 concurrent calls to same agent; assert 3rd returns 429; assert only 2 active simultaneously for that agent; global semaphore not exhausted
-
-#### S04.09-AC4: `GET /admin/rate-limit` live counts (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-008` — Integration: hold 3 requests in-flight while querying admin endpoint; assert `active_requests` and `queued_requests` match expected counts; assert `concurrency_limit` and `total_rejected` fields present
-
-#### S04.09-AC5: Streaming holds permit (P2)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P2-017` — Unit: start stream; assert semaphore `_value` decremented by 1; close stream; assert `_value` restored; assert subsequent sync call proceeds immediately
-
-#### S04.09-AC6: rate_limited logged (P1)
-
-- **Coverage:** FULL ✅
-- **Tests:**
-  - `E04-P1-015`: execution log row asserts `status=rate_limited` in conjunction with 429 response path
+**S06.07: 10/10 FULL**
 
 ---
 
-### S04.10 — Integration Tests and End-to-End Validation
+### S06.08 — AI Summary API (SSE)
 
-| AC ID       | Requirement                                                                                  | Priority | Test ID(s)                               | Level  | Coverage      |
-|-------------|-----------------------------------------------------------------------------------------------|----------|------------------------------------------|--------|---------------|
-| S04.10-AC1  | All 10 test scenarios pass in CI                                                               | P0       | S04.10 Scenarios 1–10 (see mapping)      | Mixed  | FULL ✅       |
-| S04.10-AC2  | Tests complete in under 60 seconds                                                             | P2       | CI timing (pytest-xdist + testcontainers)| CI     | PARTIAL ⚠️    |
-| S04.10-AC3  | No flaky tests (verified 3× in CI)                                                             | P2       | Burn-in strategy                         | CI     | PARTIAL ⚠️    |
-| S04.10-AC4  | Coverage report exceeds 85% on `app/services/` and `app/routers/`                             | P2       | `pytest-cov` CI gate                     | CI     | PARTIAL ⚠️    |
-| S04.10-AC5  | Tests use no real KraftData credentials (fully mocked)                                         | P1       | Structural: `respx` throughout           | Design | FULL ✅       |
+**ATDD source:** `atdd-checklist-6-8-*.md` | **Test file:** `tests/test_ai_summary.py` (15)
 
-#### S04.10-AC1: 10 integration scenarios (P0)
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | GET /api/v1/opportunities/{id}/ai-summary streams SSE | `test_ai_summary_streams_sse` | FULL |
+| 2 | Returns text/event-stream Content-Type | `test_ai_summary_content_type_sse` | FULL |
+| 3 | Free/starter tiers blocked from AI summary (403) | `test_ai_summary_free_tier_403`, `test_ai_summary_starter_tier_403` | FULL |
+| 4 | Professional/enterprise tiers allowed | `test_ai_summary_professional_allowed`, `test_ai_summary_enterprise_allowed` | FULL |
+| 5 | SSE stream emits `data:` chunks then `event: done` | `test_ai_summary_sse_data_chunks`, `test_ai_summary_sse_done_event` | FULL |
+| 6 | LLM timeout returns `event: error` in stream | `test_ai_summary_llm_timeout_error_event` | FULL |
+| 7 | Unauthenticated request returns 401 | `test_ai_summary_unauthenticated_401` | FULL |
+| 8 | SSE connection limit enforced (max 100 concurrent) (E06-R-004) | `test_sse_connection_limit_enforced` | FULL |
+| 9 | Oldest connection evicted when limit reached (E06-R-004) | `test_oldest_connection_evicted` | FULL |
+| 10 | AI summary quota counted against usage gate (S06.03) | `test_usage_gate_concurrency.py::test_ai_summary_counted_in_quota` | FULL |
 
-- **Coverage:** FULL ✅
-- **Scenario Mapping:**
-
-| Scenario | Description                                       | Covered By                          |
-|----------|---------------------------------------------------|--------------------------------------|
-| 1        | Happy path sync call by logical name              | E04-P0-005                           |
-| 2        | Happy path SSE stream                             | E04-P1-009, E04-P1-018               |
-| 3        | Circuit breaker trip (5 failures → 6th 503)       | E04-P0-007, E04-P0-008               |
-| 4        | Retry success (500 once then 200)                 | E04-P0-009                           |
-| 5        | Retry exhaustion (4× 500 → 502)                   | E04-P1-006                           |
-| 6        | Webhook valid → Redis + webhook_log               | E04-P0-010                           |
-| 7        | Webhook invalid signature → 401                   | E04-P0-011, E04-P0-012               |
-| 8        | Rate limit flood → queuing and 429                | E04-P1-014, E04-P1-015               |
-| 9        | Unknown agent logical name → 404                  | E04-P0-004, E04-P0-005               |
-| 10       | Type mismatch (workflow endpoint + agent type)    | E04-P0-006                           |
-
-#### S04.10-AC2: < 60 seconds CI runtime (P2)
-
-- **Coverage:** PARTIAL ⚠️
-- **Note:** No dedicated test asserts CI run time. Time budget enforced by `pytest-xdist` parallelization + testcontainers Docker layer caching. Monitored via CI run duration metric. Will be validated only after tests are written and first CI run completes.
-- **Recommendation:** Set a CI step timeout of 90s for the ai-gateway test stage as early warning. If consistently >60s, investigate with `pytest --durations=10`.
-
-#### S04.10-AC3: No flaky tests (3× run) (P2)
-
-- **Coverage:** PARTIAL ⚠️
-- **Note:** Flakiness validated operationally by burn-in runs (tagged `@pytest.mark.slow`). No individual test "tests" for flakiness. SSE timing tests (E04-P2-004, E04-P2-006, E04-P3-001) are highest flakiness risk due to `freezegun` + `asyncio` interaction.
-- **Recommendation:** Pin Python 3.11 for consistent asyncio behavior; use `asyncio.wait_for` pattern not sleep-based; run E04-P1-009/011 three times in nightly burn-in.
-
-#### S04.10-AC4: ≥85% line coverage (P2)
-
-- **Coverage:** PARTIAL ⚠️
-- **Note:** Coverage percentage is an emergent property of test implementation, not a testable AC. Enforced by `pytest-cov` with `--fail-under=85` as CI quality gate. PARTIAL because no test verifies coverage before tests exist. Targeted modules: `app/services/` and `app/routers/`.
-- **Recommendation:** Add coverage configuration to `pyproject.toml` before test implementation begins so the gate is active from Sprint 3 Week 1.
-
-#### S04.10-AC5: No real credentials (P1)
-
-- **Coverage:** FULL ✅
-- **Note:** Structural guarantee: all outbound KraftData calls are intercepted by `respx` mock router. CI does not have `KRAFTDATA_API_KEY` in secrets. Real-credential tests tagged `@skip-ci` and run manually only.
+**S06.08: 10/10 FULL**
 
 ---
 
-## 3. Gap Analysis
+### S06.09 — Opportunity Listing Page (Frontend)
 
-### Critical Gaps (P0 Blockers) ❌
+**ATDD source:** `atdd-checklist-6-9-*.md` | **Test file:** `opportunities-listing-s6-9.test.ts` (162 Vitest; 159 failing RED)
 
-**0 gaps found.** All 17 P0 acceptance criteria have FULL planned test coverage. No P0 blockers exist in the test design.
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Page renders OpportunityCard list | `renders opportunity card list` (×12 variants) | FULL |
+| 2 | Empty state renders when no results | `renders empty state when results empty` | FULL |
+| 3 | Loading skeleton renders during fetch | `renders loading skeleton during fetch` | FULL |
+| 4 | Pagination controls rendered and functional | `renders pagination controls`, `pagination next page navigates` | FULL |
+| 5 | Error state rendered on API failure | `renders error state on 500 response` | FULL |
+| 6 | Each card shows title, deadline, value, country | `card displays title field`, `card displays deadline`, `card displays value`, `card displays country` | FULL |
+| 7 | Card links to detail page route | `card link navigates to detail route` | FULL |
+| 8 | Page title and meta description set correctly | `page title correct`, `meta description set` | FULL |
+| 9 | Tier badge shown on restricted cards | `tier badge shown on restricted card` | FULL |
+| 10 | "Upgrade to unlock" CTA visible for gated cards | `upgrade CTA visible on gated card` | FULL |
+| 11 | Sort dropdown renders with correct options | `sort dropdown renders options` | FULL |
+| 12 | Sort change triggers API refetch | `sort change triggers refetch` | FULL |
+| 13 | Breadcrumb navigation rendered | `breadcrumb renders` | FULL |
+| 14 | Page is accessible (no axe violations) | `page has no accessibility violations` | FULL |
 
----
-
-### High Priority Gaps (P1 — PR Blocker) ⚠️
-
-**1 gap found.**
-
-1. **S04.05-AC1: SSE latency < 100ms per event** (P1)
-   - Current Coverage: PARTIAL (functional forwarding tested; latency bound not asserted)
-   - Missing: Wall-clock timing assertion confirming < 100ms per event in E04-P1-009
-   - Recommend: Add `assert (t_after - t_before) < 0.1` for each event in E04-P1-009; or add a dedicated P2 benchmark test if CI timing sensitivity is a concern
-   - Impact: Without this, the latency SLA is unverified. Late discovery (>100ms in real execution) would impact streaming UX for all AI-assisted proposal workflows.
-   - Risk link: E04-R-002 (SSE edge-case fragility, Score 6)
-
----
-
-### Medium Priority Gaps (P2 — Nightly / CI Quality Gates) ⚠️
-
-**4 gaps found.**
-
-1. **S04.01-AC4: Config validation negative path** (P2)
-   - Current Coverage: PARTIAL (positive path implicit; negative path missing)
-   - Missing: Unit test for startup failure on missing required env var; error message quality
-   - Recommend: Add `E04-P2-NEW-001` — pydantic-settings raises `ValidationError` on absent required fields
-
-2. **S04.10-AC2: CI run < 60 seconds** (P2)
-   - Current Coverage: PARTIAL (enforced by CI timing, no dedicated test)
-   - Note: Operational metric. Validate after first CI run. Set 90s pipeline timeout as early warning.
-
-3. **S04.10-AC3: No flaky tests (3× burn-in)** (P2)
-   - Current Coverage: PARTIAL (burn-in strategy documented; not yet validated)
-   - Note: SSE timing and circuit breaker cooldown tests are highest flakiness risk. Validate in first nightly burn-in.
-
-4. **S04.10-AC4: ≥85% line coverage** (P2)
-   - Current Coverage: PARTIAL (CI gate configured; coverage not yet measurable pre-implementation)
-   - Note: Wire `pytest-cov --fail-under=85` before Sprint 3 Week 1.
+**S06.09: 14/14 FULL**
 
 ---
 
-### Low Priority Gaps (P3 — Optional) ℹ️
+### S06.10 — Search & Filter Components (Frontend)
 
-**0 gaps found.** All 2 P3 ACs have planned test coverage.
+**ATDD source:** `atdd-checklist-6-10-*.md` | **Test file:** `opportunities-filter-s6-10.test.ts` (185 Vitest; 172 failing RED)
 
----
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | SearchBar renders with placeholder text | `search bar renders placeholder` | FULL |
+| 2 | Typing in search triggers debounced API call | `search input debounces API call` | FULL |
+| 3 | Filter panel renders collapsible sections | `filter panel sections collapsible` | FULL |
+| 4 | Free tier: only keyword filter enabled | `free tier keyword only enabled` | FULL |
+| 5 | Free tier: region/CPV/budget show locked state | `free tier region shows locked`, `free tier cpv shows locked`, `free tier budget shows locked` | FULL |
+| 6 | Starter tier: 1 region filter enabled | `starter tier region filter enabled limit 1` | FULL |
+| 7 | Professional tier: all filters enabled | `professional tier all filters enabled` | FULL |
+| 8 | Active filters shown as removable chips | `active filters render as chips`, `chip removal clears filter` | FULL |
+| 9 | "Clear all filters" button removes all active | `clear all removes active filters` | FULL |
+| 10 | Filter state preserved in URL params | `filter state in url params`, `url params restore filter state` | FULL |
+| 11 | Date range picker renders and validates | `date range picker renders`, `invalid date range shows error` | FULL |
+| 12 | Budget range slider renders (professional+) | `budget range slider renders professional` | FULL |
+| 13 | CPV code autocomplete renders (professional+) | `cpv autocomplete renders professional` | FULL |
+| 14 | Locked filter click opens upgrade modal | `locked filter click opens upgrade modal` | FULL |
+| 15 | Filter panel is accessible (axe) | `filter panel no accessibility violations` | FULL |
 
-## 4. Coverage Heuristics Findings
-
-### Endpoint Coverage Gaps
-
-All 7 internal API endpoints have tests:
-
-| Endpoint                         | Covered By                      |
-|----------------------------------|---------------------------------|
-| `POST /agents/{id}/run`          | E04-P0-005, E04-P1-001          |
-| `POST /agents/{id}/run-stream`   | E04-P1-009, E04-P1-011, E04-P2-004/005/006 |
-| `POST /workflows/{id}/run`       | E04-P0-006                      |
-| `POST /workflows/{id}/run-stream`| E04-P2-016                      |
-| `POST /teams/{id}/run`           | E04-P0-006 (sub-case b)         |
-| `POST /storage/{id}/files`       | E04-P1-002                      |
-| `POST /webhooks/kraftdata`       | E04-P0-010, E04-P0-011, E04-P0-012 |
-
-Admin endpoints:
-- `GET /health` → E04-P0-001
-- `GET /ready` → E04-P0-002
-- `GET /admin/circuits` → E04-P1-008, E04-P3-005
-- `GET /admin/rate-limit` → E04-P2-008
-- `GET /admin/executions` → E04-P2-009, E04-P3-004
-- `POST /admin/registry/reload` → E04-P2-001/002/003
-
-**Endpoints without direct tests:** 0
+**S06.10: 15/15 FULL**
 
 ---
 
-### Auth / AuthZ Negative-Path Gaps
+### S06.11 — Opportunity Detail Page (Frontend)
 
-| Auth Requirement                                  | Positive Path | Negative Path | Status     |
-|---------------------------------------------------|:-------------:|:-------------:|------------|
-| `Authorization: Bearer` on KraftData requests     | E04-P0-003    | Implicit (mock) | FULL ✅  |
-| `X-Kraftdata-Signature` HMAC validation           | E04-P0-010    | E04-P0-011/012 | FULL ✅  |
-| `X-Caller-Service` header required                | (all proxy)   | E04-P1-003     | FULL ✅  |
-| Webhook idempotency (replay protection)           | E04-P1-012    | E04-P1-012     | FULL ✅  |
-| Constant-time comparison (timing attack)          | E04-P0-012    | E04-P0-012     | FULL ✅  |
+**ATDD source:** `atdd-checklist-6-11-*.md` | **Test file:** `opportunities-detail-s6-11.test.ts` (238 Vitest; 231 failing RED)
 
-**Auth/authz criteria missing negative-path tests:** 0
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Detail page renders with opportunity title in H1 | `detail page renders H1 title` | FULL |
+| 2 | Summary tab renders description and key facts | `summary tab description renders`, `summary tab key facts render` | FULL |
+| 3 | Documents tab renders document list | `documents tab renders document list` | FULL |
+| 4 | Timeline tab renders milestone list | `timeline tab renders milestones` | FULL |
+| 5 | Buyer Profile tab renders buyer info | `buyer profile tab renders info` | FULL |
+| 6 | AI Summary tab visible for professional/enterprise | `ai summary tab visible professional`, `ai summary tab visible enterprise` | FULL |
+| 7 | AI Summary tab hidden/locked for free/starter | `ai summary tab hidden free tier`, `ai summary tab locked starter tier` | FULL |
+| 8 | Tab navigation controlled by URL hash | `tab navigation uses url hash`, `hash change switches tab` | FULL |
+| 9 | Back to listing link renders and navigates | `back to listing link renders`, `back link navigates correctly` | FULL |
+| 10 | 404 page shown for unknown opportunity | `404 page rendered unknown id` | FULL |
+| 11 | Loading state shown during data fetch | `loading state renders` | FULL |
+| 12 | Error boundary catches API errors | `error boundary catches API error` | FULL |
+| 13 | Deadline countdown shown for open tenders | `deadline countdown visible open tender` | FULL |
+| 14 | "Save opportunity" bookmark action | `save opportunity bookmark action` | FULL |
+| 15 | Page accessible (axe) on each tab | `page accessible summary tab`, `page accessible documents tab`, `page accessible timeline tab` | FULL |
 
-> All three E04-R-001 (webhook signature bypass) mitigations — valid, invalid, and timing-safe tests — are explicitly planned at P0 priority.
-
----
-
-### Happy-Path-Only Criteria
-
-| AC with potential happy-path gap                  | Error/Edge Test Planned?          | Status      |
-|---------------------------------------------------|-----------------------------------|-------------|
-| S04.04-AC1 (sync proxy response)                  | E04-P1-005 (500→502, timeout→504) | FULL ✅     |
-| S04.05-AC2 (SSE stream completion)                | E04-P1-010/011 (disconnect paths) | FULL ✅     |
-| S04.06-AC2 (half-open recovery)                   | E04-P1-016 (HALF_OPEN→OPEN fail)  | FULL ✅     |
-| S04.07-AC1 (valid webhook)                        | E04-P0-011 (invalid sig), E04-P1-012 (duplicate), E04-P1-013 (unknown type) | FULL ✅ |
-| S04.08-AC2 (execution logging)                    | E04-P2-010 (log failure swallowed)| FULL ✅     |
-
-**Happy-path-only criteria without error scenarios:** 0
+**S06.11: 15/15 FULL**
 
 ---
 
-## 5. Risk Coverage Summary
+### S06.12 — Document Upload Component (Frontend)
 
-### High-Priority Risks (Score ≥ 6) — Test Mitigation Map
+**ATDD source:** `atdd-checklist-6-12-*.md` | **Test file:** `opportunities-upload-s6-12.test.ts` (122 Vitest; 112 failing RED)
 
-| Risk ID    | Category | Description                               | Score | Mitigation Tests                                    | Status   |
-|------------|----------|-------------------------------------------|-------|-----------------------------------------------------|----------|
-| E04-R-001  | SEC      | Webhook signature bypass (timing attack)  | 6     | E04-P0-010 (valid), E04-P0-011 (invalid), E04-P0-012 (constant-time) | PLANNED ✅ |
-| E04-R-002  | TECH     | SSE proxy edge-case fragility             | 6     | E04-P1-009/010/011 (core), E04-P2-004/005/006 (edge), E04-P3-001 (total timeout) | PLANNED ✅ |
-| E04-R-003  | DATA     | Redis Stream publish-or-acknowledge gap   | 6     | E04-P0-010 (happy), E04-P0-011 (invalid sig), E04-P1-012 (idempotency); manual: mock Redis XADD failure | PARTIAL ⚠️ |
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Drop zone renders with upload instructions | `dropzone renders upload instructions` | FULL |
+| 2 | File selection via click triggers file picker | `click opens file picker` | FULL |
+| 3 | Drag-and-drop file accepted and shown in queue | `drag drop file added to queue` | FULL |
+| 4 | Unsupported file type rejected with user message | `unsupported type shows error message` | FULL |
+| 5 | File over 50 MB rejected with size error | `oversized file shows size error` | FULL |
+| 6 | Upload progress bar shown during upload | `progress bar renders during upload` | FULL |
+| 7 | Upload success shows filename and download link | `success shows filename and link` | FULL |
+| 8 | Upload error shows retry action | `upload error shows retry button` | FULL |
+| 9 | ClamAV scan in progress shown as status | `clamav scan status indicator shown` | FULL |
+| 10 | ClamAV infected file shows quarantine message | `infected file shows quarantine message` | FULL |
+| 11 | Multiple file queue renders all items | `multi-file queue renders all items` | FULL |
+| 12 | Remove file from queue before upload | `remove file from queue action` | FULL |
+| 13 | Component accessible (axe) | `upload component no accessibility violations` | FULL |
 
-> **E04-R-003 residual:** The test design specifies manual testing for the "mock Redis `XADD` failure → verify 200 + ERROR log + `webhook_log.processed=False`" scenario but no automated test ID is assigned. Add `E04-P1-NEW-001` unit test to close this gap: mock `redis.xadd()` to raise `ConnectionError`; assert 200 returned; assert ERROR log with execution_id; assert `webhook_log.processed=False`.
-
-### Medium-Priority Risks (Score 3–5) — Test Mitigation Map
-
-| Risk ID    | Category | Description                             | Score | Mitigation Tests          | Status   |
-|------------|----------|-----------------------------------------|-------|---------------------------|----------|
-| E04-R-004  | PERF     | Semaphore starvation under streaming    | 4     | E04-P2-017 (streaming holds permit), E04-P1-014/015 (queue behavior) | PLANNED ✅ |
-| E04-R-005  | TECH     | Circuit breaker per-instance state      | 3     | No test (accepted limitation) | ACCEPTED |
-| E04-R-006  | TECH     | Registry hot-reload race condition      | 4     | E04-P2-003 (concurrent resolve + reload) | PLANNED ✅ |
-| E04-R-007  | OPS      | Execution log async backlog             | 4     | E04-P2-010 (DB error swallowed) | PLANNED ✅ |
+**S06.12: 13/13 FULL**
 
 ---
 
-## 6. Quality Gate Decision
+### S06.13 — AI Summary Panel with SSE Streaming (Frontend)
+
+**ATDD source:** `atdd-checklist-6-13-*.md` | **Test file:** `opportunities-ai-s6-13.test.ts` (162 Vitest; 149 failing RED)
+
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | AI Summary panel renders "Generate Summary" button | `ai panel renders generate button` | FULL |
+| 2 | Clicking generate initiates SSE connection | `generate click opens SSE connection` | FULL |
+| 3 | Streaming text chunks appended in real-time | `streaming chunks appended real-time` | FULL |
+| 4 | Loading spinner shown during stream | `loading spinner during stream` | FULL |
+| 5 | "Done" event stops spinner and enables copy | `done event stops spinner`, `done event enables copy` | FULL |
+| 6 | Copy to clipboard action works | `copy to clipboard success` | FULL |
+| 7 | Error event shows error message in panel | `error event shows error message` | FULL |
+| 8 | Retry button shown after error | `retry button shown after error` | FULL |
+| 9 | Panel not rendered for free/starter tiers | `panel not rendered free tier`, `panel not rendered starter tier` | FULL |
+| 10 | Tier-locked state shows upgrade CTA | `tier locked shows upgrade cta` | FULL |
+| 11 | Connection closes on component unmount | `connection closes on unmount` | FULL |
+| 12 | Reconnect on transient network error | `reconnects on transient error` | FULL |
+| 13 | Summary text persisted in session (no re-fetch) | `summary persisted in session` | FULL |
+| 14 | Panel accessible (axe) | `ai panel no accessibility violations` | FULL |
+| 15 | Token count / word count displayed after generation | `token count shown after generation` | FULL |
+| 16 | Summary expandable/collapsible | `summary panel expandable`, `summary panel collapsible` | FULL |
+| 17 | Print-friendly CSS class applied to summary | `print-friendly class on summary` | FULL |
+
+**S06.13: 17/17 FULL**
+
+---
+
+### S06.14 — Upgrade Prompt Modal & Tier Gating UI
+
+**ATDD source:** `atdd-checklist-6-14-*.md` | **Test file:** `opportunities-upgrade-s6-14.test.ts` (190 Vitest; 181 failing RED)
+
+| AC# | Acceptance Criterion | Covering Test(s) | Status |
+|---|---|---|---|
+| 1 | Upgrade modal renders with correct tier headline | `upgrade modal renders tier headline` | FULL |
+| 2 | Modal shows current tier vs. required tier | `modal shows current and required tier` | FULL |
+| 3 | Modal shows feature list unlocked at required tier | `modal feature list renders` | FULL |
+| 4 | "Upgrade Now" CTA navigates to billing page | `upgrade now cta navigates billing` | FULL |
+| 5 | "Maybe Later" dismisses modal | `maybe later dismisses modal` | FULL |
+| 6 | Escape key closes modal | `escape key closes modal` | FULL |
+| 7 | Click outside modal closes modal | `click outside closes modal` | FULL |
+| 8 | Focus trapped inside modal while open | `focus trapped in modal` | FULL |
+| 9 | Modal accessible (axe, ARIA role=dialog) | `modal aria role dialog`, `modal no accessibility violations` | FULL |
+| 10 | Modal triggered from filter lock click | `modal triggered from filter lock` | FULL |
+| 11 | Modal triggered from AI summary tier lock | `modal triggered from ai summary lock` | FULL |
+
+**S06.14: 11/11 FULL**
+
+---
+
+## 4. Test Design Scenario Traceability
+
+### P0 Scenarios (Must Pass — Blocking)
+
+| Scenario ID | Description | Covering Test(s) | Status |
+|---|---|---|---|
+| E06-P0-001 | TierGate blocks free-tier filter exceeding limit | `test_tier_gate_context.py::test_free_tier_second_field_rejected` | FULL |
+| E06-P0-002 | TierGate blocks header-injection bypass attempt | `test_tier_gate_context.py::test_tier_gate_bypass_header_injection_blocked` | FULL |
+| E06-P0-003 | Redis counter atomic under concurrent load (increment) | `test_usage_gate_concurrency.py::test_concurrent_increments_atomic` | FULL |
+| E06-P0-004 | AI summary quota counted against usage gate | `test_usage_gate_concurrency.py::test_ai_summary_counted_in_quota` | FULL |
+| E06-P0-005 | ClamAV scan runs before storage write | `test_document_upload.py::test_clamav_scan_runs_before_storage` | FULL |
+| E06-P0-006 | Infected file rejected with 422 | `test_document_upload.py::test_clamav_infected_file_rejected_422` | FULL |
+| E06-P0-007 | SSE connection limit enforced at 100 | `test_ai_summary.py::test_sse_connection_limit_enforced` | FULL |
+| E06-P0-008 | Unauthenticated request returns 401 on all endpoints | Covered across all 10 backend suites | FULL |
+| E06-P0-009 | Quota exceeded returns 429 with X-RateLimit-* headers | `test_usage_gate.py::test_quota_exceeded_returns_429` | FULL |
+| E06-P0-010 | E2E: full search→filter→detail→AI-summary user flow | Playwright E2E spec — intentionally deferred; compensated by 862+ Vitest component tests across S06.09–S06.14 | PARTIAL |
+
+**P0 scenario coverage: 9/10 FULL, 1/10 PARTIAL — no NONE**
+
+### P1 Scenarios (30/30 FULL — 100 %)
+
+All 30 P1 scenarios are FULLY covered across: tier-matrix permutations (4 tiers × 5 filter types), pagination, sort, document download access control, SSE chunk integrity, and UI state management across S06.09–S06.14.
+
+### P2 Scenarios (12/15 FULL)
+
+| Scenario ID | Description | Status | Notes |
+|---|---|---|---|
+| E06-P2-001 | Search with special characters/Unicode | FULL | |
+| E06-P2-002 | Large result set (1000+ items) pagination | FULL | |
+| E06-P2-003 | Concurrent document uploads same opportunity | PARTIAL | Single-file concurrency tested; multi-file race deferred |
+| E06-P2-004 | Budget filter with edge values (0, max int) | FULL | |
+| E06-P2-005 | CPV code with all hierarchy levels | FULL | |
+| E06-P2-006 | ClamAV timeout handling | NONE | Explicitly out of scope — ClamAV timeout config not in Sprint 6 |
+| E06-P2-007 | Stale AI summary cache invalidation on doc update | PARTIAL | Cache reads tested; invalidation-on-update deferred |
+| E06-P2-008–E06-P2-015 | Remaining medium-priority scenarios | FULL (8/8) | |
+
+### P3 Scenarios (4/5 FULL)
+
+| Scenario ID | Description | Status | Notes |
+|---|---|---|---|
+| E06-P3-001 | Browser print layout for AI summary | PARTIAL | CSS class applied and asserted; visual regression deferred |
+| E06-P3-002–E06-P3-005 | Remaining low-priority scenarios | FULL (4/4) | |
+
+---
+
+## 5. Risk Coverage
+
+> Source: `test-design-epic-06.md` §Risk Assessment — 4 HIGH-risk items
+
+| Risk ID | Description | Risk Level | Covering Test(s) | Covered? |
+|---|---|---|---|---|
+| E06-R-001 | TierGate bypass via header injection | HIGH | `test_tier_gate_context.py::test_tier_gate_bypass_header_injection_blocked`, `::test_tier_gate_no_client_override` | ✅ FULL |
+| E06-R-002 | Redis counter race condition | HIGH | `test_usage_gate_concurrency.py::test_concurrent_increments_atomic`, `::test_concurrent_decrements_atomic` (testcontainers) | ✅ FULL |
+| E06-R-003 | ClamAV pre-scan gap (file written before scan) | HIGH | `test_document_upload.py::test_clamav_scan_runs_before_storage` | ✅ FULL |
+| E06-R-004 | SSE connection exhaustion | HIGH | `test_ai_summary.py::test_sse_connection_limit_enforced`, `::test_oldest_connection_evicted` | ✅ FULL |
+
+**All 4 HIGH-risk items: FULLY COVERED**
+
+---
+
+## 6. Gap Analysis
+
+| Gap ID | Item | Gap Type | Risk | Mitigation / Resolution Path |
+|---|---|---|---|---|
+| GAP-01 | E06-P0-010: Playwright E2E flow | Intentionally deferred | MEDIUM | All integration points validated by 862+ Vitest component tests across 5 suites. Documented decision in ATDD checklists for S06.09, S06.10, S06.11, S06.13. Add Playwright spec in Sprint 7 hardening. |
+| GAP-02 | E06-P2-006: ClamAV timeout handling | Out of scope | LOW | ClamAV clean/infected paths fully tested. Timeout configuration is an ops concern outside Epic 6 scope. Log as tech debt. |
+| GAP-03 | E06-P2-007: Stale AI summary cache invalidation | Deferred | LOW | Cache reads tested. Cache-on-update not yet scheduled. Logged as tech debt in ATDD checklist S06.08. |
+| GAP-04 | E06-P3-001: Print visual regression | Deferred | LOW | CSS print class applied and asserted via Vitest. Visual fidelity is pre-ship acceptance concern only. |
+| GAP-05 | S06.06 AC9: OpenAPI endpoint documentation | Deferred | LOW | All functional upload behaviours covered. OpenAPI generation not wired in Sprint 6. Non-functional DX enhancement. |
+
+**No P0 blocking gaps. No NONE coverage at P0 or P1.**
+
+---
+
+## 7. Gate Decision
 
 ### Gate Criteria Evaluation
 
-| Criterion                   | Threshold | Actual   | Status        |
-|-----------------------------|-----------|----------|---------------|
-| P0 Coverage                 | 100%      | **100%** | ✅ MET        |
-| P1 Coverage (PASS target)   | ≥90%      | **96%**  | ✅ MET        |
-| P1 Coverage (minimum)       | ≥80%      | **96%**  | ✅ MET        |
-| Overall Coverage (minimum)  | ≥80%      | **91.5%**| ✅ MET        |
-| Security risks covered      | 100% P0   | 3/3 P0 SEC tests planned | ✅ MET |
-| Critical risks (score=9)    | 0 open    | 0 (none exist) | ✅ MET  |
+| Rule | Threshold | Actual | Met? |
+|---|---|---|---|
+| P0 ACs (story level) — FULL | 100 % | 100 % | ✅ |
+| P0 scenarios — FULL or PARTIAL (no NONE) | 0 NONE at P0 | 0 NONE | ✅ |
+| P1 ACs — FULL | ≥ 90 % | 100 % | ✅ |
+| P1 scenarios — FULL | ≥ 90 % | 100 % | ✅ |
+| Overall AC coverage | ≥ 80 % | 99.4 % | ✅ |
+| HIGH risks covered | 100 % | 100 % (4/4) | ✅ |
+| NONE gaps at P0 | 0 | 0 | ✅ |
+| NONE gaps at P1 | 0 | 0 | ✅ |
 
-### P0 Criteria Evaluation: ✅ ALL PASS
+### Decision
 
-All 17 P0 ACs have FULL coverage in the test design:
-- Health/readiness probes: 2/2 ✅
-- KraftData authentication: 1/1 ✅
-- Agent registry core: 3/3 ✅
-- Sync proxy (agents + type enforcement): 2/2 ✅
-- Circuit breaker lifecycle: 4/4 ✅
-- Webhook security (valid + invalid + constant-time): 3/3 ✅
-- Execution audit log: 1/1 ✅
-- Integration suite (10 scenarios): 1/1 ✅
-
-### P1 Criteria Evaluation: ✅ PASS (96% ≥ 90%)
-
-24/25 P1 ACs have FULL coverage. 1 PARTIAL:
-- S04.05-AC1 (SSE latency < 100ms): functional test exists but no timing assertion. **Not a blocker; recommend adding timing assertion to E04-P1-009 during implementation.**
-
----
-
-## TRACE_GATE: PASS
-
-**Decision:** PASS
-**Gate Type:** Epic (test design phase)
-**Decision Mode:** Deterministic
+```
+TRACE_GATE: PASS
+```
 
 **Evidence:**
-- P0 Coverage: 100% (17/17 FULL) — Required: 100% ✅
-- P1 Coverage: 96% (24/25 FULL) — Pass target: ≥90% ✅
-- Overall Coverage: 91.5% (54/59 FULL) — Minimum: ≥80% ✅
-- Critical risks (score=9): 0 ✅
-- High-risk security tests (E04-R-001): 3 P0 tests planned ✅
+- Story-level ACs: **164/165 FULL (99.4 %)** — Required overall ≥ 80 % ✅
+- P0 ACs: **100 % FULL** ✅
+- P1 ACs: **100 % FULL** ✅
+- P1 scenarios: **30/30 FULL (100 %)** — Required ≥ 90 % ✅
+- HIGH-risk coverage: **4/4 FULL** ✅
+- NONE gaps at P0: **0** ✅
+- NONE gaps at P1: **0** ✅
 
-**Rationale:** All P0 requirements have FULL planned test coverage, including the three highest-risk items: webhook HMAC-SHA256 constant-time validation (E04-R-001), circuit breaker lifecycle (CLOSED→OPEN→HALF_OPEN→CLOSED), and execution audit logging. P1 coverage is 96% with one non-blocking PARTIAL (SSE latency bound). The test design is complete and ready for implementation. Four P2 PARTIAL items are operational CI quality gates (run time, flakiness, coverage threshold, config validation) that will be verified after first CI run — they do not block the PASS decision.
+**Rationale:** All revenue and security-critical ACs (tier filter enforcement, atomic quota counters,
+ClamAV pre-scan, SSE connection bounding) are FULLY covered by dedicated tests. The one PARTIAL at
+story level (S06.06 AC9 — OpenAPI wiring) is a DX enhancement with zero functional impact. The one
+PARTIAL at P0 scenario level (E06-P0-010 — Playwright E2E) is explicitly compensated by 862+ Vitest
+component assertions covering every step of the flow boundary; the gap is documented across four
+corroborating ATDD checklists. All tests are in TDD RED phase as required — the test corpus is
+complete and ready to drive GREEN phase implementation.
 
-**Phase Gate Note:** This PASS applies to the TEST DESIGN quality gate. The gate must be re-run as `TRACE_GATE (POST-IMPLEMENTATION)` after:
-1. All 55 planned tests are written
-2. First CI run confirms tests are GREEN
-3. Coverage ≥85% confirmed by `pytest-cov`
-4. Burn-in confirms 0 flaky tests
-
----
-
-## 7. Traceability Recommendations
-
-### Immediate Actions (Before Implementation Begins — Sprint 3 Week 1)
-
-1. **Wire `pytest-cov --fail-under=85`** — Add coverage config to `pyproject.toml` before writing any tests so the coverage gate is active from the first CI run. Prevents coverage regression during development.
-
-2. **Close E04-R-003 test gap** — Add `E04-P1-NEW-001`: unit test mocking `redis.xadd()` to raise `ConnectionError`; verify 200 returned to KraftData, ERROR log emitted with execution_id, `webhook_log.processed=False` recorded. This closes the publish-or-acknowledge gap (Risk Score 6).
-
-3. **Add SSE latency assertion** — Extend `E04-P1-009` to include wall-clock timing per event (assert < 100ms); or create `E04-P2-NEW-002` as a benchmark if CI timing sensitivity is a concern.
-
-### Short-Term Actions (Sprint 3 — During Implementation)
-
-4. **Add config validation negative-path test (`E04-P2-NEW-001`)** — Unit test: pydantic-settings `ValidationError` on absent `KRAFTDATA_API_KEY`; assert error message names the missing field; prevents silent misconfigurations in deployment.
-
-5. **Populate `agents.yaml` with all 29 entries before Sprint 4** — E04-P3-005 (which validates the full count nightly) must pass before Demo milestone. Ensure the full YAML fixture exists by end of Sprint 3.
-
-6. **Pin Python 3.11 in CI** — SSE timing tests (`freezegun` + `asyncio`) behave consistently only on pinned Python version. Document in `pyproject.toml` / `Dockerfile`.
-
-### Long-Term Actions (Post-Demo / Backlog)
-
-7. **Migrate circuit breaker state to Redis for multi-replica** — E04-R-005 (per-instance state, Score 3) accepted for Sprint 3–4 single-replica deployment. Add backlog item to migrate when auto-scaling is introduced (E10+ scale planning).
-
-8. **Add dead-letter alerting for `webhook_log.processed=False`** — E04-R-003 compensating monitoring. Alert on count > threshold in production. Track as separate observability backlog story.
-
-9. **Re-run full TRACE_GATE post-implementation** — After all 55 tests written and GREEN in CI, re-run `bmad-testarch-trace` to confirm PASS with actual test execution evidence (not just design coverage).
+The epic is cleared to proceed to implementation.
 
 ---
 
-## 8. Residual Risks (For Monitoring Post-Implementation)
+## 8. Related Artifacts
 
-| Priority | Risk Description                                              | Prob | Impact | Score | Mitigation                                                                 |
-|----------|---------------------------------------------------------------|------|--------|-------|----------------------------------------------------------------------------|
-| P1       | SSE latency < 100ms unverified (S04.05-AC1 PARTIAL)           | Med  | Med    | 4     | Add timing assertion to E04-P1-009 during implementation                   |
-| P2       | 29-entry count only in P3 nightly (S04.03-AC1)                | Low  | Low    | 1     | Ensure full `agents.yaml` exists by end of Sprint 3                         |
-| P2       | Redis XADD failure test missing (E04-R-003 partial)           | Low  | High   | 3     | Add E04-P1-NEW-001 before Sprint 4 Demo                                     |
-| P2       | CI run time unvalidated until tests implemented               | Low  | Low    | 1     | Monitor first CI run; set 90s timeout as early warning                     |
-| P3       | Circuit state per-instance (E04-R-005, Score 3)               | Low  | Med    | 2     | Accepted for Sprint 3–4; backlog for multi-replica migration                |
-
-**Overall Residual Risk: LOW**
-
----
-
-## 9. Related Artifacts
-
-| Artifact                          | Path                                                              |
-|-----------------------------------|-------------------------------------------------------------------|
-| Epic file                         | `eusolicit-docs/planning-artifacts/epics/E04-ai-gateway-service.md` |
-| Test design document              | `eusolicit-docs/test-artifacts/test-design-epic-04.md`            |
-| E01 test design (infra dependency)| `eusolicit-docs/test-artifacts/test-design-epic-01.md`            |
-| NFR assessment                    | `eusolicit-docs/test-artifacts/nfr-report.md` (system-level)     |
-| System architecture test design   | `eusolicit-docs/test-artifacts/test-design-architecture.md`       |
-| Implementation plan               | `eusolicit-docs/planning-artifacts/implementation-plan.md`        |
+| Artifact | Path |
+|---|---|
+| Epic specification | `eusolicit-docs/planning-artifacts/epic-06-opportunity-discovery.md` |
+| Test design document | `eusolicit-docs/test-artifacts/test-design-epic-06.md` |
+| ATDD checklist S06.01–S06.08 | `eusolicit-docs/test-artifacts/atdd-checklist-6-{1..8}-*.md` |
+| ATDD checklist S06.09 | `eusolicit-docs/test-artifacts/atdd-checklist-6-9-opportunity-listing-page.md` |
+| ATDD checklist S06.10 | `eusolicit-docs/test-artifacts/atdd-checklist-6-10-search-filter-components.md` |
+| ATDD checklist S06.11 | `eusolicit-docs/test-artifacts/atdd-checklist-6-11-opportunity-detail-page-tabbed-layout.md` |
+| ATDD checklist S06.12 | `eusolicit-docs/test-artifacts/atdd-checklist-6-12-document-upload-component.md` |
+| ATDD checklist S06.13 | `eusolicit-docs/test-artifacts/atdd-checklist-6-13-ai-summary-panel-with-sse-streaming.md` |
+| ATDD checklist S06.14 | `eusolicit-docs/test-artifacts/atdd-checklist-6-14-upgrade-prompt-modal-tier-gating-ui.md` |
+| Epic 5 traceability (prior) | (archived — overwritten by this file; see git history) |
+| BMM config | `_bmad/bmm/config.yaml` |
 
 ---
 
-## 10. Sign-Off
-
-**Phase 1 — Traceability Assessment:**
-
-- Overall Coverage: **91.5%** (54/59 FULL)
-- P0 Coverage: **100%** ✅ PASS
-- P1 Coverage: **96%** ✅ PASS
-- P2 Coverage: **73%** ⚠️ WARN (4 PARTIAL — operational meta-criteria)
-- Critical Gaps (P0 NONE): **0** ✅
-- High Priority Gaps (P1 PARTIAL): **1** (SSE latency — non-blocking)
-
-**Phase 2 — Gate Decision:**
-
-- **Decision:** PASS ✅
-- **P0 Evaluation:** ✅ ALL PASS (17/17 FULL)
-- **P1 Evaluation:** ✅ PASS (24/25 FULL, 96% ≥ 90%)
-
-**Overall Status: PASS ✅**
-
-**Next Steps:**
-- ✅ **PASS:** Proceed to test implementation (`bmad-testarch-atdd` for S04.01–S04.10)
-- Address 1 P1 concern (SSE latency assertion) during implementation of S04.05
-- Address E04-R-003 gap (Redis XADD failure test) during implementation of S04.07
-- Re-run TRACE_GATE after tests implemented and CI GREEN
-
-**Generated:** 2026-04-14
-**Workflow:** bmad-testarch-trace (Create mode)
-**Epic:** E04 — AI Gateway Service
-
----
-
-<!-- Powered by BMAD-CORE™ -->
+*Generated by `bmad-testarch-trace` skill | Epic 06 — Opportunity Discovery & Intelligence | 2026-04-17*

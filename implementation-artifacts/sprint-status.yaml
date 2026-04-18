@@ -1,9 +1,9 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
-current_epic: 5
-current_story: 5-6-eu-grants-crawler-task
-last_updated: '2026-04-16'  # 5-6 story created, ready-for-dev
+current_epic: 7
+current_story: 7-11-proposal-workspace-page-layout-navigation
+last_updated: '2026-04-18'  # 7-11 code review: changes requested, status → in-progress
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -54,21 +54,51 @@ development_status:
   4-8-execution-logging-and-database-schema: done
   4-9-rate-limit-management-and-concurrency-control: done
   4-10-integration-tests-and-end-to-end-validation: done
-  epic-5: in-progress
+  epic-5: done
   5-1-pipeline-schema-migration-and-model-layer: done
   5-2-celery-app-bootstrap-and-beat-schedule-configuration: done
   5-3-ai-gateway-client-module-with-retry-logic: done
   5-4-aop-crawler-task: done
   5-5-ted-crawler-task: done
-  5-6-eu-grants-crawler-task: ready-for-dev
-  5-7-relevance-scoring-post-processing-task: backlog
-  5-8-submission-guide-generation-task: backlog
-  5-9-redis-streams-event-publishing: backlog
-  5-10-expired-opportunity-cleanup-task: backlog
-  5-11-enrichment-queue-worker: backlog
-  5-12-end-to-end-integration-tests-and-pipeline-observability: backlog
-  epic-6: backlog
-  epic-7: backlog
+  5-6-eu-grants-crawler-task: done
+  5-7-relevance-scoring-post-processing-task: done
+  5-8-submission-guide-generation-task: done
+  5-9-redis-streams-event-publishing: done
+  5-10-expired-opportunity-cleanup-task: done
+  5-11-enrichment-queue-worker: done
+  5-12-end-to-end-integration-tests-and-pipeline-observability: done
+  epic-6: done
+  6-1-opportunity-search-api-with-full-text-search-filters: done
+  6-2-tier-gated-response-serialization: done
+  6-3-usage-metering-middleware-redis: done
+  6-4-opportunity-listing-api-endpoint: done
+  6-5-opportunity-detail-api-endpoint: done
+  6-6-document-upload-api-s3-clamav: done
+  6-7-document-download-api: done
+  6-8-ai-summary-generation-api-sse-streaming: done
+  6-9-opportunity-listing-page-table-card-view: done
+  6-10-search-filter-components: done
+  6-11-opportunity-detail-page-tabbed-layout: done
+  6-12-document-upload-component: done
+  6-13-ai-summary-panel-with-sse-streaming: done
+  6-14-upgrade-prompt-modal-tier-gating-ui: done
+  epic-7: in-progress
+  7-1-proposal-version-db-schema-migrations: done
+  7-2-proposal-crud-api: done
+  7-3-proposal-versioning-api: done
+  7-4-proposal-content-save-api-auto-save-full-save: done
+  7-5-ai-draft-generation-backend-sse-integration: done
+  7-6-requirement-checklist-agent-integration: done
+  7-7-compliance-risk-scoring-agent-integrations: done
+  7-8-pricing-assistant-win-theme-agent-integrations: done
+  7-9-content-blocks-crud-search-api: done
+  7-10-document-export-api-pdf-docx: done
+  7-11-proposal-workspace-page-layout-navigation: in-progress
+  7-12-tiptap-rich-text-editor-with-section-based-editing: backlog
+  7-13-ai-draft-generation-panel-with-sse-streaming: backlog
+  7-14-requirement-checklist-compliance-panels: backlog
+  7-15-scoring-simulator-pricing-win-themes-panels: backlog
+  7-16-version-history-content-blocks-library-export-dialog: backlog
   epic-8: backlog
   epic-9: backlog
   epic-10: backlog
@@ -151,3 +181,13 @@ tea_status:
   11-6-consortium-finder-agent-integration: done
   11-7-logframe-generator-reporting-template-agent-integrations: done
   12-1-analytics-materialized-views-refresh-infrastructure: in-progress
+  7-1-proposal-version-db-schema-migrations: in-progress
+  7-2-proposal-crud-api: done
+  7-3-proposal-versioning-api: done
+  7-4-proposal-content-save-api-auto-save-full-save: done
+  7-5-ai-draft-generation-backend-sse-integration: done
+  7-6-requirement-checklist-agent-integration: done
+  7-7-compliance-risk-scoring-agent-integrations: done
+  7-8-pricing-assistant-win-theme-agent-integrations: done
+  7-9-content-blocks-crud-search-api: done
+  7-10-document-export-api-pdf-docx: done
