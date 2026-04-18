@@ -2,8 +2,8 @@
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
 current_epic: 7
-current_story: 7-11-proposal-workspace-page-layout-navigation
-last_updated: '2026-04-18'  # 7-11 code review: changes requested, status → in-progress
+current_story: 7-12-tiptap-rich-text-editor-with-section-based-editing
+last_updated: '2026-04-18'  # 7-15 story created, status → ready-for-dev
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -93,11 +93,11 @@ development_status:
   7-8-pricing-assistant-win-theme-agent-integrations: done
   7-9-content-blocks-crud-search-api: done
   7-10-document-export-api-pdf-docx: done
-  7-11-proposal-workspace-page-layout-navigation: in-progress
-  7-12-tiptap-rich-text-editor-with-section-based-editing: backlog
-  7-13-ai-draft-generation-panel-with-sse-streaming: backlog
-  7-14-requirement-checklist-compliance-panels: backlog
-  7-15-scoring-simulator-pricing-win-themes-panels: backlog
+  7-11-proposal-workspace-page-layout-navigation: done
+  7-12-tiptap-rich-text-editor-with-section-based-editing: done
+  7-13-ai-draft-generation-panel-with-sse-streaming: done
+  7-14-requirement-checklist-compliance-panels: done
+  7-15-scoring-simulator-pricing-win-themes-panels: ready-for-dev
   7-16-version-history-content-blocks-library-export-dialog: backlog
   epic-8: backlog
   epic-9: backlog
@@ -191,3 +191,4 @@ tea_status:
   7-8-pricing-assistant-win-theme-agent-integrations: done
   7-9-content-blocks-crud-search-api: done
   7-10-document-export-api-pdf-docx: done
+  7-11-proposal-workspace-page-layout-navigation: done

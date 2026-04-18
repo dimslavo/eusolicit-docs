@@ -15,8 +15,8 @@
 
 ## Deferred from: code review of story 7-5-ai-draft-generation-backend-sse-integration (2026-04-17)
 
-- **`espd_profile_summary` omitted from company payload (AC2)** — `build_generation_payload()` omits `espd_profile_summary` from the company data sent to the AI Gateway. AC2 specifies it but the Company model lacks the field. Requires schema work in a separate story.
-- **Celery task `reset_stuck_proposals_task()` lacks `@celery_app.task` decorator (AC7)** — Function exists but cannot be discovered by Celery Beat scheduler. Requires Celery app infrastructure decisions (which app instance, Beat configuration location). Service function works and is tested.
+- **`espd_profile_summary` omitted from company payload (AC2)** — `build_generation_payload()` omits `espd_profile_summary` from the company data sent to the AI Gateway. AC2 specifies it but the Company model lacks the field. → **Story created: `dw-01-proposal-backend-schema-alignment.md`**
+- **Celery task `reset_stuck_proposals_task()` lacks `@celery_app.task` decorator (AC7)** — Function exists but cannot be discovered by Celery Beat scheduler. Requires Celery app infrastructure decisions (which app instance, Beat configuration location). Service function works and is tested. → **Story created: `dw-02-celery-task-infrastructure-fixes.md`**
 - **Error SSE event forwards raw AI Gateway data instead of fixed message (AC6)** — Spec says `{"error": "AI Gateway error"}`; implementation forwards actual gateway error details. More useful for debugging but deviates from spec and may expose internal details.
 - **`CancelledError` not caught in `_run_generation_task`** — On server shutdown (SIGTERM), task is cancelled but `generation_status` is not set to `failed`. Proposal stays in `generating` until cleanup task resets it (up to 300s).
 - **`set_generation_status` parameter lacks `Literal` type validation** — `status: str` accepts any string; invalid values cause unhandled DB CHECK constraint IntegrityError. All current callers pass valid values.
@@ -25,9 +25,9 @@
 
 ## Deferred from: code review of story 7-11-proposal-workspace-page-layout-navigation (2026-04-18)
 
-- **Breakpoint threshold 1280px vs spec 1024px (AC5)** — `useBreakpoint` from `@eusolicit/ui` defines `isDesktop` at ≥1280px (Tailwind `xl`). AC5 requires panels expand at ≥1024px (Tailwind `lg`). Panels stay collapsed on 1024–1279px viewports. Requires shared UI hook change affecting all consumers.
-- **`current_version_number` field absent from backend schema (AC11)** — Frontend `ProposalResponse` declares `current_version_number: number | null` but backend `ProposalDetailResponse` does not include this field. Runtime value is always `undefined` (shows fallback "v—"). Needs backend schema alignment.
-- **`generation_status` field missing from frontend interface (AC11)** — Backend returns `generation_status: str = "idle"` but frontend `ProposalResponse` interface omits it. Not needed by S07.11 UI; will be consumed in S07.13.
+- **Breakpoint threshold 1280px vs spec 1024px (AC5)** — `useBreakpoint` from `@eusolicit/ui` defines `isDesktop` at ≥1280px (Tailwind `xl`). AC5 requires panels expand at ≥1024px (Tailwind `lg`). Panels stay collapsed on 1024–1279px viewports. Requires shared UI hook change affecting all consumers. → **Story created: `dw-03-ui-breakpoint-hook-fix.md`**
+- **`current_version_number` field absent from backend schema (AC11)** — Frontend `ProposalResponse` declares `current_version_number: number | null` but backend `ProposalDetailResponse` does not include this field. Runtime value is always `undefined` (shows fallback "v—"). Needs backend schema alignment. → **Story created: `dw-01-proposal-backend-schema-alignment.md`**
+- **`generation_status` field missing from frontend interface (AC11)** — Backend returns `generation_status: str = "idle"` but frontend `ProposalResponse` interface omits it. Not needed by S07.11 UI; will be consumed in S07.13. → **Story created: `dw-01-proposal-backend-schema-alignment.md`**
 - **`created_by` nullable mismatch (AC11)** — Backend has `created_by: UUID | None`, frontend declares `created_by: string` (non-nullable). Not rendered in S07.11 UI.
 - **`status` type narrower than backend (AC11)** — Frontend uses `"draft" | "active" | "archived"` union but backend declares `status: str` (any string). Degrades gracefully for unknown values.
 - **Window resize resets user's manual panel toggles** — `useEffect` with `[mounted, isDesktop]` deps resets panel collapse state on breakpoint crossing, overriding user's manual toggle. UX improvement, not a spec requirement.
@@ -35,3 +35,5 @@
 - **Hardcoded English in list placeholder** — `proposals/page.tsx` renders "Proposals list — future story" without i18n. Placeholder page will be fully replaced in a future story.
 - **Unsafe `params.id` cast** — `params?.id as string` doesn't guard against `undefined` or array values. Works functionally due to `enabled: Boolean(id)` guard in hook.
 - **Error handling in title PATCH silently swallowed** — `catch` block reverts `titleValue` but never shows error feedback. By design for S07.11; save status indicator will be wired in S07.12.
+- **Enter+blur double-PATCH guard is closure-based, not ref-based** — The `if (!editingTitle) return;` guard uses React state captured in closures. Under React 18 batching, if blur fires from the same render cycle, the guard may not prevent a duplicate idempotent PATCH. A `useRef`-based guard or delegating Enter to `blur()` only would be deterministic. Low priority — impact is benign.
+- **No client-side title maxLength** — Backend enforces `max_length=500` but the `<input>` has no `maxLength` attribute. Overlong titles are rejected server-side and silently reverted client-side with no user feedback.

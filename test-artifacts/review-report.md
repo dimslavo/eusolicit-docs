@@ -1,18 +1,26 @@
-# Test Review Report for Story 7.10: Document Export API (PDF & DOCX)
+# Story 7.11 Test Review Report
 
-## Coverage Assessment
+## Overview
+- **Story:** 7-11-proposal-workspace-page-layout-navigation
+- **Test Files Reviewed:**
+  1. `__tests__/proposals-workspace-s7-11.test.ts` (Structural & i18n ATDD)
+  2. `__tests__/proposals-workspace-behaviour-s7-11.test.ts` (Behavioural ATDD)
+  3. `e2e/specs/proposals/proposals-workspace.spec.ts` (Playwright E2E)
+  4. `e2e/specs/proposals/proposals-workspace.api.spec.ts` (API Spec)
 
-The ATDD integration tests provided in `services/client-api/tests/api/test_proposal_export.py` thoroughly cover the Acceptance Criteria and Risk mitigations defined in Story 7.10.
+## Quality Assessment
+- **Score:** 95/100
+- **Strengths:** 
+  - Exhaustive mapping of Acceptance Criteria to test blocks.
+  - Excellent separation of concerns (structural checks vs. behavioural contracts vs. E2E specs).
+  - Explicit checks for SSR hydration safety and nullable field handling.
+  - Good handling of i18n key consistency between locales.
+- **Weaknesses:**
+  - Minor gaps in E2E setup/teardown resilience if backend goes entirely offline during a test run (though health checks exist).
 
-- **AC1**: Format validation is thoroughly tested in `TestProposalExportValidation`. The endpoint correctly rejects unsupported formats, missing fields, and case-sensitive mismatched values with an HTTP 422. Authentication failure pathways are also captured.
-- **AC2 & AC3**: `TestProposalExportPDF` and `TestProposalExportDOCX` comprehensively check that generated documents are properly structured. They validate magic bytes (`%PDF` and `PK` respectively), ensure parsability via `pypdf` and `python-docx`, and confirm that seeded content (including titles and TOC) correctly appears in the binary outputs. Branding integration is covered in `TestProposalExportBranding`.
-- **AC4**: Proper response headers (`Content-Type`, `Content-Disposition`) are evaluated directly in format-specific test suites.
-- **AC5**: `TestProposalExportRLS` successfully confirms RLS enforcement. It correctly anticipates a `404 Not Found` response rather than a `403` to prevent UUID enumeration attacks (E07-R-003 mitigation).
-- **AC6**: `TestProposalExportSizeLimits` tests the size-limit configurations (`EXPORT_MAX_SECTIONS` and `EXPORT_MAX_CONTENT_BYTES`), correctly expecting HTTP 400 with a `proposal_too_large` error format when exceeded (E07-R-010).
-- **AC7**: Empty proposals are verified to gracefully fallback without generating 500 errors via `TestProposalExportEmptyProposal`.
+## Detected Deviations
+1. **Breakpoint Spec Contradiction:** `useBreakpoint` threshold (1280px) does not match AC5 requirement (1024px).
+2. **Schema Drift:** Frontend `ProposalResponse` interface fields do not match backend schema (`current_version_number` absent, `generation_status` absent).
 
-## Quality
-The testing suite demonstrates high engineering quality. The use of test fixtures is clean and efficient, isolating dependencies and simulating proper multi-tenant database environments. Direct SQL execution for test data seeding minimizes brittleness while keeping setup logic contained and fast. The tests are directly mapped to the Epic 7 Test Design specifications and trace cleanly back to individual Acceptance Criteria.
-
-## Score
-TEA_SCORE: 100
+## Conclusion
+The tests are comprehensive, well-structured, and provide high confidence in the implementation of Story 7.11. The testing strategy aligns perfectly with the epic test design IDs (E07-P1-021, E07-P2-014, E07-P3-001, E07-P0-011).
