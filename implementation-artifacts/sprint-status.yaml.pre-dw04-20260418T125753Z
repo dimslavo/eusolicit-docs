@@ -2,8 +2,8 @@
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
 current_epic: 7
-current_story: 7-17-proposal-generate-security-audit-hardening
-last_updated: '2026-04-18'  # Epic 7 NFR halt — DW-04 hot-fix injected for NFR4/NFR12
+current_story: 7-12-tiptap-rich-text-editor-with-section-based-editing
+last_updated: '2026-04-18'  # 7-16 code-review follow-ups applied — ready for re-review
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -99,7 +99,6 @@ development_status:
   7-14-requirement-checklist-compliance-panels: done
   7-15-scoring-simulator-pricing-win-themes-panels: done
   7-16-version-history-content-blocks-library-export-dialog: done
-  7-17-proposal-generate-security-audit-hardening: backlog  # E07 hot-fix for NFR4 + NFR12
   epic-8: backlog
   epic-9: backlog
   epic-10: backlog

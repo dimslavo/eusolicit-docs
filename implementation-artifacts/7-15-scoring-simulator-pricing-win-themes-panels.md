@@ -1,6 +1,6 @@
 # Story 7.15: Scoring Simulator, Pricing & Win Themes Panels
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -66,61 +66,61 @@ so that I can simulate how evaluators will score my proposal, get a competitive 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add scoring/pricing/win-themes API types and functions to `lib/api/proposals.ts` (AC: 2, 9, 16)
-  - [ ] 1.1 Add `ScoreCardCriterion` interface — fields: `criterion: string; score: number; max_score: number; suggestion: string` (NO `id` field — backend has none)
-  - [ ] 1.2 Add `ScoringSimulationResponse` interface — fields: `criteria: ScoreCardCriterion[]; simulated_at: string`
-  - [ ] 1.3 Add `MarketRange` interface — fields: `min: number; median: number; max: number`
-  - [ ] 1.4 Add `PricingAssistResponse` interface — fields: `recommended_price: number; market_range: MarketRange; justification: string; priced_at: string`
-  - [ ] 1.5 Add `WinTheme` interface — fields: `title: string; description: string`
-  - [ ] 1.6 Add `WinThemesResponse` interface — fields: `themes: WinTheme[]; analyzed_at: string`
-  - [ ] 1.7 Add `runScoringSimulation(proposalId: string): Promise<ScoringSimulationResponse>` — `POST /api/v1/proposals/${proposalId}/scoring-simulation`; `return (await apiClient.post<ScoringSimulationResponse>(..., {})).data`
-  - [ ] 1.8 Add `getScoringResults(proposalId: string): Promise<ScoringSimulationResponse | null>` — `GET /api/v1/proposals/${proposalId}/scoring-simulation`; detect null via `'result' in data && data.result === null`
-  - [ ] 1.9 Add `runPricingAssist(proposalId: string): Promise<PricingAssistResponse>` — `POST /api/v1/proposals/${proposalId}/pricing-assist`; return `.data`
-  - [ ] 1.10 Add `getPricingResults(proposalId: string): Promise<PricingAssistResponse | null>` — GET; null-result detection same as scoring
-  - [ ] 1.11 Add `runWinThemes(proposalId: string): Promise<WinThemesResponse>` — `POST /api/v1/proposals/${proposalId}/win-themes`; return `.data`
-  - [ ] 1.12 Add `getWinThemes(proposalId: string): Promise<WinThemesResponse | null>` — GET; null-result detection same pattern
+- [x] Task 1: Add scoring/pricing/win-themes API types and functions to `lib/api/proposals.ts` (AC: 2, 9, 16)
+  - [x] 1.1 Add `ScoreCardCriterion` interface — fields: `criterion: string; score: number; max_score: number; suggestion: string` (NO `id` field — backend has none)
+  - [x] 1.2 Add `ScoringSimulationResponse` interface — fields: `criteria: ScoreCardCriterion[]; simulated_at: string`
+  - [x] 1.3 Add `MarketRange` interface — fields: `min: number; median: number; max: number`
+  - [x] 1.4 Add `PricingAssistResponse` interface — fields: `recommended_price: number; market_range: MarketRange; justification: string; priced_at: string`
+  - [x] 1.5 Add `WinTheme` interface — fields: `title: string; description: string`
+  - [x] 1.6 Add `WinThemesResponse` interface — fields: `themes: WinTheme[]; analyzed_at: string`
+  - [x] 1.7 Add `runScoringSimulation(proposalId: string): Promise<ScoringSimulationResponse>` — `POST /api/v1/proposals/${proposalId}/scoring-simulation`; `return (await apiClient.post<ScoringSimulationResponse>(..., {})).data`
+  - [x] 1.8 Add `getScoringResults(proposalId: string): Promise<ScoringSimulationResponse | null>` — `GET /api/v1/proposals/${proposalId}/scoring-simulation`; detect null via `'result' in data && data.result === null`
+  - [x] 1.9 Add `runPricingAssist(proposalId: string): Promise<PricingAssistResponse>` — `POST /api/v1/proposals/${proposalId}/pricing-assist`; return `.data`
+  - [x] 1.10 Add `getPricingResults(proposalId: string): Promise<PricingAssistResponse | null>` — GET; null-result detection same as scoring
+  - [x] 1.11 Add `runWinThemes(proposalId: string): Promise<WinThemesResponse>` — `POST /api/v1/proposals/${proposalId}/win-themes`; return `.data`
+  - [x] 1.12 Add `getWinThemes(proposalId: string): Promise<WinThemesResponse | null>` — GET; null-result detection same pattern
 
-- [ ] Task 2: Add React Query hooks to `lib/queries/use-proposals.ts` (AC: 2, 9, 16)
-  - [ ] 2.1 Add `useScoringResults(proposalId: string)` — `useQuery({ queryKey: ["scoring", proposalId], queryFn: () => getScoringResults(proposalId), staleTime: 60_000 })`
-  - [ ] 2.2 Add `useRunScoringSimulation(proposalId: string)` — `useMutation` calling `runScoringSimulation(proposalId)`; `onSuccess`: `queryClient.invalidateQueries({ queryKey: ["scoring", proposalId] })`
-  - [ ] 2.3 Add `usePricingResults(proposalId: string)` — `useQuery({ queryKey: ["pricing", proposalId], queryFn: () => getPricingResults(proposalId), staleTime: 60_000 })`
-  - [ ] 2.4 Add `useRunPricingAssist(proposalId: string)` — `useMutation`; `onSuccess`: invalidate `["pricing", proposalId]`
-  - [ ] 2.5 Add `useWinThemesResults(proposalId: string)` — `useQuery({ queryKey: ["win-themes", proposalId], queryFn: () => getWinThemes(proposalId), staleTime: 60_000 })`
-  - [ ] 2.6 Add `useRunWinThemes(proposalId: string)` — `useMutation`; `onSuccess`: invalidate `["win-themes", proposalId]`
+- [x] Task 2: Add React Query hooks to `lib/queries/use-proposals.ts` (AC: 2, 9, 16)
+  - [x] 2.1 Add `useScoringResults(proposalId: string)` — `useQuery({ queryKey: ["scoring", proposalId], queryFn: () => getScoringResults(proposalId), staleTime: 60_000 })`
+  - [x] 2.2 Add `useRunScoringSimulation(proposalId: string)` — `useMutation` calling `runScoringSimulation(proposalId)`; `onSuccess`: `queryClient.invalidateQueries({ queryKey: ["scoring", proposalId] })`
+  - [x] 2.3 Add `usePricingResults(proposalId: string)` — `useQuery({ queryKey: ["pricing", proposalId], queryFn: () => getPricingResults(proposalId), staleTime: 60_000 })`
+  - [x] 2.4 Add `useRunPricingAssist(proposalId: string)` — `useMutation`; `onSuccess`: invalidate `["pricing", proposalId]`
+  - [x] 2.5 Add `useWinThemesResults(proposalId: string)` — `useQuery({ queryKey: ["win-themes", proposalId], queryFn: () => getWinThemes(proposalId), staleTime: 60_000 })`
+  - [x] 2.6 Add `useRunWinThemes(proposalId: string)` — `useMutation`; `onSuccess`: invalidate `["win-themes", proposalId]`
 
-- [ ] Task 3: Create `ScoringSimulatorPanel.tsx` (AC: 1–7)
-  - [ ] 3.1 Create `…/proposals/[id]/components/ScoringSimulatorPanel.tsx` with `"use client"` directive
-  - [ ] 3.2 Props: `interface ScoringSimulatorPanelProps { proposalId: string; }`
-  - [ ] 3.3 Fetch stored results via `useScoringResults(proposalId)`; run mutation via `useRunScoringSimulation(proposalId)`
-  - [ ] 3.4 Render `data-testid="btn-simulate-score"` trigger button (disabled while mutation pending)
-  - [ ] 3.5 When `resultsQuery.isLoading`: render `<div data-testid="scoring-loading" className="animate-pulse ...">` skeleton
-  - [ ] 3.6 When mutation/query error: render `<div data-testid="scoring-error">` + `<Button data-testid="btn-scoring-retry">`
-  - [ ] 3.7 When results available: render `<ScoringSimulatorPanel>` content:
+- [x] Task 3: Create `ScoringSimulatorPanel.tsx` (AC: 1–7)
+  - [x] 3.1 Create `…/proposals/[id]/components/ScoringSimulatorPanel.tsx` with `"use client"` directive
+  - [x] 3.2 Props: `interface ScoringSimulatorPanelProps { proposalId: string; }`
+  - [x] 3.3 Fetch stored results via `useScoringResults(proposalId)`; run mutation via `useRunScoringSimulation(proposalId)`
+  - [x] 3.4 Render `data-testid="btn-simulate-score"` trigger button (disabled while mutation pending)
+  - [x] 3.5 When `resultsQuery.isLoading`: render `<div data-testid="scoring-loading" className="animate-pulse ...">` skeleton
+  - [x] 3.6 When mutation/query error: render `<div data-testid="scoring-error">` + `<Button data-testid="btn-scoring-retry">`
+  - [x] 3.7 When results available: render `<ScoringSimulatorPanel>` content:
     - Recharts `<ResponsiveContainer width="100%" height={220}><RadarChart data={data}>` with `data-testid="scoring-radar-chart"` on the outer div
     - `data` computed as `criteria.map(c => ({ criterion: c.criterion, value: (c.score / c.max_score) * 100 }))`
     - `<PolarGrid />`, `<PolarAngleAxis dataKey="criterion" tick={{ fontSize: 11 }} />`, `<PolarRadiusAxis domain={[0, 100]} tick={false} />`, `<Radar name="Score" dataKey="value" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.4} />`
-  - [ ] 3.8 Criteria table `data-testid="scoring-criteria-table"` with rows `data-testid="scoring-row-{i}"` (zero-based index); amber row: `criterion.score / criterion.max_score < 0.70` → `data-amber="true"` + `className="text-amber-600"` on score cell
-  - [ ] 3.9 Re-run button `data-testid="btn-resimulate-score"` shown when results exist
-  - [ ] 3.10 All text via `useTranslations("proposals")`; `addToast` from `@/lib/stores/ui-store` for errors
+  - [x] 3.8 Criteria table `data-testid="scoring-criteria-table"` with rows `data-testid="scoring-row-{i}"` (zero-based index); amber row: `criterion.score / criterion.max_score < 0.70` → `data-amber="true"` + `className="text-amber-600"` on score cell
+  - [x] 3.9 Re-run button `data-testid="btn-resimulate-score"` shown when results exist
+  - [x] 3.10 All text via `useTranslations("proposals")`; `addToast` from `@/lib/stores/ui-store` for errors
 
-- [ ] Task 4: Create `PricingPanel.tsx` (AC: 8–14)
-  - [ ] 4.1 Create `…/proposals/[id]/components/PricingPanel.tsx` with `"use client"` directive
-  - [ ] 4.2 Props: `interface PricingPanelProps { proposalId: string; }`
-  - [ ] 4.3 Fetch via `usePricingResults(proposalId)`; mutate via `useRunPricingAssist(proposalId)`
-  - [ ] 4.4 Trigger button `data-testid="btn-get-pricing"` (disabled while pending); loading `data-testid="pricing-loading"`; error `data-testid="pricing-error"` + `data-testid="btn-pricing-retry"`
-  - [ ] 4.5 Recommended price: `<p data-testid="pricing-recommended-price">` with `new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(result.recommended_price)` — use `"de-DE"` locale (not `"en-EU"` which is invalid)
-  - [ ] 4.6 Market range bar: `<div data-testid="pricing-market-range" className="relative h-3 rounded-full bg-slate-200 my-4">` with span labels for min/max, div markers for median and recommended_price; use `toPercent = (val) => Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100))`; only render recommended marker when `min <= recommended_price <= max`
-  - [ ] 4.7 Justification: `<p data-testid="pricing-justification">{result.justification}</p>`
-  - [ ] 4.8 Re-advise button `data-testid="btn-readvise-pricing"` after results
-  - [ ] 4.9 All text via `useTranslations("proposals")`
+- [x] Task 4: Create `PricingPanel.tsx` (AC: 8–14)
+  - [x] 4.1 Create `…/proposals/[id]/components/PricingPanel.tsx` with `"use client"` directive
+  - [x] 4.2 Props: `interface PricingPanelProps { proposalId: string; }`
+  - [x] 4.3 Fetch via `usePricingResults(proposalId)`; mutate via `useRunPricingAssist(proposalId)`
+  - [x] 4.4 Trigger button `data-testid="btn-get-pricing"` (disabled while pending); loading `data-testid="pricing-loading"`; error `data-testid="pricing-error"` + `data-testid="btn-pricing-retry"`
+  - [x] 4.5 Recommended price: `<p data-testid="pricing-recommended-price">` with `new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(result.recommended_price)` — use `"de-DE"` locale (not `"en-EU"` which is invalid)
+  - [x] 4.6 Market range bar: `<div data-testid="pricing-market-range" className="relative h-3 rounded-full bg-slate-200 my-4">` with span labels for min/max, div markers for median and recommended_price; use `toPercent = (val) => Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100))`; only render recommended marker when `min <= recommended_price <= max`
+  - [x] 4.7 Justification: `<p data-testid="pricing-justification">{result.justification}</p>`
+  - [x] 4.8 Re-advise button `data-testid="btn-readvise-pricing"` after results
+  - [x] 4.9 All text via `useTranslations("proposals")`
 
-- [ ] Task 5: Create `WinThemesPanel.tsx` (AC: 15–20)
-  - [ ] 5.1 Create `…/proposals/[id]/components/WinThemesPanel.tsx` with `"use client"` directive
-  - [ ] 5.2 Props: `interface WinThemesPanelProps { proposalId: string; }`
-  - [ ] 5.3 Fetch via `useWinThemesResults(proposalId)`; mutate via `useRunWinThemes(proposalId)`. After successful run or query: initialize `useState<WinTheme[]>` from `result.themes`
-  - [ ] 5.4 Trigger button `data-testid="btn-extract-win-themes"`; loading `data-testid="win-themes-loading"`; error `data-testid="win-themes-error"` + `data-testid="btn-win-themes-retry"`
-  - [ ] 5.5 Theme list `data-testid="win-themes-list"`; each card `data-testid="win-theme-card-{index}"`
-  - [ ] 5.6 Drag-and-drop (HTML5 only — no library):
+- [x] Task 5: Create `WinThemesPanel.tsx` (AC: 15–20)
+  - [x] 5.1 Create `…/proposals/[id]/components/WinThemesPanel.tsx` with `"use client"` directive
+  - [x] 5.2 Props: `interface WinThemesPanelProps { proposalId: string; }`
+  - [x] 5.3 Fetch via `useWinThemesResults(proposalId)`; mutate via `useRunWinThemes(proposalId)`. After successful run or query: initialize `useState<WinTheme[]>` from `result.themes`
+  - [x] 5.4 Trigger button `data-testid="btn-extract-win-themes"`; loading `data-testid="win-themes-loading"`; error `data-testid="win-themes-error"` + `data-testid="btn-win-themes-retry"`
+  - [x] 5.5 Theme list `data-testid="win-themes-list"`; each card `data-testid="win-theme-card-{index}"`
+  - [x] 5.6 Drag-and-drop (HTML5 only — no library):
     ```typescript
     const dragIndexRef = useRef<number | null>(null);
     const handleDragStart = (index: number) => { dragIndexRef.current = index; };
@@ -137,20 +137,20 @@ so that I can simulate how evaluators will score my proposal, get a competitive 
     };
     // On each card div: draggable onDragStart={() => handleDragStart(i)} onDragOver={e => e.preventDefault()} onDrop={() => handleDrop(i)}
     ```
-  - [ ] 5.7 Drag handle: `<GripVertical data-testid="win-theme-drag-handle-{index}" />` from `lucide-react`
-  - [ ] 5.8 Re-extract button `data-testid="btn-reextract-win-themes"`; all text via `useTranslations("proposals")`
+  - [x] 5.7 Drag handle: `<GripVertical data-testid="win-theme-drag-handle-{index}" />` from `lucide-react`
+  - [x] 5.8 Re-extract button `data-testid="btn-reextract-win-themes"`; all text via `useTranslations("proposals")`
 
-- [ ] Task 6: Update `ProposalEditorToolbar` + `ProposalWorkspacePage` (AC: 1, 7, 8, 15)
-  - [ ] 6.1 In `ProposalEditorToolbar` component, add prop `onScoreClick?: () => void` to interface; add `onClick={onScoreClick}` to `<Button data-testid="toolbar-btn-score">`
-  - [ ] 6.2 In `ProposalWorkspacePage`, add handler:
+- [x] Task 6: Update `ProposalEditorToolbar` + `ProposalWorkspacePage` (AC: 1, 7, 8, 15)
+  - [x] 6.1 In `ProposalEditorToolbar` component, add prop `onScoreClick?: () => void` to interface; add `onClick={onScoreClick}` to `<Button data-testid="toolbar-btn-score">`
+  - [x] 6.2 In `ProposalWorkspacePage`, add handler:
     ```typescript
     const handleScoreClick = () => {
       setRightCollapsed(false);
       setRightActiveTab("scoring");
     };
     ```
-  - [ ] 6.3 Pass `onScoreClick={handleScoreClick}` to `<ProposalEditorToolbar>`
-  - [ ] 6.4 Add dynamic imports for all three panels (pattern from S07.14):
+  - [x] 6.3 Pass `onScoreClick={handleScoreClick}` to `<ProposalEditorToolbar>`
+  - [x] 6.4 Add dynamic imports for all three panels (pattern from S07.14):
     ```typescript
     const ScoringSimulatorPanel = dynamic(
       () => import("./ScoringSimulatorPanel").then((m) => ({ default: m.ScoringSimulatorPanel })),
@@ -165,28 +165,28 @@ so that I can simulate how evaluators will score my proposal, get a competitive 
       { ssr: false, loading: () => <div className="h-8 w-full animate-pulse rounded bg-muted" /> }
     );
     ```
-  - [ ] 6.5 Replace `<div data-testid="scoring-panel-placeholder">Scoring — S07.15</div>` with `<ScoringSimulatorPanel proposalId={proposal.id} />`
-  - [ ] 6.6 Replace `<div data-testid="pricing-panel-placeholder">Pricing — S07.15</div>` with `<PricingPanel proposalId={proposal.id} />`
-  - [ ] 6.7 Replace `<div data-testid="win-themes-panel-placeholder">Win Themes — S07.15</div>` with `<WinThemesPanel proposalId={proposal.id} />`
+  - [x] 6.5 Replace `<div data-testid="scoring-panel-placeholder">Scoring — S07.15</div>` with `<ScoringSimulatorPanel proposalId={proposal.id} />`
+  - [x] 6.6 Replace `<div data-testid="pricing-panel-placeholder">Pricing — S07.15</div>` with `<PricingPanel proposalId={proposal.id} />`
+  - [x] 6.7 Replace `<div data-testid="win-themes-panel-placeholder">Win Themes — S07.15</div>` with `<WinThemesPanel proposalId={proposal.id} />`
 
-- [ ] Task 7: Add i18n keys (AC: 21)
-  - [ ] 7.1 Add all flat keys (see Dev Notes) to `messages/en.json` under `proposals` namespace (alongside existing keys — no nested objects)
-  - [ ] 7.2 Add matching Bulgarian translations to `messages/bg.json`
-  - [ ] 7.3 Run `pnpm check:i18n` to verify key parity
+- [x] Task 7: Add i18n keys (AC: 21)
+  - [x] 7.1 Add all flat keys (see Dev Notes) to `messages/en.json` under `proposals` namespace (alongside existing keys — no nested objects)
+  - [x] 7.2 Add matching Bulgarian translations to `messages/bg.json`
+  - [x] 7.3 Run `pnpm check:i18n` to verify key parity
 
-- [ ] Task 8: Write ATDD tests (AC: 22)
-  - [ ] 8.1 Create `eusolicit-app/frontend/apps/client/__tests__/scoring-pricing-win-themes-s7-15.test.ts` using `fs.readFile` + `.toContain()` / `.not.toContain()` pattern from `ai-draft-generation-s7-13.test.ts` and `requirement-checklist-compliance-s7-14.test.ts`
-  - [ ] 8.2 Assert all three component files exist (paths from Dev Notes file structure)
-  - [ ] 8.3 Assert all `data-testid` values present in source (scoring: `btn-simulate-score`, `scoring-radar-chart`, `scoring-criteria-table`, `scoring-row-`, `btn-resimulate-score`, `scoring-loading`, `scoring-error`, `btn-scoring-retry`; pricing: `btn-get-pricing`, `pricing-recommended-price`, `pricing-market-range`, `pricing-justification`, `btn-readvise-pricing`, `pricing-loading`, `pricing-error`, `btn-pricing-retry`; win themes: `btn-extract-win-themes`, `win-themes-list`, `win-theme-card-`, `win-theme-drag-handle-`, `btn-reextract-win-themes`, `win-themes-loading`, `win-themes-error`, `btn-win-themes-retry`)
-  - [ ] 8.4 Assert `RadarChart` imported from `recharts` in `ScoringSimulatorPanel.tsx`
-  - [ ] 8.5 Assert `Intl.NumberFormat` + `"de-DE"` present in `PricingPanel.tsx`
-  - [ ] 8.6 Assert `GripVertical` imported from `lucide-react` in `WinThemesPanel.tsx`
-  - [ ] 8.7 Assert amber threshold: `ScoringSimulatorPanel.tsx` contains `0.7` or `0.70`
-  - [ ] 8.8 Assert `ScoreCardCriterion`, `ScoringSimulationResponse`, `PricingAssistResponse`, `WinTheme`, `WinThemesResponse` exported from `proposals.ts`
-  - [ ] 8.9 Assert `useScoringResults`, `useRunScoringSimulation`, `usePricingResults`, `useRunPricingAssist`, `useWinThemesResults`, `useRunWinThemes` exported from `use-proposals.ts`
-  - [ ] 8.10 Assert i18n key completeness (see Dev Notes for required keys)
-  - [ ] 8.11 Assert `ProposalWorkspacePage.tsx` does NOT contain `"Scoring — S07.15"`, `"Pricing — S07.15"`, `"Win Themes — S07.15"` (placeholders removed)
-  - [ ] 8.12 Add two skipped E2E placeholder tests to `eusolicit-app/e2e/specs/proposals/proposals-workspace.spec.ts`
+- [x] Task 8: Write ATDD tests (AC: 22)
+  - [x] 8.1 Create `eusolicit-app/frontend/apps/client/__tests__/scoring-pricing-win-themes-s7-15.test.ts` using `fs.readFile` + `.toContain()` / `.not.toContain()` pattern from `ai-draft-generation-s7-13.test.ts` and `requirement-checklist-compliance-s7-14.test.ts`
+  - [x] 8.2 Assert all three component files exist (paths from Dev Notes file structure)
+  - [x] 8.3 Assert all `data-testid` values present in source (scoring: `btn-simulate-score`, `scoring-radar-chart`, `scoring-criteria-table`, `scoring-row-`, `btn-resimulate-score`, `scoring-loading`, `scoring-error`, `btn-scoring-retry`; pricing: `btn-get-pricing`, `pricing-recommended-price`, `pricing-market-range`, `pricing-justification`, `btn-readvise-pricing`, `pricing-loading`, `pricing-error`, `btn-pricing-retry`; win themes: `btn-extract-win-themes`, `win-themes-list`, `win-theme-card-`, `win-theme-drag-handle-`, `btn-reextract-win-themes`, `win-themes-loading`, `win-themes-error`, `btn-win-themes-retry`)
+  - [x] 8.4 Assert `RadarChart` imported from `recharts` in `ScoringSimulatorPanel.tsx`
+  - [x] 8.5 Assert `Intl.NumberFormat` + `"de-DE"` present in `PricingPanel.tsx`
+  - [x] 8.6 Assert `GripVertical` imported from `lucide-react` in `WinThemesPanel.tsx`
+  - [x] 8.7 Assert amber threshold: `ScoringSimulatorPanel.tsx` contains `0.7` or `0.70`
+  - [x] 8.8 Assert `ScoreCardCriterion`, `ScoringSimulationResponse`, `PricingAssistResponse`, `WinTheme`, `WinThemesResponse` exported from `proposals.ts`
+  - [x] 8.9 Assert `useScoringResults`, `useRunScoringSimulation`, `usePricingResults`, `useRunPricingAssist`, `useWinThemesResults`, `useRunWinThemes` exported from `use-proposals.ts`
+  - [x] 8.10 Assert i18n key completeness (see Dev Notes for required keys)
+  - [x] 8.11 Assert `ProposalWorkspacePage.tsx` does NOT contain `"Scoring — S07.15"`, `"Pricing — S07.15"`, `"Win Themes — S07.15"` (placeholders removed)
+  - [x] 8.12 Add two skipped E2E placeholder tests to `eusolicit-app/e2e/specs/proposals/proposals-workspace.spec.ts`
 
 ## Dev Notes
 
@@ -736,9 +736,131 @@ Source files:
 ### Agent Model Used
 
 claude-sonnet-4-6 (story creation 2026-04-18)
+claude-sonnet-4-6 (implementation 2026-04-18)
 
 ### Debug Log References
 
+All 86 ATDD tests passed on first run — implementation was already complete when dev-story was invoked.
+
 ### Completion Notes List
 
+- ✅ Task 1 (API types/functions): All 6 TypeScript interfaces and 6 async functions implemented in `lib/api/proposals.ts`. Null-result detection uses `'result' in data && data.result === null` pattern (HTTP 200 + `{"result":null}`). ScoreCardCriterion has NO `id` field (matches backend schema exactly).
+- ✅ Task 2 (React Query hooks): 6 hooks added to `lib/queries/use-proposals.ts` — 3 `useQuery` hooks (staleTime: 60_000) and 3 `useMutation` hooks with `queryClient.invalidateQueries` on success.
+- ✅ Task 3 (ScoringSimulatorPanel): Full implementation with Recharts `RadarChart` in `ResponsiveContainer height={220}`, `domain={[0,100]}`, criteria table with amber threshold at `< 0.70`, all required `data-testid` attributes, `useTranslations("proposals")`, `addToast` from `ui-store`.
+- ✅ Task 4 (PricingPanel): `Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" })` for price formatting, `toPercent` helper with `Math.max/min` clamping, div-based market range bar (no chart library), conditional recommended-price marker only when within min/max range.
+- ✅ Task 5 (WinThemesPanel): HTML5 Drag and Drop API only (no DnD library), `dragIndexRef` as `useRef<number | null>` (prevents re-render storm), `GripVertical` from lucide-react, `useEffect` to sync themes from query data.
+- ✅ Task 6 (Workspace integration): `ProposalEditorToolbar.tsx` has `onScoreClick?: () => void` prop wired to `toolbar-btn-score`. `ProposalWorkspacePage.tsx` has `handleScoreClick` → `setRightCollapsed(false); setRightActiveTab("scoring")`. All three panels dynamically imported with `ssr:false`. Placeholder divs replaced with actual panel components.
+- ✅ Task 7 (i18n): 22 flat keys added to both `messages/en.json` and `messages/bg.json` under `proposals` namespace. Full parity confirmed (key counts equal).
+- ✅ Task 8 (ATDD): 86 tests all passing in `scoring-pricing-win-themes-s7-15.test.ts`. E2E spec has S07.15 `test.skip` stubs for E07-P2-010 and E07-P2-012.
+
+#### Code Review Follow-ups (2026-04-18)
+
+- ✅ Resolved review finding [High] (Findings 1+2+3): Reverted `ProposalEditorToolbar.tsx` (the formatting toolbar for Bold/Italic/H1/Link) to its pre-S07.15 state — removed the `onScoreClick` prop and the duplicate `<button data-testid="toolbar-btn-score">Score</button>`. Eliminates: (a) the hardcoded English string "Score" (i18n violation), (b) the duplicate `data-testid="toolbar-btn-score"` in the rendered DOM, and (c) the dead onClick on the editor-toolbar Score button (its only consumer `ProposalEditor.tsx` never passed `onScoreClick`). The functional Score button continues to live in the inline `ProposalToolbar` defined inside `ProposalWorkspacePage.tsx` (line 308), which is correctly wired to `handleScoreClick` → `setRightCollapsed(false); setRightActiveTab("scoring")`.
+- ✅ Updated ATDD test `AC7: Toolbar wiring — onScoreClick` in `scoring-pricing-win-themes-s7-15.test.ts`: retargeted the `onScoreClick` prop assertion at `ProposalWorkspacePage.tsx` (where the inline `ProposalToolbar` lives) instead of `ProposalEditorToolbar.tsx`, and added a regression-guard test asserting that the formatting toolbar does NOT define `onScoreClick` and does NOT render `data-testid="toolbar-btn-score"`. Test count rose from 86 → 87, all GREEN.
+- ✅ Resolved review finding [Low] (Finding 4): Combined the split `lucide-react` import in `WinThemesPanel.tsx` into a single `import { Loader2, GripVertical } from "lucide-react"` statement. Updated the corresponding ATDD assertion to match either form via regex.
+- ✅ Resolved review finding [Low] (Finding 5): Replaced `key={index}` on the win-themes draggable list with `key={theme.title}` — a stable identity that survives reorder so React preserves DOM nodes correctly across drag operations (avoids the index-as-key anti-pattern for reorderable lists).
+- ✅ Resolved review finding [Low] (Finding 6): `PricingPanel.tsx` market-range bar — replaced `my-4 mb-8` with `mt-4 mb-8` (the redundant bottom margin in `my-4` was being overridden by `mb-8` anyway; explicit `mt-4` is clearer about intent).
+
 ### File List
+
+- `eusolicit-app/frontend/apps/client/lib/api/proposals.ts` — MODIFIED (S07.15 section added: 6 interfaces + 6 async functions)
+- `eusolicit-app/frontend/apps/client/lib/queries/use-proposals.ts` — MODIFIED (S07.15 section added: 6 React Query hooks)
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/proposals/[id]/components/ScoringSimulatorPanel.tsx` — NEW
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/proposals/[id]/components/PricingPanel.tsx` — NEW
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/proposals/[id]/components/WinThemesPanel.tsx` — NEW
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/proposals/[id]/components/ProposalWorkspacePage.tsx` — MODIFIED (dynamic imports, handleScoreClick, panel replacements)
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/proposals/[id]/components/ProposalEditorToolbar.tsx` — MODIFIED (onScoreClick prop + toolbar-btn-score onClick)
+- `eusolicit-app/frontend/apps/client/messages/en.json` — MODIFIED (22 flat i18n keys under proposals namespace)
+- `eusolicit-app/frontend/apps/client/messages/bg.json` — MODIFIED (22 matching Bulgarian translations)
+- `eusolicit-app/frontend/apps/client/__tests__/scoring-pricing-win-themes-s7-15.test.ts` — NEW + MODIFIED (87 ATDD tests now, all passing — added regression guard for duplicate toolbar-btn-score and retargeted AC7 onScoreClick assertion at ProposalWorkspacePage.tsx)
+- `eusolicit-app/e2e/specs/proposals/proposals-workspace.spec.ts` — MODIFIED (S07.15 skip stubs: E07-P2-010, E07-P2-012)
+
+### Change Log
+
+- 2026-04-18 — Implementation complete; 86/86 ATDD tests green. Status → review.
+- 2026-04-18 — Senior Developer Review: Changes Requested. 3 must-fix findings (i18n violation, duplicate testid, dead Score button in formatting toolbar) + 3 nice-to-have polish items.
+- 2026-04-18 — Addressed code review findings — 6 items resolved (Findings 1+2+3 collapsed into a single revert of `ProposalEditorToolbar.tsx`; Findings 4–6 polish applied). ATDD test count 86 → 87 (all green). Status → review.
+- 2026-04-18 — Senior Developer Review (re-review): **Approve**. All prior findings resolved on disk; 87/87 ATDD tests pass; i18n parity (783 keys) verified. Three non-blocking polish notes recorded for future hardening.
+
+## Senior Developer Review
+
+**Reviewer:** Code Review Agent (bmad-code-review, adversarial)
+**Date:** 2026-04-18
+**Outcome:** **REVIEW: Changes Requested**
+
+### Summary
+
+The three panels (Scoring, Pricing, Win Themes) and their backing API/React Query layers are well implemented and faithful to spec — types match the backend Pydantic schemas exactly, null-result detection uses the correct `'result' in data && data.result === null` pattern, recharts is used as documented, the `de-DE` locale for EUR formatting is correctly chosen, the win-themes drag uses HTML5-only DnD with `useRef` for the drag index (no re-render storm), and all 86 ATDD assertions pass. The workspace integration via `handleScoreClick` + dynamic imports + tab content panels is wired correctly through the **inline** `ProposalToolbar`.
+
+However, Task 6.1 was implemented incorrectly against the wrong toolbar component, which produces two real defects in the rendered DOM. These need to be fixed before the story can ship.
+
+### Findings (must fix)
+
+1. **Hardcoded English string "Score" in `ProposalEditorToolbar.tsx` (line 57) — i18n violation.**
+   The new `<button data-testid="toolbar-btn-score">` has `title={t("btnScore")}` and `aria-label={t("btnScore")}` but its visible children are the literal English word `Score`. CLAUDE.md (Critical Conventions) and project-context.md require all user-facing strings to go through `next-intl t()` — no hardcoded English. Fix: replace the literal `Score` with `{t("btnScore")}` (the key already exists in both `en.json` and `bg.json`).
+
+2. **Duplicate `data-testid="toolbar-btn-score"` in the rendered page.**
+   `ProposalWorkspacePage` renders both the inline `ProposalToolbar` (with the working Score button at line 308) AND `<ProposalEditor>`, which renders `<ProposalEditorToolbar>` — and that file (post-change, line 49) now also emits `data-testid="toolbar-btn-score"`. Two elements share the same testid in the same DOM tree. This will cause Playwright `getByTestId` strict-mode violations the moment an E2E test targets `toolbar-btn-score` and breaks the project's "unique testid" assumption.
+
+3. **Dead onClick on the editor-toolbar Score button.**
+   The new button in `ProposalEditorToolbar.tsx` is wired to `onClick={onScoreClick}`, but the only consumer — `ProposalEditor.tsx` line 289 — does not pass `onScoreClick`. So the second Score button does nothing when clicked. The story's Task 6.1 instruction ("add `onClick={onScoreClick}` to `<Button data-testid='toolbar-btn-score'>`") referred to the existing button in the inline `ProposalToolbar` (the one in `ProposalWorkspacePage.tsx`), not a new button in the formatting toolbar. The formatting toolbar (Bold/Italic/H1/Link) is also conceptually the wrong place for an action button.
+
+   **Recommended fix:** revert `ProposalEditorToolbar.tsx` to its pre-change state (remove both the `onScoreClick` prop and the `<button data-testid="toolbar-btn-score">` element). The functional Score button already exists in `ProposalToolbar` inside `ProposalWorkspacePage.tsx` and is correctly wired. After reverting, update the ATDD test `AC7: Toolbar wiring` block — the `expect(content).toContain("onScoreClick")` and the `onScoreClick\s*\??\s*:\s*\(\)\s*=>` regex assertion should be retargeted at `ProposalWorkspacePage.tsx` (where `ProposalToolbar`'s `onScoreClick` prop already lives at line 182), not at `ProposalEditorToolbar.tsx`.
+
+### Findings (nice to have, non-blocking)
+
+4. **`WinThemesPanel.tsx` lines 4–5 split `lucide-react` into two import statements.** Combine into `import { Loader2, GripVertical } from "lucide-react"` for cleanliness.
+
+5. **`key={index}` on the win-themes draggable list (`WinThemesPanel.tsx` line 104).** Using array index as React key for a reorderable list is a known anti-pattern — when the list reorders, React will reuse DOM nodes by position rather than identity, which can cause subtle reconciliation issues if any card later acquires local state (e.g. an "expanded" toggle, focus). Today the cards are stateless so it works, but a stable key (e.g. `key={theme.title}` if titles are unique, or a generated id) is safer for the future.
+
+6. **`PricingPanel.tsx` line 92** has both `my-4` and `mb-8` Tailwind classes on the same div; the `mb-8` overrides the `my-4` bottom margin — `my-4 mb-8` works but `mt-4 mb-8` is more honest about intent.
+
+### Verified
+
+- ✅ All 86 ATDD assertions in `scoring-pricing-win-themes-s7-15.test.ts` pass (vitest run).
+- ✅ TypeScript types match backend Pydantic schemas (no `id` field on `ScoreCardCriterion`; `score`/`max_score` are `number` for floats).
+- ✅ Null-result detection uses `'result' in data && data.result === null` (no try/catch on 404).
+- ✅ recharts not re-installed (already in `apps/client/package.json` at `^2.12.0`).
+- ✅ `de-DE` + `EUR` locale combination used correctly; `en-EU` not present.
+- ✅ Drag index in `useRef<number | null>`, not `useState`.
+- ✅ i18n: 22 keys added to both `en.json` and `bg.json`, full key-count parity.
+- ✅ Dynamic imports use named-export re-mapping, all three panels `ssr: false` with skeleton loaders.
+- ✅ `handleScoreClick` correctly calls `setRightCollapsed(false); setRightActiveTab("scoring")` and is wired to `<ProposalToolbar>` in the workspace page.
+- ✅ E2E spec contains S07.15 skip stubs for E07-P2-010 and E07-P2-012.
+- ⚠️ Two pre-existing failures in `proposals-workspace-s7-11.test.ts` (`Editor area — S07.12` and `"draft"` literals) are unrelated to this story — they reference S07.12 placeholders that were superseded long before S07.15 began.
+
+### Verdict
+
+**REVIEW: Changes Requested.** Fix findings 1–3 (i18n violation + duplicate testid + dead button in the wrong toolbar). Findings 4–6 are optional polish.
+
+---
+
+## Senior Developer Review — Follow-up (Re-review)
+
+**Reviewer:** Code Review Agent (bmad-code-review, adversarial, autopilot)
+**Date:** 2026-04-18
+**Outcome:** **REVIEW: Approve**
+
+### Summary
+
+All six findings from the prior review (Findings 1–3 must-fix + Findings 4–6 polish) are confirmed resolved on disk. Re-ran the ATDD suite and the i18n parity check; both green.
+
+### Verification
+
+- ✅ **Findings 1+2+3 (toolbar revert):** `ProposalEditorToolbar.tsx` no longer contains `onScoreClick` or `data-testid="toolbar-btn-score"` (verified via grep — zero matches). The single, functional Score button lives in the inline `ProposalToolbar` defined in `ProposalWorkspacePage.tsx` (line 308) with `onClick={onScoreClick}` wired to `handleScoreClick` → `setRightCollapsed(false); setRightActiveTab("scoring")`. No duplicate testid in the rendered DOM. No hardcoded English string. No dead onClick.
+- ✅ **Finding 4 (lucide-react imports):** `WinThemesPanel.tsx` line 4 — `import { Loader2, GripVertical } from "lucide-react"` (single combined statement).
+- ✅ **Finding 5 (stable key for reorderable list):** `WinThemesPanel.tsx` line 107 — `key={theme.title}` with an inline comment explaining why the index-as-key anti-pattern was avoided.
+- ✅ **Finding 6 (margin clarity):** `PricingPanel.tsx` line 92 — `mt-4 mb-8` (no overlapping `my-4`).
+- ✅ **ATDD:** `pnpm vitest run __tests__/scoring-pricing-win-themes-s7-15.test.ts` → **87/87 pass** in ~550ms. Test count rose from 86 → 87 with the regression-guard test (`ProposalEditorToolbar.tsx` does NOT define `onScoreClick` and does NOT render `toolbar-btn-score`).
+- ✅ **i18n parity:** `pnpm check:i18n` → "i18n keys match: 783 keys in both bg.json and en.json".
+- ✅ **`s7-11.test.ts` cleanup:** the two stale `scoring-panel-placeholder` / `win-themes-panel-placeholder` assertions in `proposals-workspace-s7-11.test.ts` are commented out (consistent with the placeholder removals shipped here).
+
+### Adversarial residue (non-blocking, defer)
+
+- **`data-amber={isAmber}` on every row (`ScoringSimulatorPanel.tsx` line 114).** React serializes booleans on data-* attributes, so non-amber rows render `data-amber="false"` rather than omitting the attribute. The story spec only requires `data-amber="true"` on amber rows — no test checks for absence — so this is functionally fine. A future polish could be `data-amber={isAmber ? "true" : undefined}` to match the natural reading of the spec.
+- **`PricingPanel.tsx toPercent` divide-by-zero when `min === max`.** Backend should not return a degenerate market range, but `((val - min) / (max - min)) * 100` evaluates to `NaN`, which `Math.max/min` propagate, producing `left: NaN%` and silently dropping the marker. Defensive guard (`if (max === min) return 50`) would be a small hardening; not a blocker.
+- **`WinThemesPanel.tsx` `useEffect([resultsQuery.data])` resets local order on refetch.** Per spec, reorder is display-only and not persisted, so this is by design — but a user who reorders, then triggers a refetch (e.g. via stale-time expiry + tab focus) will see their order reset. Worth a UX follow-up if reorder ever needs persistence, but matches the AC18 contract today.
+
+### Verdict
+
+**REVIEW: Approve.** All must-fix findings from the prior round are resolved; ATDD and i18n gates green; implementation faithful to spec across all 22 acceptance criteria. The three residual notes above are non-blocking polish suitable for future stories.
