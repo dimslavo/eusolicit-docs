@@ -3,7 +3,7 @@
 state: running
 current_epic: 7
 current_story: 7-17-proposal-generate-security-audit-hardening
-last_updated: '2026-04-18'  # Epic 7 NFR halt — DW-04 hot-fix injected for NFR4/NFR12
+last_updated: '2026-04-19'  # Story 9-1 ready-for-dev
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -82,7 +82,7 @@ development_status:
   6-12-document-upload-component: done
   6-13-ai-summary-panel-with-sse-streaming: done
   6-14-upgrade-prompt-modal-tier-gating-ui: done
-  epic-7: in-progress
+  epic-7: done
   7-1-proposal-version-db-schema-migrations: done
   7-2-proposal-crud-api: done
   7-3-proposal-versioning-api: done
@@ -99,9 +99,37 @@ development_status:
   7-14-requirement-checklist-compliance-panels: done
   7-15-scoring-simulator-pricing-win-themes-panels: done
   7-16-version-history-content-blocks-library-export-dialog: done
-  7-17-proposal-generate-security-audit-hardening: backlog  # E07 hot-fix for NFR4 + NFR12
-  epic-8: backlog
-  epic-9: backlog
+  7-17-proposal-generate-security-audit-hardening: done  # 41 ATDD tests GREEN (14 integration + 27 unit); Tasks 6/7/8 deferred (live-service/E2E)
+  epic-8: done
+  8-1-stripe-customer-provisioning-on-company-registration: done
+  8-2-subscription-tier-database-schema: done
+  8-3-14-day-professional-trial-provisioning: done
+  8-4-stripe-webhook-endpoint-subscription-lifecycle-sync: done
+  8-5-trial-expiry-handling-downgrade-logic: done
+  8-6-stripe-checkout-upgrade-downgrade-flow: done
+  8-7-stripe-customer-portal-integration: done
+  8-8-usage-metering-with-redis-counters-stripe-sync: done
+  8-9-per-bid-add-on-purchase-flow: done
+  8-10-eu-vat-handling-via-stripe-tax-vies-validation: done
+  8-11-enterprise-custom-invoicing: done
+  8-12-pricing-page-tier-comparison-ui: done
+  8-13-subscription-management-page-trial-banner: done
+  8-14-subscription-changed-event-tier-cache-invalidation: done
+  epic-9: in-progress
+  9-1-notification-service-scaffold-celery-configuration: in-progress
+  9-2-notification-schema-database-migrations: backlog
+  9-3-alert-preferences-crud-api-client-api: backlog
+  9-4-alert-matching-immediate-dispatch: backlog
+  9-5-daily-weekly-digest-assembly: backlog
+  9-6-sendgrid-email-delivery-template-management: backlog
+  9-7-ical-feed-generation-client-api: backlog
+  9-8-google-calendar-oauth2-sync: backlog
+  9-9-microsoft-outlook-oauth2-sync: backlog
+  9-10-task-approval-notification-consumers: backlog
+  9-11-trial-expiry-stripe-usage-sync: backlog
+  9-12-alert-preferences-frontend-page: backlog
+  9-13-calendar-connection-management-frontend-page: backlog
+  9-14-scheduled-report-generation-task: backlog
   epic-10: backlog
   epic-11: done
   11-1-espd-profile-compliance-framework-db-schema-migrations: done

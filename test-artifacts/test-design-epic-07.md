@@ -3,7 +3,7 @@ stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-an
 lastStep: 'step-05-generate-output'
 lastSaved: '2026-04-18'
 workflowType: 'testarch-test-design'
-inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md']
+inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md', 'config.yaml']
 ---
 
 # Test Design: Epic 07 - Proposal Generation & Document Intelligence
@@ -11,13 +11,12 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 **Date:** 2026-04-18
 **Author:** BMad TEA Agent
 **Status:** Draft
-**Project:** EU Solicit
 
 ---
 
 ## Executive Summary
 
-**Scope:** Epic-level test design for Epic 07: Proposal Generation & Document Intelligence. Covers the end-to-end AI-powered proposal workspace, including real-time AI generation via SSE, rich text editing with auto-save, compliance and scoring agent integrations, and PDF/DOCX export capabilities.
+**Scope:** Epic-level test design for Epic 07
 
 **Risk Summary:**
 
@@ -27,10 +26,10 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 **Coverage Summary:**
 
-- P0 scenarios: 12 (24 hours)
-- P1 scenarios: 18 (18 hours)
+- P0 scenarios: 12 (24.0 hours)
+- P1 scenarios: 18 (18.0 hours)
 - P2/P3 scenarios: 25 (12.5 hours)
-- **Total effort**: 55 hours (~7 days)
+- **Total effort**: 54.5 hours (~7 days)
 
 ---
 
@@ -38,8 +37,8 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Item | Reasoning | Mitigation |
 | :--- | :--- | :--- |
-| **AI Model Quality Validation** | Validating the persuasiveness or linguistic quality of the AI generated text is subjective and outside deterministic test boundaries. | Addressed through Human-in-the-loop review and UAT phases. Automated testing focuses on structural correctness and data binding. |
-| **External AI Gateway Provisioning** | Managing the lifecycle of the OpenAI/Anthropic backing services. | We assume the AI Gateway (E04) provides reliable access or mocked endpoints for test environments. |
+| **AI Model Subjectivity Validation** | Evaluating text persuasiveness is subjective and non-deterministic. | Human-in-the-loop QA during UAT phase. |
+| **Third-party AI Gateway Provisioning** | Out of scope for this epic's functionality testing. | Ensure Gateway provides mock/fixture mode for CI determinism. |
 
 ---
 
@@ -49,22 +48,22 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner | Timeline |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| R-001 | SEC | Data Leakage: Cross-tenant access to proposals or content blocks. | 2 | 3 | 6 | E2E Isolation Suite testing RLS policies and API scoping for `company_id`. | Security Lead | Sprint 7 |
-| R-002 | TECH | AI SSE Stream Interruptions: Network drops or timeout during real-time section generation. | 3 | 2 | 6 | Mocked SSE failures; test auto-resume and partial save states in the UI. | Frontend Lead | Sprint 8 |
-| R-003 | DATA | Content Overwrites: Concurrent edits or stale clients overwriting proposal data. | 2 | 3 | 6 | Enforce optimistic locking (version/hash) on `PATCH/PUT` content endpoints. | Backend Lead | Sprint 7 |
-| R-004 | TECH | AI Output Determinism: Brittleness in CI due to unpredictable agent responses. | 3 | 2 | 6 | Implement a test mode/mocking strategy for the AI Gateway to return fixed fixtures. | AI Lead | Sprint 7 |
+| R-001 | SEC | Cross-tenant data leakage in proposals and content blocks | 2 | 3 | 6 | E2E Isolation tests with RLS validation | Security Lead | Sprint 7 |
+| R-002 | TECH | Non-deterministic AI causing CI test brittleness | 3 | 2 | 6 | AI test mode with static prompt snapshots/fixtures | AI Lead | Sprint 7 |
+| R-003 | DATA | Concurrent edits overwriting proposal versions | 2 | 3 | 6 | Optimistic locking on PATCH/PUT and conflict tests | Backend Lead | Sprint 7 |
+| R-004 | TECH | SSE Stream interruption causing partial data loss | 3 | 2 | 6 | Frontend retry logic and progressive chunk saving | Frontend Lead | Sprint 8 |
 
 ### Medium-Priority Risks (Score 3-4)
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| R-005 | PERF | Document Export Timeouts: Large proposal payload causing PDF/DOCX generation to fail. | 2 | 2 | 4 | Load test export APIs; stream responses; add background processing if necessary. | Backend Lead | Sprint 8 |
+| R-005 | PERF | Document Export timeouts for large payloads | 2 | 2 | 4 | Background processing / streaming API + load testing | Backend Lead |
 
 ### Low-Priority Risks (Score 1-2)
 
 | Risk ID | Category | Description | Probability | Impact | Score | Action |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| R-006 | BUS | Visual glitches in Tiptap editor during SSE streaming. | 2 | 1 | 2 | Monitor |
+| R-006 | BUS | Visual layout shifts in Tiptap during SSE load | 2 | 1 | 2 | Monitor |
 
 ### Risk Category Legend
 
@@ -79,24 +78,22 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 ## Entry Criteria
 
-- [ ] AI Gateway (E04) endpoints are accessible in the test environment.
-- [ ] Database schema migrations for `proposals`, `proposal_versions`, and `content_blocks` are applied.
-- [ ] Mock responses for all AI agents (Compliance, Clause Risk, Scoring, Pricing, Win Themes) are available.
+- [ ] AI Gateway (E04) endpoints are accessible and test fixtures are available.
+- [ ] DB Migrations for `proposals` and `proposal_versions` are executed.
+- [ ] Test environment data factory ready for Company and Opportunity contexts.
 
 ## Exit Criteria
 
-- [ ] All P0 tests passing.
-- [ ] All P1 tests passing (or failures triaged).
-- [ ] Real-time SSE AI generation works seamlessly in E2E environments.
-- [ ] Multi-tenant isolation verified with 100% pass rate.
-- [ ] PDF and DOCX exports generate valid, parsable documents.
+- [ ] All P0 tests passing with 100% rate.
+- [ ] All P1 tests passing (failures triaged/waivers).
+- [ ] RLS / Security multi-tenant suite executed with zero leakages.
 
 ## Project Team (Optional)
 
 | Name | Role | Testing Responsibilities |
 | :--- | :--- | :--- |
-| QA Team | Test Engineers | E2E test implementation, API contract testing, AI Agent mock validation. |
-| Dev Team | Backend/Frontend | Unit tests, SSE integration tests, Tiptap editor component tests. |
+| QA Team | Test Engineers | E2E scenarios, Security Isolation, API testing |
+| Dev Team | Backend/Frontend | Unit testing, SSE stream component tests |
 
 ---
 
@@ -108,10 +105,10 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Proposal CRUD & RLS Access | API | R-001 | 4 | QA | Ensure strict tenant isolation |
-| AI Draft Generation via SSE | E2E | R-002, R-004 | 3 | QA | Mock SSE stream and verify UI updates |
-| Editor Auto-save & Locking | API/E2E | R-003 | 3 | QA | Test HTTP 409 conflict responses |
-| Agent Integrations (Compliance, Scoring) | API | - | 2 | QA | Validate mock agent data binding |
+| Proposal CRUD & RLS Policies | API | R-001 | 4 | QA | Strictly validate tenant isolation. |
+| AI Draft Generation SSE (Backend) | API | R-002 | 3 | QA | Use mocked AI Gateway streams. |
+| Auto-save Content + Full Save | API | R-003 | 3 | QA | Validate optimistic locking conflicts (409). |
+| Tiptap SSE Real-time Rendering | E2E | R-004 | 2 | DEV | Test UI behavior during chunk stream. |
 
 **Total P0**: 12 tests, 24.0 hours
 
@@ -121,10 +118,10 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Version History & Rollback | API/E2E | - | 5 | QA | Validate section diffs and version restores |
-| Content Blocks CRUD & Search | API | R-001 | 4 | QA | Test TSVector full-text search and RLS |
-| Proposal Export (PDF/DOCX) | API | R-005 | 4 | QA | Ensure output files are valid formats |
-| Tiptap Formatting & Insertion | Component | - | 5 | DEV | Test rich text mechanics and block insertion |
+| Version History Diffs & Rollback | API/E2E | - | 5 | QA | Validate section diff accuracy. |
+| Compliance, Scoring & Agent Mocks | API | - | 5 | QA | Validate metadata bindings. |
+| Document Export (PDF/DOCX) | API | R-005 | 4 | QA | Test validity of exported formats. |
+| Content Blocks CRUD & Insert | UI/API | R-001 | 4 | DEV | TSVector search validation. |
 
 **Total P1**: 18 tests, 18.0 hours
 
@@ -134,12 +131,21 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Clause Risk & Pricing Agents | API | - | 5 | QA | Validate metadata storage and retrieval |
-| Requirement Checklist Toggle | API/UI | - | 5 | DEV | Test optimistic UI updates |
-| Editor SSE Visual Glitches | UI | R-006 | 5 | DEV | Ensure cursor position is maintained |
-| Archiving & Soft Deletes | API | - | 10 | QA | Verify archived proposals hide from default lists |
+| Clause Risk & Pricing Panel UI | UI | - | 10 | DEV | Layout & formatting assertions. |
+| Soft Delete / Archive API | API | - | 5 | QA | Filtering hidden records. |
 
-**Total P2**: 25 tests, 12.5 hours
+**Total P2**: 15 tests, 7.5 hours
+
+### P3 (Low) - Run on-demand
+
+**Criteria**: Nice-to-have + Exploratory + Performance benchmarks
+
+| Requirement | Test Level | Test Count | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| Export large proposal perf | E2E | 5 | QA | Load limits |
+| Tiptap extreme formatting | UI | 5 | DEV | Formatting edge cases |
+
+**Total P3**: 10 tests, 5.0 hours
 
 ---
 
@@ -150,8 +156,8 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 **Purpose**: Fast feedback, catch build-breaking issues
 
 - [ ] Create Proposal via API (30s)
-- [ ] Read Proposal and Active Version (30s)
-- [ ] Trigger AI Generation Endpoint (mocked) (45s)
+- [ ] Read Active Version (30s)
+- [ ] Trigger AI Draft mock endpoint (45s)
 
 **Total**: 3 scenarios
 
@@ -159,9 +165,9 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 **Purpose**: Critical path validation
 
-- [ ] E2E: User generates proposal draft via SSE, accepts all, and views content.
-- [ ] API: Cross-tenant unauthorized access attempt on `GET /proposals/:id`.
-- [ ] API: Trigger auto-save conflict and verify 409 response.
+- [ ] E2E: Create proposal, stream SSE sections, accept all
+- [ ] API: Cross-tenant 403 authorization check
+- [ ] API: Concurrent edit 409 conflict test
 
 **Total**: 12 scenarios
 
@@ -169,9 +175,9 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 **Purpose**: Important feature coverage
 
-- [ ] E2E: User views version history, compares diffs, and rolls back to v1.
-- [ ] API: Export proposal to PDF and validate content structure (if JSON endpoint available as per System Test Design).
-- [ ] API: Search content blocks by tag and insert into proposal.
+- [ ] E2E: Rollback to previous version
+- [ ] API: Export PDF check
+- [ ] API: Agent mock triggers (Compliance, Score)
 
 **Total**: 18 scenarios
 
@@ -179,8 +185,8 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 **Purpose**: Full regression coverage
 
-- [ ] API: Clause Risk Analyzer full lifecycle.
-- [ ] UI: Verify Pricing Simulator radar chart rendering.
+- [ ] API: Archive proposals
+- [ ] UI: Win Themes and Pricing visualization
 
 **Total**: 25 scenarios
 
@@ -192,29 +198,24 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Priority | Count | Hours/Test | Total Hours | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| P0 | 12 | 2.0 | 24.0 | Complex SSE/Locking setups |
+| P0 | 12 | 2.0 | 24.0 | Includes SSE & Security |
 | P1 | 18 | 1.0 | 18.0 | Standard API/UI flows |
-| P2/P3 | 25 | 0.5 | 12.5 | Edge cases |
+| P2 | 15 | 0.5 | 7.5 | Edge cases |
+| P3 | 10 | 0.5 | 5.0 | Exploratory |
 | **Total** | **55** | **-** | **54.5** | **~7 days** |
 
 ### Prerequisites
 
 **Test Data:**
-
-- User and Organization factory with valid session tokens.
-- Mock Opportunity records and Company Profile setups.
-- Content Block seed library.
+- `tenant` factory with seeded DB isolation
+- `mock_opportunities` with full requirements
 
 **Tooling:**
-
-- Playwright for E2E and visual regression (SSE streaming UI).
-- Playwright Utils (Auth, Recurse).
-- Mocking server for AI Gateway streaming responses.
+- Playwright (UI)
+- Playwright Utils (Auth, Recurse)
 
 **Environment:**
-
-- Clean database state per test suite.
-- Mock Stripe integration (from System Architecture Blocker B-01).
+- AI Gateway (E04) mocked
 
 ---
 
@@ -239,43 +240,26 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 - [ ] All P0 tests pass
 - [ ] No high-risk (≥6) items unmitigated
 - [ ] Security tests (SEC category) pass 100%
-- [ ] Multi-tenant RLS isolation tests pass 100%
 
 ---
 
 ## Mitigation Plans
 
-### R-001: Data Leakage: Cross-tenant access (Score: 6)
+### R-001: Cross-tenant data leakage in proposals and content blocks (Score: 6)
 
-**Mitigation Strategy:** Implement DB-level Row Level Security (RLS). QA will develop an automated API suite that attempts to read, write, and list `proposals` and `content_blocks` using tokens from a different `company_id`.
+**Mitigation Strategy:** RLS enabled in DB; E2E API tests cross-fetching tenant IDs.
 **Owner:** Security Lead
 **Timeline:** Sprint 7
 **Status:** Planned
-**Verification:** Automated E2E isolation suite must pass with 100% success.
+**Verification:** Automated E2E isolation suite 100% pass
 
-### R-002: AI SSE Stream Interruptions (Score: 6)
+### R-002: Non-deterministic AI causing CI test brittleness (Score: 6)
 
-**Mitigation Strategy:** Build robust UI error handling for broken EventSource connections, ensuring generated chunks are retained and allowing the user to resume or discard.
-**Owner:** Frontend Lead
-**Timeline:** Sprint 8
-**Status:** Planned
-**Verification:** Induce network failure during Playwright SSE test and verify UI state recovery.
-
-### R-003: Content Overwrites (Score: 6)
-
-**Mitigation Strategy:** Implement version/hash-based optimistic locking on `PATCH` / `PUT` endpoints.
-**Owner:** Backend Lead
-**Timeline:** Sprint 7
-**Status:** Planned
-**Verification:** API tests mimicking concurrent updates must verify the second request receives a 409 Conflict.
-
-### R-004: AI Output Determinism (Score: 6)
-
-**Mitigation Strategy:** Use a test mode that bypasses actual LLM inference and returns static fixture data via SSE.
+**Mitigation Strategy:** Provide mock fixtures via AI Gateway bypass.
 **Owner:** AI Lead
 **Timeline:** Sprint 7
 **Status:** Planned
-**Verification:** Test environment configurations securely default to static mocked responses.
+**Verification:** CI runs against mock endpoints explicitly.
 
 ---
 
@@ -283,19 +267,19 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 ### Assumptions
 
-1. AI Gateway mock architecture is supported and capable of returning reliable fixture streams.
-2. Content extraction from generated PDF/DOCX for test validation will use JSON alternative endpoints (from System Level Architecture recommendations) to avoid brittle parsing.
+1. AI Gateway mock architecture is supported in the dev environment.
+2. PDF/DOCX rendering uses known parsable formatting, or JSON equivalents exist for assertions.
 
 ### Dependencies
 
-1. AI Gateway Service (E04) - Must be stable for integration tests.
-2. Tenant Auth/Seeding (System Blocker B-02) - Required for parallel test execution.
+1. AI Gateway Service (E04) - Required by Sprint 7
+2. Auth Service Seeding - Required by Sprint 7
 
 ### Risks to Plan
 
-- **Risk**: AI mocked outputs are overly simplistic and don't uncover real parsing errors in the Tiptap editor.
-  - **Impact**: UI bugs discovered late in UAT.
-  - **Contingency**: Include complex markdown and formatted text in the mock fixtures to stretch the editor's capabilities.
+- **Risk**: Editor rendering is unparsable by Playwright without extensive manual tags
+  - **Impact**: Slow E2E test authoring
+  - **Contingency**: Dev team strictly adds `data-testid` to Tiptap sections.
 
 ---
 
@@ -303,9 +287,9 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 | Service/Component | Impact | Regression Scope |
 | :--- | :--- | :--- |
-| **Auth Service** | Verifies token extraction and RLS claims. | Run all core Auth E2E tests against the new proposal endpoints. |
-| **AI Gateway (E04)** | Primary orchestrator for prompt generation. | Verify prompt structure passes E04 guardrails. |
-| **Search / Elastic (E06)**| Required for Content Blocks full text search. | Re-run E06 index validation tests. |
+| **AI Gateway (E04)** | Proxy for all agent workflows | Prompt structure tests |
+| **Auth Service** | RLS / JWT scoping | Cross-tenant API boundaries |
+| **Search (E06)** | Content Blocks search | Full-text query tests |
 
 ---
 
@@ -320,9 +304,9 @@ inputDocuments: ['epic-07-proposal-generation.md', 'test-design-architecture.md'
 
 ### Related Documents
 
-- PRD: EU_Solicit_PRD_v1.md
-- Epic: epic-07-proposal-generation.md
-- Architecture: EU_Solicit_Solution_Architecture_v4.md
+- PRD: `EU_Solicit_PRD_v1.md`
+- Epic: `epic-07-proposal-generation.md`
+- Architecture: `EU_Solicit_Solution_Architecture_v4.md`
 
 ---
 
