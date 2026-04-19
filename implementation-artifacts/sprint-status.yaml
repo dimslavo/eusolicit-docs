@@ -1,9 +1,9 @@
 # Sprint Status — EU Solicit
 # Auto-managed by Orchestrator. Do not edit manually.
 state: running
-current_epic: 7
-current_story: 7-17-proposal-generate-security-audit-hardening
-last_updated: '2026-04-19'  # Story 9-1 ready-for-dev
+current_epic: 9
+current_story: 9-3-alert-preferences-crud-api-client-api
+last_updated: '2026-04-19'  # Story 9-5 FIX-2-TEST added (missing unit test for race-condition upper bound) → review
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -116,12 +116,12 @@ development_status:
   8-13-subscription-management-page-trial-banner: done
   8-14-subscription-changed-event-tier-cache-invalidation: done
   epic-9: in-progress
-  9-1-notification-service-scaffold-celery-configuration: in-progress
-  9-2-notification-schema-database-migrations: backlog
-  9-3-alert-preferences-crud-api-client-api: backlog
-  9-4-alert-matching-immediate-dispatch: backlog
-  9-5-daily-weekly-digest-assembly: backlog
-  9-6-sendgrid-email-delivery-template-management: backlog
+  9-1-notification-service-scaffold-celery-configuration: done
+  9-2-notification-schema-database-migrations: done
+  9-3-alert-preferences-crud-api-client-api: done
+  9-4-alert-matching-immediate-dispatch: done
+  9-5-daily-weekly-digest-assembly: done
+  9-6-sendgrid-email-delivery-template-management: in-progress
   9-7-ical-feed-generation-client-api: backlog
   9-8-google-calendar-oauth2-sync: backlog
   9-9-microsoft-outlook-oauth2-sync: backlog
