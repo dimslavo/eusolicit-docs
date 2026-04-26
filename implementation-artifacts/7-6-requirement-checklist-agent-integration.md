@@ -535,3 +535,81 @@ Claude Sonnet 4.6
 ## Change Log
 
 - Story 7.6 implementation complete (Date: 2026-04-17): Added requirement checklist agent integration — Alembic migration 022 (client.proposal_checklists), ProposalChecklistItem ORM model, Pydantic schemas, three service functions (generate_checklist, get_checklist, toggle_checklist_item), three API endpoints (POST/GET/PATCH), 19 integration tests all passing, 131 total tests (0 regressions).
+- Story 7.6 senior dev review (Date: 2026-04-23): Approved with minor advisory findings (see Senior Developer Review).
+
+## Senior Developer Review
+
+**Reviewer:** Claude Sonnet 4.6 (bmad-code-review)
+**Date:** 2026-04-23
+**Outcome:** Approve (advisory notes only — no changes required to ship)
+
+### Summary
+
+Implementation satisfies all seven ACs. Migration 022 is clean and reversible; the
+ORM model, Pydantic schemas, service layer, and router endpoints match the story
+spec; delete-then-insert regeneration is atomic within the route-scoped
+transaction; cross-company 404 protection is enforced; AI Gateway error
+translation (504/503) returns raw error bodies matching the AC5 contract;
+malformed agent responses gracefully degrade to empty checklist. 19 new ATDD
+integration tests pass alongside 112 existing regression tests (131 total, 0
+regressions). Migration chain 022 → 023 → … → 045 is intact and consistent.
+
+### Advisory Findings (non-blocking)
+
+1. **Role guard broader than AC text (minor, consistent with codebase).**
+   AC1 and AC4 specify "Requires `bid_manager` role", and the Dev Notes section
+   explicitly calls for `require_role("bid_manager")`. The implementation instead
+   uses `require_proposal_role(*PROPOSAL_WRITE_ROLES)` on generate and toggle,
+   which admits `technical_writer`, `financial_analyst`, and `legal_reviewer` in
+   addition to `bid_manager`. This mirrors S07.05's `generate_draft` endpoint
+   (also `PROPOSAL_WRITE_ROLES`), so it is consistent with the surrounding epic
+   rather than a true architectural drift. If the stricter AC reading is
+   preferred, switch both endpoints to `PROPOSAL_BID_MANAGER_ONLY`. Recommend
+   leaving as-is for epic-wide consistency but flagging to PM.
+
+2. **`test_generate_requires_bid_manager_role` only tests the unauth case.**
+   The test asserts 401 on no-auth, but never exercises a non-`bid_manager` user
+   (e.g., read_only collaborator) to confirm role rejection. Given finding (1),
+   the current test is actually accurate (any PROPOSAL_WRITE_ROLES user may
+   generate), but the test name is misleading. Suggest renaming to
+   `test_generate_requires_authentication` and, if finding (1) is resolved,
+   adding an explicit role-rejection test with a non-bid_manager collaborator.
+
+3. **ORM model omits explicit `ForeignKey` on `proposal_id` (minor).**
+   The migration correctly creates the FK with `ON DELETE CASCADE` (verified by
+   `test_proposal_checklists_cascade_delete`), but `ProposalChecklistItem`
+   declares `proposal_id` as a plain `Mapped[uuid.UUID]` without a
+   `sa.ForeignKey("client.proposals.id", ondelete="CASCADE")` at the column
+   level. This is functionally fine today but can cause alembic autogenerate to
+   emit spurious "add foreign key" diffs on future migrations. Low priority
+   cleanup — add the ForeignKey for model/schema parity.
+
+4. **`_build_checklist_payload = _build_agent_payload_base` alias.**
+   The story spec asked for a private helper `_build_checklist_payload`; the
+   implementation aliases it to the shared `_build_agent_payload_base` helper
+   (which serves both generation and checklist). Good refactor — just note the
+   alias pattern is slightly unusual. A direct call to `_build_agent_payload_base`
+   from `generate_checklist` would be equally clear and eliminate the alias line.
+
+5. **Lazy imports inside service functions.**
+   `generate_checklist`, `get_checklist`, and `toggle_checklist_item` import
+   `ProposalChecklistItem` (and in the generate case, the AiGateway error types)
+   inside the function body with `# noqa: PLC0415`. This is a working pattern
+   but adds overhead on every call. If there's no circular import reason,
+   hoisting these to module-level imports would be cleaner.
+
+None of these findings block the story. Ship it; optionally sweep them up in
+a follow-up hardening pass.
+
+### Verified
+
+- ✅ Migration 022 upgrade/downgrade cycle (verified by test + chain inspection).
+- ✅ Delete-then-insert regeneration (no row accumulation).
+- ✅ Position 0-based reset on regeneration.
+- ✅ Cross-company 404 on all three endpoints.
+- ✅ Cross-proposal item toggle → 404.
+- ✅ AI Gateway timeout → 504 `{"error": "agent_timeout", "retry_after": 30}` with no partial DB state.
+- ✅ AI Gateway 503 → 503 `{"error": "agent_unavailable"}`.
+- ✅ Malformed agent response → 200 with empty `items`, no crash, logs warning.
+- ✅ FK `ON DELETE CASCADE` confirmed at DB layer.
+- ✅ `from __future__ import annotations`, `structlog`, route-scoped `session.flush()` / `session.refresh()` (no `session.commit()`) — all architecture constraints honored.

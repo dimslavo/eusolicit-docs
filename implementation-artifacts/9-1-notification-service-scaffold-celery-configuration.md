@@ -1,6 +1,6 @@
 # Story 9.1: Notification Service Scaffold & Celery Configuration
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -667,6 +667,110 @@ Story 9-1 fully implemented and all tests green (152 unit tests, 47 new):
 
 Address the 3 AC-blocking patches (AC4, AC5(a), AC5(b)) before marking the story done. The decorator-consistency and env-var-validation patches are strongly recommended in the same pass since they touch the same files. Defer items can be tracked in `deferred-work.md` for the relevant follow-up stories.
 
+---
+
+## Senior Developer Review — Round 2
+
+**Reviewer:** bmad-code-review (re-review after 2026-04-19 follow-up)
+**Date:** 2026-04-24
+**Outcome:** **Changes Requested** — Round-1 patches verified fixed, but a new failing test is blocking the story in `review` status.
+
+### Verification of Round-1 Patch Items
+
+All 5 patch items from the 2026-04-19 review are correctly implemented in the source:
+
+- ✅ **AC4 autoretry_for** — verified in `alert_matching.py:19–21` (`autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True`), `digest.py:200–203` and `216–218` (both digest stubs), `calendar_sync.py:52–54` (uses a narrower `autoretry_for=(HttpError,)` domain tuple — preferable to `Exception` for a production implementation). `send_email.py` shims to `notification.tasks.email.send_email` (Story 9-6's real implementation uses explicit `self.retry()` for 429/5xx, which is more precise than blanket `autoretry_for` and is documented in `test_stub_tasks_have_autoretry_for_set`).
+- ✅ **AC5(a) traceback field** — verified at `celery_app.py:155–166`. Prefers `einfo.traceback` (pre-formatted by Celery), falls back to `traceback.format_tb()` when only the tb object is available, empty string otherwise. DLQ entry at line 175 includes the field.
+- ✅ **AC5(b) retries-exhausted ERROR log** — verified at `celery_app.py:138–147`. `logger.error("task_retries_exhausted", ...)` fires **first**, wrapped in its own `try/except` so a logging failure never masks the original task exception. Happens before the Redis publish so the operator signal is visible even when Redis is down.
+- ✅ **Decorator queue= consistency** — verified on all 5 stubs (`alert_matching.py:18`, `digest.py:199+215`, `calendar_sync.py:51`, `send_email.py` via shim to `notification.tasks.email.send_email`).
+- ✅ **Env-var validation** — verified at `beat_schedule.py:30–87`. `_safe_int_env` + `_safe_hour_env` emit structured structlog warnings and fall back to defaults on non-numeric, zero, negative, or out-of-range values. Crontab expressions like `*/6` pass through unchanged. Calendar sync minimum enforced at ≥1 (rejects 0).
+
+Tests covering the above (10 new) are present at `test_celery_config.py:744–1055`.
+
+### New Round-2 Findings
+
+- [x] [Review][Patch] **Test regression — `test_stripe_sync_entry_not_duplicated` fails** [services/notification/tests/unit/test_celery_config.py:246; services/notification/src/notification/workers/beat_schedule.py:131] — The test in this story's own test file asserts `stripe_keys[0] == "sync-stripe-usage-metering"` and cites Story 9.11 AC9 as the source. The actual entry in `beat_schedule.py` is `"sync-usage-to-stripe-daily"` (the original S08.08 name). Story 9-11 is marked `done` in `sprint-status.yaml` but the rename never landed in the beat schedule, so the test breaks against its own story's artifact.
+
+  Confirmed via `pytest tests/unit/test_celery_config.py`: **1 failed, 56 passed**.
+
+  ```
+  E   AssertionError: assert 'sync-usage-to-stripe-daily' == 'sync-stripe-usage-metering'
+  E     - sync-stripe-usage-metering
+  E     + sync-usage-to-stripe-daily
+  ```
+
+  Story 9-1's own dev notes say: *"`sync-usage-to-stripe-daily` already exists from S08.08 at 03:00 UTC — do NOT duplicate; S09.11 will move it to the `usage-reporting` queue"*. So Story 9-1 does not own the rename, yet the test here presupposes it.
+
+  **Fix options (pick one):**
+  1. **Preferred** — Rename the entry in `beat_schedule.py:131` from `"sync-usage-to-stripe-daily"` to `"sync-stripe-usage-metering"` and update the mirrored expectation in `tests/unit/test_billing_usage_sync.py:624,627,637,638,641` (currently still references the old name). This aligns with the 9.11 AC9 intent the test was written for. Verify the Celery task routing in `celery_app.py` still points at the same task function (it does — routing is by task name `notification.workers.tasks.billing_usage_sync.sync_usage_to_stripe`, not by beat-entry key).
+  2. **Alternative** — Revert the expectation in `test_celery_config.py:246` to `"sync-usage-to-stripe-daily"` (matches current state), and file a deferred-work item to complete the rename under Story 9-11 follow-up.
+
+  Either way, the `review` gate cannot be green with `test_celery_config.py` failing.
+
+### Out-of-Scope Observations (not blocking this story)
+
+- `tests/unit/test_microsoft_oauth.py` has 3 failing tests (`test_refresh_microsoft_access_token_success`, `_401_raises`, `_never_logs_token`). Unrelated to Story 9-1 — belongs to the Microsoft OAuth story (9-9). Noting only because it affects the broader notification unit-test suite health.
+
+### Triage Summary (Round 2)
+
+- **decision-needed:** 0
+- **patch:** 1 (Stripe beat entry naming mismatch)
+- **defer:** 0
+- **dismiss:** 0
+
+### Recommendation
+
+Apply fix option 1 (rename the beat entry to match the test and Story 9.11 AC9 intent) and update `test_billing_usage_sync.py` to match. This keeps the beat key aligned with the queue-semantics signal (`stripe-usage-metering` ↔ `usage-reporting` queue) that Story 9.11 established. Re-run the notification unit suite to confirm green before flipping the story to `review` again.
+
+DEVIATION: `test_celery_config.py::test_stripe_sync_entry_not_duplicated` asserts a beat-entry rename (`sync-stripe-usage-metering`) that never landed in `beat_schedule.py` (still `sync-usage-to-stripe-daily`); test fails in the story's own test file
+DEVIATION_TYPE: CONTRADICTORY_SPEC
+DEVIATION_SEVERITY: blocking
+
+---
+
+## Senior Developer Review — Round 3
+
+**Reviewer:** bmad-code-review (re-review after Round-2 patch)
+**Date:** 2026-04-24
+**Outcome:** **Approve**
+
+### Verification of Round-2 Patch
+
+- ✅ **Stripe beat-entry rename** — `beat_schedule.py:131` now registers the entry as `"sync-stripe-usage-metering"` (matches Story 9.11 AC9). The expectation in `test_celery_config.py:246` and the mirrored asserts in `test_billing_usage_sync.py:624,627,637,638,641` all align. Task routing in `celery_app.py:77` is keyed by the fully-qualified task name (`notification.workers.tasks.billing_usage_sync.sync_usage_to_stripe` → `usage-reporting`), unaffected by the beat-entry rename — verified by reading the route table.
+
+### Test Evidence
+
+- `make test-service SVC=notification` — **461 passed, 3 skipped, 8 warnings** (14.55s). No regressions. The previously failing `test_stripe_sync_entry_not_duplicated` now passes.
+
+### Round-1 Items — Still Verified Green
+
+- AC4 `autoretry_for` wired on all 5 S09 stub decorators (alert_matching, send_email shim, digest × 2, calendar_sync).
+- AC5(a) DLQ entry includes `traceback` field (einfo.traceback preferred, `traceback.format_tb` fallback).
+- AC5(b) `logger.error("task_retries_exhausted", …)` fires first in `on_task_failure`, wrapped in its own try/except.
+- Decorator `queue=` consistency on all S09 stubs.
+- Env-var validation via `_safe_int_env` / `_safe_hour_env` with structlog-warning fallbacks; calendar sync interval lower-bounded to ≥1.
+
+### Deferred Items (unchanged — track in follow-up stories)
+
+- DLQ `args`/`kwargs` stringification — redaction needed once OAuth / SendGrid payloads land (S09.06, S09.08/09).
+- Global `task_max_retries=5` silently lowers caps for pre-S09 tasks — verify intent with owner stories.
+- PersistentScheduler state in `/tmp` — non-durable across container recreate; mount a volume before digest delivery goes user-visible.
+
+### Out-of-Scope Observation
+
+- `tests/unit/test_microsoft_oauth.py` failures noted in Round 2 are no longer present in the current run (included in the 461-passed suite). No action for this story.
+
+### Triage Summary (Round 3)
+
+- **decision-needed:** 0
+- **patch:** 0
+- **defer:** 3 (same as Round 2 — unchanged)
+- **dismiss:** 0
+
+### Recommendation
+
+Approve and flip to `done`. All seven ACs are satisfied, all Round-1 and Round-2 patches are verified in source, and the notification unit-test suite is green.
+
 ## Known Deviations
 
 ### Detected by `3-code-review` at 2026-04-19T07:54:21Z (session 8057b2ea-cc4f-40dc-9c57-c70e1115b6b5)
@@ -676,4 +780,6 @@ Address the 3 AC-blocking patches (AC4, AC5(a), AC5(b)) before marking the story
 - AC5 requires explicit ERROR-level structlog when retries exhaust but no such log exists _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
 - AC4 requires `autoretry_for` for S09 domain exceptions but no stub task implements it; tests do not cover this requirement _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
 - AC5 requires `traceback` field in dead-letter entry but implementation omits it _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
+- AC5 requires explicit ERROR-level structlog when retries exhaust but no such log exists _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
+type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
 - AC5 requires explicit ERROR-level structlog when retries exhaust but no such log exists _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_

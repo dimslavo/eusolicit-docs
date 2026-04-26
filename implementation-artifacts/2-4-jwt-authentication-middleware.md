@@ -494,3 +494,9 @@ No issues encountered. All tests passed green on first implementation pass.
 - [x] [Review][Defer] **Empty-string role accepted through middleware chain** — A JWT with `role=""` constructs a valid `CurrentUser`. The empty role gets rank 0 via `ROLE_HIERARCHY.get("", 0)` and is denied by all `require_role` checks (fails closed), but `GET /me` would echo back the empty role. Low risk. Deferred: will be addressed when claim validation is hardened (Finding 1 fix).
 
 - [x] [Review][Defer] **No structlog logger in `security.py` for auth events** — Security-sensitive operations (token validation failures, role rejections) produce no structured log entries. The exceptions module imports structlog; security.py does not. Deferred: observability improvement, not a functional bug.
+
+## Known Deviations
+
+### Detected by `3-code-review` at 2026-04-22T22:13:31Z
+
+- Password fields in `RegisterRequest`, `LoginRequest`, and `PasswordResetConfirmRequest` (`schemas/auth.py`) lack `max_length=128` validation, which violates architectural Rule 35 designed to prevent bcrypt HashDoS. _(type: `ARCHITECTURAL_DRIFT`; severity: `deferrable`)_

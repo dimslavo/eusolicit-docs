@@ -1,0 +1,787 @@
+---
+stepsCompleted:
+  - step-01-init
+  - step-02-discovery
+  - step-03-success
+  - step-04-journeys
+  - step-05-domain
+  - step-06-innovation
+  - step-07-project-type
+  - step-08-scoping
+  - step-09-functional
+  - step-10-nonfunctional
+  - step-11-polish
+  - step-12-complete
+inputDocuments:
+  - eusolicit-docs/planning-artifacts/epics.md
+  - eusolicit-docs/planning-artifacts/architecture.md
+  - eusolicit-docs/planning-artifacts/implementation-plan.md
+  - eusolicit-docs/project-context.md
+  - eusolicit-docs/planning-artifacts/project-context.md
+workflowType: prd
+project_name: EU Solicit
+user_name: Deb
+date: '2026-04-23'
+status: complete
+---
+
+# Product Requirements Document — EU Solicit
+
+**Author:** Deb  
+**Date:** 2026-04-23  
+**Version:** 2.0 (Canonical — synthesised from Epics 1–12 implementation record)  
+**Status:** Final
+
+---
+
+## 1. Executive Summary
+
+EU Solicit is a full-stack SaaS platform that helps companies, municipalities, and consulting firms win European Union public procurement contracts and EU grant funding. It combines automated opportunity discovery, AI-driven document intelligence, collaborative proposal authoring, compliance management, and subscription billing into a single, multi-tenant product.
+
+The platform is targeted at the Bulgarian and broader EU market. Users can move from "opportunity identified" to "compliant proposal submitted" within a single product without switching between spreadsheets, portals, or separate document tools. The AI layer — powered by the KraftData platform — handles the heavy lifting: parsing 200-page tender packages, generating first-draft proposals, pre-checking compliance, and predicting evaluator scores.
+
+**Elevator pitch:** "Google for EU tenders, with a co-pilot that writes your bid."
+
+---
+
+## 2. Product Vision and Goals
+
+### 2.1 Vision Statement
+
+To become the trusted AI-powered operating system for EU procurement and grant teams — making it as easy to win a European public contract as it is to complete an e-commerce checkout.
+
+### 2.2 Business Goals
+
+| Goal | Target | Horizon |
+|------|--------|---------|
+| Registered companies | 100 | MVP launch |
+| Active paid subscribers | 25 | MVP launch |
+| Free → paid conversion | 10% | MVP launch |
+| Trial → paid conversion | 25% | MVP launch |
+| Proposals generated via platform | 200 | MVP launch |
+| NPS score | ≥ 40 | 90 days post-launch |
+
+### 2.3 Problem Statement
+
+EU public procurement and grant applications are notoriously complex:
+
+- Tenders are published across dozens of portals in multiple languages.
+- Compliance documents (ESPD, technical specifications, mandatory annexes) run to hundreds of pages.
+- Multi-user bid teams lack purpose-built collaboration tools.
+- Win rates are low and improving requires structured lessons-learned processes.
+- SMEs and mid-market firms cannot afford the advisory fees of large consulting firms.
+
+EU Solicit directly addresses each of these pain points through automation and AI.
+
+---
+
+## 3. Users and Personas
+
+### 3.1 Primary Personas
+
+| Persona | Description | Key Needs |
+|---------|-------------|-----------|
+| **Bid Manager** | Leads tender submissions for a company; owns the overall bid process | Pipeline visibility, task orchestration, approval workflows, AI drafts |
+| **Technical Writer** | Authors the technical sections of proposals | Rich text editor, AI assistance, version control, section locking |
+| **Financial Analyst** | Builds cost models and budgets for bids | Pricing assistant, budget builder, EU cost category compliance |
+| **Legal Reviewer** | Reviews contracts and compliance clauses | Clause risk flagging, ESPD auto-fill, compliance framework validation |
+| **Company Admin** | Manages team access, billing, and company profile | RBAC management, billing portal, company profile vault |
+| **Platform Admin** | Internal EU Solicit staff managing tenants, crawlers, and frameworks | Admin portal (VPN-restricted), tenant management, crawler scheduling |
+
+### 3.2 Organisational Context
+
+- **Company size:** SMEs to mid-market (5–500 employees).
+- **Primary geography:** Bulgaria (AOP portal), EU-wide (TED portal, EU grant portals).
+- **Verticals:** IT services, construction, consulting, research institutes, NGOs, municipalities.
+
+---
+
+## 4. Success Criteria
+
+### 4.1 User-Facing Success Metrics
+
+| Scenario | Target |
+|----------|--------|
+| Opportunities loaded into platform | 500+ (AOP + TED combined) |
+| Search → opportunity detail flow | ≤ 3 clicks |
+| AI summary generation time (100-page document) | < 30 seconds |
+| First proposal draft generation | < 2 minutes |
+| End-to-end flow (registration → opportunity → proposal) | Completable in one session |
+
+### 4.2 Platform Quality Gates
+
+- 99.5% uptime SLA for the client platform
+- REST API p95 latency < 200ms; SSE TTFB < 500ms
+- Minimum 80% automated test coverage
+- Zero high-severity security findings at GA
+
+---
+
+## 5. User Journeys
+
+### 5.1 Core Journey: Discover → Analyse → Propose → Submit
+
+```
+1. Register / Log in
+   └─▶ 14-day Professional trial activated automatically
+
+2. Discover Opportunities
+   └─▶ Browse searchable, AI-matched list of tenders (AOP, TED, EU grants)
+       Filters: CPV sector, region, budget, deadline, match score
+       Free tier: name + deadline + location visible
+       Paid tier: full details + AI analysis
+
+3. Analyse Tender
+   └─▶ Upload tender package (PDF/DOCX/ZIP)
+       AI extracts: requirements, deadlines, evaluation criteria, financial thresholds
+       AI generates: executive summary, compliance checklist, risk-flagged clauses
+       Bid/no-bid AI recommendation → team reviews → override with justification
+
+4. Plan & Allocate
+   └─▶ Create proposal workspace
+       Assign team roles (bid manager, technical writer, financial analyst, legal)
+       Generate task list with deadlines and dependencies
+       Configure approval stages
+
+5. Draft Proposal
+   └─▶ AI generates first draft from tender requirements + company profile
+       Team edits in Tiptap rich-text editor (section locking, threaded comments)
+       Version control with diff and rollback
+       Reusable content blocks (boilerplate sections)
+
+6. Validate & Finalise
+   └─▶ Compliance checker validates against assigned regulatory framework
+       ESPD auto-fill from company profile vault
+       Scoring simulator predicts evaluator scores and suggests improvements
+       Management approval workflow sign-off
+
+7. Export & Submit
+   └─▶ Export as PDF and/or DOCX
+       Platform provides portal-specific submission guides
+       Outcome recorded (won/lost/withdrawn) → feeds analytics
+
+8. Learn & Improve
+   └─▶ Analytics: win rate trends, team performance, ROI tracker
+       Lessons-learned report generated by AI post-outcome
+       Data feeds future AI matching and draft quality
+```
+
+### 5.2 Grant Journey (EU Grants specialisation)
+
+```
+1. Grant Eligibility Check
+   └─▶ Company/municipality profile mapped against active EU programmes
+       (Horizon Europe, Digital Europe, structural funds, CAP, Interreg)
+
+2. Budget Construction
+   └─▶ AI budget builder: EU cost categories, overhead, co-financing rules
+
+3. Consortium Assembly
+   └─▶ Consortium finder: partner suggestions from similar-grant participation data
+
+4. Application Drafting
+   └─▶ Logframe generator: logical frameworks, work packages, Gantt, deliverables
+       Reporting template generator: periodic report and financial statement templates
+```
+
+### 5.3 Admin Journey
+
+```
+1. Platform Admin logs in via VPN-restricted admin portal
+2. Manages tenants: view, activate, deactivate, adjust subscription tier
+3. Manages crawlers: trigger manual runs, view history, configure schedules
+4. Manages compliance frameworks: create/edit ZOP, EU directive, programme rule sets
+5. Assigns frameworks to opportunities; confirms/overrides AI framework suggestions
+6. Configures white-label for Enterprise clients (subdomain, logo, brand, email)
+7. Views platform analytics: signup funnel, tier conversion, churn
+8. Exports audit log for compliance evidence
+```
+
+---
+
+## 6. Domain Requirements
+
+### 6.1 Regulatory Landscape
+
+| Regulation | Impact |
+|------------|--------|
+| Bulgarian ZOP (Public Procurement Act) | Compliance framework for Bulgarian tenders; ESPD requirement |
+| EU Directive 2014/24/EU | Open Procedure rules for EU-funded tenders on TED |
+| EU Grant Programme Rules | Horizon Europe, Digital Europe, structural funds, Interreg cost eligibility |
+| GDPR | Data residency in EU; right to erasure; DPAs with KraftData |
+| eIDAS | Digital signatures deferred to post-MVP |
+
+### 6.2 Compliance Framework System
+
+The platform maintains a database of compliance frameworks. Each opportunity is tagged with the applicable framework. The compliance checker validates proposals against the specific framework assigned to that opportunity — not a generic ruleset. Platform admins own framework creation and assignment. The AI suggests the applicable framework based on the opportunity's country, source, and funding type; the admin confirms or overrides.
+
+---
+
+## 7. Innovation Patterns
+
+### 7.1 AI-First Architecture
+
+All document intelligence and proposal generation flows through the KraftData AI platform:
+
+- Purpose-built agents (document parser, executive summary, clause risk, scoring simulator, pricing assistant, grant eligibility, budget builder, logframe generator, regulation tracker)
+- Multi-agent teams for coordinated complex workflows
+- RAG (retrieval-augmented generation) via vector storage resources (sector templates, past proposals, regulatory texts)
+- Persistent session contexts for multi-turn interactions
+- KraftData eval runs for continuous quality monitoring
+
+### 7.2 Streaming-First UX
+
+All user-facing AI operations use Server-Sent Events (SSE) streaming. Users see AI output as it is generated — no blocking waits. The frontend uses native `fetch` + `ReadableStream` (not EventSource, which is GET-only) for streaming POST responses.
+
+### 7.3 Collaborative Proposal Editor
+
+The proposal editor (Tiptap rich-text) supports simultaneous multi-user editing with pessimistic section locking (one editor per section, 15-min TTL), threaded comments anchored to section + version, version control with diff and rollback, and an AI co-pilot generating content in context.
+
+---
+
+## 8. Scope
+
+### 8.1 In-Scope (MVP)
+
+- Opportunity intelligence: Bulgaria (AOP) + EU (TED) + EU grant portals
+- AI document analysis and proposal generation
+- EU grant specialisation (Horizon Europe, Digital Europe, structural funds, Interreg)
+- Compliance framework management (ZOP, EU directives, programme rules)
+- Email alert digests (immediate/daily/weekly)
+- Calendar sync: Google Calendar + Outlook (OAuth2)
+- Analytics dashboards (market intelligence, ROI, team performance, competitor intel)
+- Stripe subscription billing (Free, Starter, Professional, Enterprise tiers)
+- White-label configuration for Enterprise clients
+- Admin portal (VPN-restricted)
+- Enterprise API (OpenAPI-documented REST for Enterprise tier clients)
+- Bilingual UI: Bulgarian (default) + English
+
+### 8.2 Out-of-Scope (Post-MVP)
+
+- Electronic bid submission (e-procurement portal integration)
+- Microsoft OAuth2 social login
+- ERP/CRM integration
+- Slack/Teams in-app notifications
+- Digital signatures (eIDAS)
+- Consultant marketplace
+- Additional national procurement portals (beyond AOP + TED)
+- Additional UI languages beyond BG/EN
+
+---
+
+## 9. Functional Requirements
+
+Requirements are grouped by capability area and referenced to the epics that implement them.
+
+---
+
+### 9.1 Authentication & Identity
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-AUTH-01 | Email/password registration with email verification | E01–E02 |
+| FR-AUTH-02 | Google OAuth2 social login | E02 |
+| FR-AUTH-03 | RS256 JWT access tokens (15-min expiry) + 7-day refresh token rotation | E02 |
+| FR-AUTH-04 | Token family revocation: second concurrent refresh invalidates the family | E02 |
+| FR-AUTH-05 | Rate limiting on auth endpoints; fail-open on Redis outage | E02 |
+| FR-AUTH-06 | 14-day Professional trial on new registration — no credit card required | E08 |
+| FR-AUTH-07 | `User.is_active` check on all auth paths; deactivated users cannot receive tokens | E02 |
+| FR-AUTH-08 | Bcrypt password hashing (cost=12) with max_length=128 to prevent HashDoS | E02 |
+| FR-AUTH-09 | Separate admin authentication with `platform_admin` role; VPN/IP-restricted | E12 |
+
+### 9.2 Multi-Tenant Organisation Management
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-ORG-01 | Company registration and multi-membership (one user → multiple companies) | E02 |
+| FR-ORG-02 | Company profile vault: credentials, CVs, certifications, past project references, financial statements | E06 |
+| FR-ORG-03 | Company-level RBAC: 5 roles — admin > bid_manager > contributor > reviewer > read_only | E02 |
+| FR-ORG-04 | Team invitation by email; invitation acceptance with role assignment | E02 |
+| FR-ORG-05 | White-label configuration for Enterprise tier: custom subdomain, logo, brand colours, email sender domain | E12 |
+| FR-ORG-06 | Document retention policy configurable per tenant (default: opportunity lifetime + 2 years) | E06 |
+
+### 9.3 Opportunity Discovery & Intelligence
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-OPP-01 | Automated crawling of AOP (Bulgarian public procurement portal) on schedule | E05 |
+| FR-OPP-02 | Automated crawling of TED (EU Tenders Electronic Daily) on schedule | E05 |
+| FR-OPP-03 | Automated crawling of EU grant portals on schedule | E05 |
+| FR-OPP-04 | New opportunities appear within 24 hours of portal publication | E05 |
+| FR-OPP-05 | Data normalisation: heterogeneous formats (HTML, PDF, XML) normalised to unified schema | E05 |
+| FR-OPP-06 | Searchable, filterable opportunity listing: CPV code, region, budget, deadline, status, source | E06 |
+| FR-OPP-07 | AI relevance scoring (0–100) against company profile; score shown on listing and detail | E06 |
+| FR-OPP-08 | Free tier: name, deadline, location, type, status visible only | E06 |
+| FR-OPP-09 | Paid tier: full documentation, budget, evaluation criteria, AI analysis (within tier limits) | E06 |
+| FR-OPP-10 | Opportunity detail page with full structured data, AI summary, requirements, deadlines | E06 |
+| FR-OPP-11 | Document upload: PDF, DOCX, ZIP; max 100MB/file, 500MB/package; ClamAV virus scanning | E06 |
+| FR-OPP-12 | S3 object storage for tender documents; signed URLs for download | E06 |
+| FR-OPP-13 | Portal-specific step-by-step submission guides displayed on opportunity detail | E07 |
+| FR-OPP-14 | Competitor tracking: publicly available award data aggregated; win rates and pricing displayed | E06 |
+| FR-OPP-15 | Pipeline forecasting: predicted upcoming tenders based on historical procurement cycles | E06 |
+| FR-OPP-16 | Configurable email alerts: CPV sectors, regions, budget range, deadline proximity; immediate/daily/weekly digest | E09 |
+| FR-OPP-17 | iCal feed: subscribable URL with deadlines for tracked opportunities | E09 |
+| FR-OPP-18 | Google Calendar two-way sync (OAuth2) for tracked deadlines | E09 |
+| FR-OPP-19 | Outlook two-way sync (Microsoft Graph API OAuth2) for tracked deadlines | E09 |
+
+### 9.4 Document Intelligence
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-DOC-01 | AI document parser: extracts requirements, evaluation criteria, deadlines, mandatory documents, financial thresholds from tender packages | E06–E07 |
+| FR-DOC-02 | AI executive summary: one-page summary of complex 200+ page documents | E06 |
+| FR-DOC-03 | Requirement checklist: auto-generated compliance checklist mapping every mandatory requirement to a trackable item | E07 |
+| FR-DOC-04 | Clause risk flagging: identifies high-risk clauses (unlimited liability, IP assignment, penalties) | E07 |
+| FR-DOC-05 | Multi-language processing: source documents in BG, EN, DE, FR, RO; outputs in user's preferred language | E06 |
+| FR-DOC-06 | ESPD auto-fill: European Single Procurement Document pre-populated from company profile vault | E07 |
+| FR-DOC-07 | AI streaming: all AI document analysis results streamed via SSE (< 30s for 100-page document) | E06 |
+
+### 9.5 Bid Strategy & Risk
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-BID-01 | Bid/no-bid AI recommendation: strategic fit, win probability, resource availability, margin potential scored | E06 |
+| FR-BID-02 | Bid/no-bid override with mandatory justification; decision logged to audit trail | E06 |
+| FR-BID-03 | Bid outcome tracking: won/lost/withdrawn with optional evaluator feedback and scores | E06 |
+| FR-BID-04 | Preparation time logging: hours and costs per proposal for ROI tracking | E10 |
+| FR-BID-05 | Pricing assistant: competitive pricing suggestions based on historical award data and budget ceilings | E07 |
+| FR-BID-06 | Per-bid add-ons: one-time purchase of premium AI features via Stripe Checkout | E08 |
+
+### 9.6 Proposal Planning & Grant Specialisation
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-PLAN-01 | Logframe generator: logical frameworks, work packages, Gantt charts, deliverable tables from narrative descriptions | E11 |
+| FR-PLAN-02 | Budget builder: AI-assisted budget following EU cost category rules, overhead calculations, co-financing requirements | E11 |
+| FR-PLAN-03 | Consortium finder: partner suggestions from database of organisations with similar-grant participation | E11 |
+| FR-PLAN-04 | Grant eligibility matcher: company/municipality profile mapped against active EU programmes (Horizon Europe, Digital Europe, structural funds, CAP, Interreg) | E11 |
+| FR-PLAN-05 | Reporting template generator: post-award periodic report and financial statement templates pre-filled from project data | E11 |
+| FR-PLAN-06 | Task orchestration: tasks with assignments, deadlines, dependencies (DAG); templates per opportunity type | E10 |
+| FR-PLAN-07 | Task notifications: email on assignment, approaching deadlines, and overdue tasks | E09 |
+
+### 9.7 Collaborative Proposal Drafting
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-PROP-01 | AI first-draft generator: multi-agent workflow generates proposal from tender requirements + company profile; SSE streaming; < 2 minutes for first draft | E07 |
+| FR-PROP-02 | Template library: sector-specific proposal templates accessible via RAG | E07 |
+| FR-PROP-03 | Rich text editor (Tiptap) with AI co-pilot integration | E07 |
+| FR-PROP-04 | Proposal version control: full version history with diff; rollback to any previous version | E07 |
+| FR-PROP-05 | Per-proposal entity-level RBAC: bid_manager, technical_writer, financial_analyst, legal_reviewer, read_only assigned per proposal | E10 |
+| FR-PROP-06 | Pessimistic section locking: one editor per section; 15-min TTL; locked sections show editor name | E10 |
+| FR-PROP-07 | Threaded comments anchored to section + version; resolvable; carry forward across versions | E10 |
+| FR-PROP-08 | Reusable content blocks library: approved boilerplate sections stored, tagged, versioned | E07 |
+| FR-PROP-09 | Win theme extractor: AI identifies key win themes from tender requirements for proposal positioning | E07 |
+| FR-PROP-10 | Configurable approval workflows: stage sequences (technical → legal → management); sign-off decisions logged | E10 |
+| FR-PROP-11 | Approval notifications: email when approval requested and when decisions made | E09 |
+| FR-PROP-12 | Document export: proposals, checklists, compliance reports as PDF and DOCX | E07 |
+| FR-PROP-13 | Optimistic locking via content_hash (SHA-256): 409 Conflict on concurrent save with client-side conflict resolution dialog | E10 |
+
+### 9.8 Compliance, Review & Validation
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-COMP-01 | Compliance framework CRUD: platform admins create/edit frameworks (ZOP, EU directives, programme rules) | E07 |
+| FR-COMP-02 | Per-opportunity framework assignment; hybrid scenarios supported | E07 |
+| FR-COMP-03 | Framework auto-suggestion based on opportunity country, source, funding type; admin confirms/overrides | E07 |
+| FR-COMP-04 | Compliance checker: validates proposal against assigned framework — mandatory sections, page limits, required attachments, formatting | E07 |
+| FR-COMP-05 | Scoring simulator: predicted evaluator scores per criterion; improvement suggestions; scorecard UI | E07 |
+| FR-COMP-06 | Regulation tracker: AI agent monitors changes to ZOP, EU procurement directives, grant programme rules | E11 |
+| FR-COMP-07 | Lessons-learned engine: post-bid-outcome AI analysis; recommendations fed back into future drafts | E12 |
+
+### 9.9 Analytics & Reporting
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-ANA-01 | Market intelligence: sector-level analytics (procurement volumes, avg contract values, active authorities, seasonal trends) | E12 |
+| FR-ANA-02 | ROI tracker: preparation time/cost vs. contract value won | E12 |
+| FR-ANA-03 | Team performance: per-user metrics (bids submitted, win rate, average preparation time) | E12 |
+| FR-ANA-04 | Competitor intelligence: aggregated competitor bidding patterns, win rates, pricing benchmarks (Professional+) | E12 |
+| FR-ANA-05 | Pipeline forecast view: predicted upcoming opportunities based on historical patterns | E12 |
+| FR-ANA-06 | Usage dashboard: current billing period usage vs. tier limits (AI summaries, proposal drafts, compliance checks) | E12 |
+| FR-ANA-07 | Report export: management reports (pipeline value, success rates, deadlines) as PDF/DOCX; scheduled (weekly/monthly) or on-demand | E12 |
+| FR-ANA-08 | Five analytics materialized views refreshed by Celery Beat: market, ROI, team, competitor, usage | E12 |
+
+### 9.10 Notifications & Calendar
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-NOTIF-01 | Email notifications via SendGrid: opportunity alerts, task assignments, approval requests, trial expiry reminders | E09 |
+| FR-NOTIF-02 | In-app notification centre: unread count badge; mark-as-read | E09 |
+| FR-NOTIF-03 | Notification preferences: per-user per-event-type on/off; digest frequency | E09 |
+| FR-NOTIF-04 | iCal feed: subscribable URL per user | E09 |
+| FR-NOTIF-05 | Google Calendar OAuth2 sync: two-way create/update/delete for tracked deadlines | E09 |
+| FR-NOTIF-06 | Outlook OAuth2 sync (Microsoft Graph): two-way create/update/delete for tracked deadlines | E09 |
+| FR-NOTIF-07 | Trial expiry email: 3 days before expiry with upgrade prompt | E08 |
+
+### 9.11 Subscription & Billing
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-BILL-01 | Tier definitions: Free, Starter (€29/mo), Professional (€59/mo), Enterprise (€109+/mo) | E08 |
+| FR-BILL-02 | Stripe Checkout: subscription creation with correct tier and EUR pricing | E08 |
+| FR-BILL-03 | Stripe Customer Portal: self-service upgrade, downgrade, cancel, payment method update | E08 |
+| FR-BILL-04 | 14-day Professional trial: no credit card; graceful downgrade to Free on expiry | E08 |
+| FR-BILL-05 | Usage metering: AI summaries, proposal drafts, compliance checks tracked per period; blocked on limit with upgrade prompt | E08 |
+| FR-BILL-06 | Per-bid add-ons: one-time Stripe Checkout for premium AI features on specific opportunities | E08 |
+| FR-BILL-07 | EU VAT: automatic calculation via Stripe Tax; tax ID collection; reverse charge for B2B | E08 |
+| FR-BILL-08 | Enterprise invoicing: custom invoicing with NET 30/60 payment terms | E08 |
+| FR-BILL-09 | Stripe webhook processing: idempotent via `webhook_events` unique constraint on `stripe_event_id` | E08 |
+| FR-BILL-10 | Tier cache: Redis-backed (60s TTL) with DB fallback; DELETE-on-change invalidation | E08 |
+
+### 9.12 Admin Platform
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-ADMIN-01 | Separate admin portal (port 3001): VPN/IP-restricted via `IPAllowlistMiddleware` | E12 |
+| FR-ADMIN-02 | Tenant management: view/edit companies, subscriptions, usage | E12 |
+| FR-ADMIN-03 | Crawler management: view run history, configure schedules, trigger manual runs | E12 |
+| FR-ADMIN-04 | White-label configuration: subdomain, logo, brand colours, email sender domain for Enterprise clients | E12 |
+| FR-ADMIN-05 | Audit log viewer: searchable, filterable, exportable | E12 |
+| FR-ADMIN-06 | Platform analytics: signup funnel, tier conversion, usage patterns, churn metrics | E12 |
+| FR-ADMIN-07 | Enterprise API: RESTful API with `X-API-Key` auth; SHA-256 hash stored; auto-generated OpenAPI docs | E12 |
+
+### 9.13 Audit Trail & Security
+
+| ID | Requirement | Epic |
+|----|-------------|------|
+| FR-AUD-01 | Immutable audit log (`shared.audit_log`): all mutations captured with entity_type, entity_id, action_type, before, after, user_id, ip_address | E01–E12 |
+| FR-AUD-02 | HMAC webhook signature validation using `hmac.compare_digest()` (not `==`) for all inbound webhooks | E04, E09 |
+| FR-AUD-03 | GDPR compliance: right to erasure; data processing records; DPAs with KraftData | E02 |
+| FR-AUD-04 | All uploaded files scanned via ClamAV before serving | E06 |
+| FR-AUD-05 | Fernet encryption for third-party OAuth tokens (Google, Outlook) stored at rest | E09 |
+
+---
+
+## 10. Non-Functional Requirements
+
+### 10.1 Performance
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-PERF-01 | REST API p95 latency | < 200ms |
+| NFR-PERF-02 | SSE TTFB (streaming endpoint) | < 500ms |
+| NFR-PERF-03 | AI executive summary (100-page document) | < 30 seconds |
+| NFR-PERF-04 | First proposal draft generation | < 2 minutes |
+| NFR-PERF-05 | Full-text search over 10K+ active tenders | < 500ms |
+| NFR-PERF-06 | CPU-bound operations (WeasyPrint, python-docx, bcrypt) must run in thread pool executor | Prevents event loop blocking |
+| NFR-PERF-07 | Database materialized views refreshed `CONCURRENTLY` | No exclusive lock during refresh |
+
+### 10.2 Availability & Reliability
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-REL-01 | Client platform uptime SLA | 99.5% |
+| NFR-REL-02 | AI gateway circuit breaker (outer) wrapping retry with exponential backoff (inner) for all outbound HTTP | Required pattern |
+| NFR-REL-03 | Redis fail-open: Redis outage must not block auth, rate limiting, or tier checks | Required |
+| NFR-REL-04 | Stripe outbound calls wrapped with E04 two-layer resilience pattern | Required |
+| NFR-REL-05 | Celery tasks: narrow `except` clauses; never swallow `celery.exceptions.Retry` | Required |
+| NFR-REL-06 | Stuck-task cleanup: Celery Beat job marks stale `in-progress` records FAILED after configurable TTL | Required |
+| NFR-REL-07 | At-least-once event delivery via Redis Streams with DLQ; dual-layer idempotency (DB constraint + Redis SETNX) | Required |
+
+### 10.3 Security
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-SEC-01 | JWT RS256 authentication; tokens validated for signature + expiry | Required |
+| NFR-SEC-02 | TLS 1.3 in transit; AES-256 at rest | Required |
+| NFR-SEC-03 | Bcrypt password hashing (cost=12); max_length=128 on all password fields | Required |
+| NFR-SEC-04 | All webhook signatures validated with `hmac.compare_digest()` — timing-safe | Required |
+| NFR-SEC-05 | Cross-tenant isolation: every company-scoped endpoint must have a negative test (Company A → Company B resource → 403) | Required |
+| NFR-SEC-06 | Two-tier RBAC enforcement: company role ceiling + entity-level permission (cannot exceed ceiling) | Required |
+| NFR-SEC-07 | OAuth state parameter validated against session nonce to prevent CSRF | Required |
+| NFR-SEC-08 | `dangerouslySetInnerHTML` usage requires explicit security review comment | Required |
+| NFR-SEC-09 | Refresh token rotation with `SELECT FOR UPDATE` pessimistic locking | Required |
+| NFR-SEC-10 | IP allowlist middleware on admin API (VPN-restricted) | Required |
+| NFR-SEC-11 | Enterprise API keys: SHA-256 hash only stored in DB; full key shown once at creation | Required |
+
+### 10.4 Scalability
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-SCALE-01 | Support 10K+ active tenders with full-text search | Required |
+| NFR-SCALE-02 | Support concurrent AI agent execution per tenant | Required |
+| NFR-SCALE-03 | Redis Streams consumer group with consumer-group-level parallelism | Required |
+| NFR-SCALE-04 | SSE semaphore-controlled concurrency (max 10 concurrent streams per pod) | Required |
+
+### 10.5 Data & Compliance
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-DATA-01 | All data stored within EU (AWS eu-central-1 or equivalent) | Required |
+| NFR-DATA-02 | GDPR: right to erasure, data processing records, DPAs with KraftData | Required |
+| NFR-DATA-03 | Schema isolation: one PostgreSQL database, six schemas (client, admin, pipeline, gateway, notification, shared) | Required |
+| NFR-DATA-04 | No cross-schema queries in application code | Required |
+| NFR-DATA-05 | Document retention: opportunity lifetime + 2 years (configurable per tenant) | Required |
+
+### 10.6 Internationalisation & Accessibility
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-I18N-01 | Bilingual UI: Bulgarian (default) and English | Required |
+| NFR-I18N-02 | All UI strings use `next-intl` translations; no hardcoded display strings | Required |
+| NFR-I18N-03 | BG/EN message files must have identical key sets | Required (enforced by CI) |
+| NFR-I18N-04 | AI outputs generated in user's preferred language | Required |
+| NFR-I18N-05 | Source documents processed in BG, EN, DE, FR, RO | Required |
+| NFR-WCAG-01 | WCAG 2.1 AA accessibility compliance | Required |
+
+### 10.7 Observability
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-OBS-01 | Prometheus `/metrics` endpoint on each service | Required |
+| NFR-OBS-02 | Structured JSON logging via `structlog` in production | Required |
+| NFR-OBS-03 | `x-request-id` correlation header on all API requests | Required |
+| NFR-OBS-04 | KraftData eval runs for continuous AI agent quality monitoring | Required |
+| NFR-OBS-05 | Admin introspection endpoints: circuit breaker state, rate limit state, execution queue state | Required |
+
+### 10.8 Maintainability & Testing
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-TEST-01 | Minimum 80% automated test coverage across all services | Required |
+| NFR-TEST-02 | ATDD-first: failing acceptance tests written before implementation | Required |
+| NFR-TEST-03 | testcontainers + respx for all backend integration tests | Required |
+| NFR-TEST-04 | Playwright E2E specs for all frontend ACs before story marked done | Required |
+| NFR-TEST-05 | Per-test transaction rollback for DB isolation; Redis flush for cache isolation | Required |
+| NFR-TEST-06 | Cross-tenant negative test for every company-scoped endpoint | Required |
+
+---
+
+## 11. Feature-Level User Stories
+
+Stories are expressed at feature level, cross-referenced to epics. Story-level breakdowns live in the individual epic files.
+
+### 11.1 Authentication & Organisation
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-AUTH-01 | New user | Register with email/password and verify my email | I can securely access the platform |
+| US-AUTH-02 | Existing user | Log in with Google OAuth2 | I can access the platform without managing another password |
+| US-AUTH-03 | Company admin | Invite team members by email and assign roles | I can control who can do what in my organisation |
+| US-AUTH-04 | User | Log in and have my session persist securely across browser refreshes | I don't need to re-authenticate constantly |
+
+### 11.2 Opportunity Discovery
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-OPP-01 | Bid manager | Browse a curated list of tenders from AOP and TED filtered by CPV, region, and budget | I quickly identify relevant opportunities |
+| US-OPP-02 | Bid manager | See an AI-computed match score (0–100) against my company profile for each opportunity | I can prioritise which tenders to pursue |
+| US-OPP-03 | Free tier user | See basic opportunity details (name, deadline, location, type, status) | I can evaluate the platform before subscribing |
+| US-OPP-04 | Paid user | Access full opportunity details including budget, evaluation criteria, and AI analysis | I have all the information I need to make a bid decision |
+| US-OPP-05 | Bid manager | Set up configurable email alerts by CPV sector, region, and budget range | I'm notified of new relevant tenders without manually checking |
+| US-OPP-06 | Bid manager | Subscribe to an iCal feed of my tracked opportunity deadlines | I can see bid deadlines in my preferred calendar app |
+| US-OPP-07 | Paid user | Sync opportunity deadlines with Google Calendar or Outlook | My bid schedule is integrated with my daily workflow |
+
+### 11.3 Document Intelligence
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-DOC-01 | Bid manager | Upload a tender package (PDF/DOCX/ZIP) and receive an AI-generated executive summary within 30 seconds | I can quickly assess a complex tender without reading 200 pages |
+| US-DOC-02 | Legal reviewer | See AI-flagged high-risk clauses (unlimited liability, IP assignment, penalties) in a tender contract | I can prioritise my legal review on the most critical clauses |
+| US-DOC-03 | Technical writer | View an auto-generated compliance checklist of every mandatory requirement | I have a structured checklist to track compliance during drafting |
+| US-DOC-04 | Company admin | Have ESPD fields pre-filled from the company profile vault | I avoid re-entering the same company data for every tender |
+
+### 11.4 Bid Strategy
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-BID-01 | Bid manager | Receive an AI bid/no-bid recommendation with a score breakdown | I can make an informed go/no-go decision quickly |
+| US-BID-02 | Bid manager | Override an AI recommendation with a written justification | I retain human decision authority while keeping a traceable record |
+| US-BID-03 | Bid manager | Record bid outcomes (won/lost/withdrawn) with evaluator feedback | I can build a history that improves future recommendations |
+| US-BID-04 | Financial analyst | Get a competitive pricing suggestion based on historical awards | I can price competitively without starting from a blank sheet |
+
+### 11.5 Collaborative Proposal Drafting
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-PROP-01 | Bid manager | Create a proposal workspace, assign roles to team members, and generate an AI first draft | I can kick off proposal development in minutes |
+| US-PROP-02 | Technical writer | Edit proposal sections in a rich-text editor with an AI co-pilot | I can produce high-quality content faster |
+| US-PROP-03 | Bid manager | Lock sections while I edit them and see who is editing which section | I avoid overwriting colleagues' work |
+| US-PROP-04 | Reviewer | Leave threaded comments on specific sections anchored to a version | I can give structured feedback that the author can action |
+| US-PROP-05 | Bid manager | Roll back to a previous proposal version | I can recover from mistakes or bad AI suggestions |
+| US-PROP-06 | Technical writer | Reuse pre-approved boilerplate content blocks (company overview, quality management) | I avoid duplicating effort across proposals |
+| US-PROP-07 | Bid manager | Export the final proposal as a PDF and DOCX | I can submit to procurement portals in the required format |
+
+### 11.6 Compliance & Review
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-COMP-01 | Bid manager | Run a compliance check of my draft proposal against the assigned regulatory framework | I catch compliance gaps before submission |
+| US-COMP-02 | Bid manager | See a scoring simulator showing predicted evaluator scores per criterion | I can improve the proposal strategically to maximise points |
+| US-COMP-03 | Company admin | Request management sign-off through a configurable multi-stage approval workflow | I have an audit trail of approvals before submission |
+| US-COMP-04 | Platform admin | Create and edit compliance frameworks (ZOP, EU directive rule sets) | I keep the compliance knowledge base current |
+| US-COMP-05 | Bid manager | Be notified by AI when procurement regulations that affect my active bids change | I'm never caught off-guard by regulatory updates |
+
+### 11.7 Grant Specialisation
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-GRANT-01 | Company admin | Check my organisation's eligibility against active EU grant programmes | I know which programmes I should pursue |
+| US-GRANT-02 | Bid manager | Build an EU-compliant budget using the AI budget builder | I ensure cost categories, overhead rates, and co-financing requirements are met |
+| US-GRANT-03 | Bid manager | Find potential consortium partners with relevant EU grant experience | I can assemble a strong consortium quickly |
+| US-GRANT-04 | Technical writer | Generate a logical framework (logframe), work packages, and Gantt chart from a narrative description | I produce structured grant application components efficiently |
+
+### 11.8 Analytics
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-ANA-01 | Bid manager | See market intelligence dashboards (procurement volumes, active authorities, seasonal trends) | I can identify the best market segments to target |
+| US-ANA-02 | Company admin | Track the ROI of bid preparation (time invested vs. contract value won) | I can justify the bid budget and resource allocation |
+| US-ANA-03 | Company admin | View team performance metrics (win rate, bids submitted, average prep time per person) | I can identify coaching opportunities and top performers |
+| US-ANA-04 | Bid manager | See competitor intelligence (bidding patterns, win rates, pricing) | I can position our bids to beat specific competitors |
+| US-ANA-05 | Company admin | Generate and export management reports (pipeline value, success rates, upcoming deadlines) | I can report to leadership without manual data assembly |
+| US-ANA-06 | User | See my current billing period usage vs. tier limits | I know how much AI capacity I have remaining this month |
+
+### 11.9 Subscription & Billing
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-BILL-01 | New user | Get a 14-day Professional tier trial without a credit card | I can evaluate premium features before committing |
+| US-BILL-02 | Free user | Upgrade to a paid tier via Stripe Checkout | I can access premium features with a familiar, secure payment flow |
+| US-BILL-03 | Paid user | Manage my subscription (upgrade, downgrade, cancel, update payment method) via a self-service portal | I control my subscription without contacting support |
+| US-BILL-04 | Enterprise user | Receive a custom invoice with NET 30/60 terms | I can use standard B2B procurement processes |
+| US-BILL-05 | User | Be prompted to upgrade when I hit a monthly AI usage limit | I understand the limit and have a clear path to remove it |
+
+### 11.10 Admin Platform
+
+| Story | As a... | I want to... | So that... |
+|-------|---------|--------------|------------|
+| US-ADMIN-01 | Platform admin | Manage tenant companies (view, activate, deactivate, change tier) | I can administer the platform at scale |
+| US-ADMIN-02 | Platform admin | View crawler run history and trigger manual crawls | I can diagnose data freshness issues |
+| US-ADMIN-03 | Platform admin | Configure white-label branding for Enterprise clients | I can deliver the white-label value proposition |
+| US-ADMIN-04 | Platform admin | Search and export the immutable audit log | I can respond to compliance and support requests |
+| US-ADMIN-05 | Enterprise client | Use the EU Solicit REST API with an API key | I can integrate the platform into my own systems |
+
+---
+
+## 12. Acceptance Criteria
+
+### 12.1 Authentication & Identity (AC)
+
+**AC-AUTH-01:** A new user can register with email + password, receive a verification email, and access the platform after clicking the verification link.  
+**AC-AUTH-02:** A user can log in with Google OAuth2 and is provisioned with an account if none exists.  
+**AC-AUTH-03:** Access tokens expire in 15 minutes; refresh tokens rotate automatically; the second concurrent refresh invalidates the token family and logs the user out.  
+**AC-AUTH-04:** A deactivated user cannot receive new tokens on login or refresh.  
+**AC-AUTH-05:** Rate-limited auth endpoints return `429` with the standard error envelope; Redis `ConnectionError` causes fail-open (no 500).
+
+### 12.2 Opportunity Discovery (AC)
+
+**AC-OPP-01:** New opportunities from AOP and TED appear in the platform within 24 hours of portal publication.  
+**AC-OPP-02:** A free tier user sees only: name, deadline, location, type, status. All other fields are gated behind a paywall prompt.  
+**AC-OPP-03:** A paid user can filter opportunities by CPV code, region, min/max budget, deadline range, and status in ≤ 3 clicks from the dashboard.  
+**AC-OPP-04:** An AI match score (0–100) is displayed on the listing card and opportunity detail for authenticated users with a company profile.  
+**AC-OPP-05:** A user can upload a PDF/DOCX/ZIP tender package (≤ 100MB per file, ≤ 500MB per package). Files failing ClamAV scan are rejected with a clear error message.  
+**AC-OPP-06:** A user can configure email alert preferences (CPV, region, budget, deadline proximity) and receive a digest on their chosen schedule (immediate/daily/weekly).  
+**AC-OPP-07:** An iCal subscription URL is unique per user; subscribing in a calendar app shows all tracked opportunity deadlines.  
+**AC-OPP-08:** Google Calendar sync creates calendar events for tracked deadlines; updating a deadline in EU Solicit updates the calendar event; removing a tracked opportunity deletes the event.
+
+### 12.3 Document Intelligence (AC)
+
+**AC-DOC-01:** An executive summary for a 100-page PDF is generated and streamed to the user within 30 seconds of upload completion.  
+**AC-DOC-02:** The AI compliance checklist contains every mandatory requirement extracted from the tender package as individually trackable line items.  
+**AC-DOC-03:** Clause risk flags identify unlimited-liability, IP-assignment, and penalty clauses with the relevant clause text and a severity label.  
+**AC-DOC-04:** ESPD fields are pre-populated from the company profile vault; the user can review and submit without re-entering stored data.  
+**AC-DOC-05:** AI outputs are generated in the user's preferred language (BG or EN), regardless of source document language.
+
+### 12.4 Proposal Drafting (AC)
+
+**AC-PROP-01:** A bid manager can create a proposal workspace, assign team members with named roles, and receive an AI-generated first draft via SSE streaming in under 2 minutes.  
+**AC-PROP-02:** Two concurrent users editing the same section: the second user sees a "Section locked by [name]" indicator and cannot save changes until the lock expires (15-min TTL) or the holder releases it.  
+**AC-PROP-03:** A concurrent edit by two users on different sections completes without data loss.  
+**AC-PROP-04:** A user can view the diff between any two proposal versions and roll back to any previous version.  
+**AC-PROP-05:** A reviewer can post a threaded comment on a specific section; the author can reply and resolve the comment thread; comments persist across versions.  
+**AC-PROP-06:** The proposal is exported as a valid PDF and DOCX with correct formatting within 60 seconds of export request.  
+**AC-PROP-07:** Concurrent save by two different users triggers a 409 Conflict response with a structured body; the client displays a conflict resolution dialog.
+
+### 12.5 Compliance & Billing (AC)
+
+**AC-COMP-01:** The compliance checker validates the proposal against the framework assigned to that specific opportunity (not a generic ruleset) and returns a pass/fail per rule with the relevant proposal location.  
+**AC-COMP-02:** The scoring simulator returns a score per evaluation criterion with at least one actionable improvement suggestion per criterion scoring below 70%.  
+**AC-BILL-01:** A new user's account is automatically on a 14-day Professional trial. After 14 days, if no subscription is created, the account downgrades to Free tier.  
+**AC-BILL-02:** A user who hits their monthly AI summary limit sees an upgrade prompt instead of the summary result; no partial AI generation is billed.  
+**AC-BILL-03:** A Stripe `invoice.payment_failed` webhook downgrades the subscription to `past_due` status in the database within 60 seconds of the webhook receipt.  
+**AC-BILL-04:** A Stripe webhook replayed with the same `stripe_event_id` is idempotently processed (second delivery returns 200 without side effects).
+
+### 12.6 Analytics (AC)
+
+**AC-ANA-01:** Market intelligence charts show sector-level data scoped exclusively to the requesting user's company; cross-tenant data leakage results in a failed test.  
+**AC-ANA-02:** A management report can be exported as PDF or DOCX; the S3 signed URL is valid for 24 hours; the file is accessible at the URL.  
+**AC-ANA-03:** Tier-gated analytics features return 403 with `{"error": "tier_required", "minimum_tier": "...", "upgrade_url": "/billing"}` for users below the required tier.
+
+### 12.7 Security (AC)
+
+**AC-SEC-01:** A user with Company A credentials attempting to access a Company B resource receives 403 (not 401 or 404).  
+**AC-SEC-02:** A webhook with an invalid HMAC signature returns 401/403 within < 1ms difference from a valid-signature request (timing-safe comparison verified by test).  
+**AC-SEC-03:** A cross-user-scoped resource access (e.g., accessing another user's notification preference) returns 404, not 403.  
+**AC-SEC-04:** An admin with `platform_admin` role accessing the admin API from a non-allowlisted IP receives 403.
+
+---
+
+## 13. Technical Constraints (Summary)
+
+These constraints are non-negotiable and shape implementation choices:
+
+| Constraint | Value |
+|------------|-------|
+| Backend language | Python 3.12+ |
+| API framework | FastAPI (async) |
+| ORM | SQLAlchemy (async) + Alembic |
+| Database | PostgreSQL 16 (6 schemas, schema isolation) |
+| Cache / events | Redis 7 (Redis Streams, no Celery for events) |
+| Worker tasks | Celery (for long-running async jobs) |
+| Frontend | Next.js 14 App Router, TypeScript strict |
+| State management | Zustand (persist + devtools) |
+| Data fetching | TanStack Query v5 + `<QueryGuard>` |
+| Forms | React Hook Form + Zod (`useZodForm`) |
+| UI components | shadcn/ui in `packages/ui` |
+| Rich text editor | Tiptap |
+| i18n | next-intl v3 (`locales: ['bg', 'en']`, `defaultLocale: 'bg'`) |
+| AI platform | KraftData (agents, teams, workflows, RAG) |
+| Payment | Stripe (subscriptions, usage metering, customer portal, tax) |
+| Email | SendGrid |
+| Storage | S3-compatible (MinIO locally; AWS S3 in production) |
+| Monitoring | Prometheus `/metrics`, structlog |
+| Infrastructure | Docker Compose (local), Helm 3, Terraform ≥ 1.5, GitHub Actions CI |
+| Data residency | EU only (AWS eu-central-1 or equivalent) |
+
+---
+
+## 14. Milestones & Phasing
+
+| Phase | Epics | Sprint | Key Delivery |
+|-------|-------|--------|--------------|
+| **Phase 1: Foundation** | E01 (Infra), E02 (Auth), E03 (Frontend Shell) | 1–2 | Running services; user can register and log in |
+| **Phase 2: Data & AI** | E04 (AI Gateway), E05 (Data Pipeline) | 3–4 | Tenders ingested; AI agents callable |
+| **Phase 3: Core Product** ← **Demo milestone** | E06 (Opportunity Discovery), E07 (Proposal Generation) | 5–8 | End-to-end: discover → analyse → draft → export |
+| **Phase 4: Commercial** ← **Beta milestone** | E08 (Billing), E09 (Notifications & Calendar) | 9–10 | Paid subscriptions live; alerts and calendar sync working |
+| **Phase 5: Scale & Launch** ← **MVP milestone** | E10 (Collaboration), E11 (Grants), E12 (Analytics & Admin) | 11–14 | Full feature set; admin platform; analytics dashboards |
+
+---
+
+## 15. Appendix: Tier Feature Matrix
+
+| Feature | Free | Starter (€29) | Professional (€59) | Enterprise (€109+) |
+|---------|------|--------------|-------------------|-------------------|
+| Opportunity listing (basic) | ✅ | ✅ | ✅ | ✅ |
+| Full opportunity detail | ❌ | ✅ | ✅ | ✅ |
+| AI executive summaries/mo | 0 | 5 | 20 | Unlimited |
+| Proposal drafts/mo | 0 | 2 | 10 | Unlimited |
+| Compliance checks/mo | 0 | 5 | 20 | Unlimited |
+| Market intelligence | ❌ | ✅ | ✅ | ✅ |
+| ROI tracker | ❌ | ✅ | ✅ | ✅ |
+| Team performance | ❌ | ✅ | ✅ | ✅ |
+| Competitor intelligence | ❌ | ❌ | ✅ | ✅ |
+| Pipeline forecasting | ❌ | ❌ | ✅ | ✅ |
+| Calendar sync | ❌ | ❌ | ✅ | ✅ |
+| Per-bid add-ons | ❌ | ✅ | ✅ | ✅ |
+| Enterprise API | ❌ | ❌ | ❌ | ✅ |
+| White-label | ❌ | ❌ | ❌ | ✅ |
+| Custom invoicing (NET 30/60) | ❌ | ❌ | ❌ | ✅ |
+| 14-day Professional trial | ✅ on sign-up | — | — | — |
+
+---
+
+*Document generated by BMAD `bmad-create-prd` workflow in autopilot mode on 2026-04-23.*  
+*Primary inputs: epics.md (FR/NFR inventory), architecture.md (ADR), project-context.md (implementation patterns), implementation-plan.md (milestone structure).*  
+*Product brief (product-brief.md) was unavailable at time of generation — file contained only drift-detection sentinel.*

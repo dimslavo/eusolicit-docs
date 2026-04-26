@@ -1,6 +1,6 @@
 # Story 8.3: 14-Day Professional Trial Provisioning
 
-Status: review
+Status: done
 
 ## Story
 
@@ -600,3 +600,32 @@ Claude Sonnet 4.6
 **No deviations detected.** No scope creep, no missing requirements, no architectural drift, no acceptance gaps.
 
 **Recommendation:** Mark story `done` and proceed to Story 8.4.
+
+---
+
+### Second-Pass Adversarial Review (2026-04-24)
+
+**Outcome:** ✅ **Approve** (independent re-verification)
+
+**Reviewer:** bmad-code-review (Claude Sonnet 4.5)
+
+**Verification scope:** Re-read the production files (`billing_service.py`, `tier_gate.py`, `opportunity_tier_gate.py`, `auth.py`, `config.py`) and the four Story 8.3 test modules against all 8 ACs.
+
+**Confirmed correct:**
+- AC1 — `provision_professional_trial` calls `stripe.Subscription.create` via `asyncio.to_thread` with the exact required kwargs (`customer`, `items=[{"price": ...}]`, `trial_end`, `payment_behavior="default_incomplete"`, `payment_settings={"save_default_payment_method": "on_subscription"}`, `metadata={"company_id": ...}`, `idempotency_key=f"trial-provisioning-{company_id}"`). `now` is captured once and reused for `trial_end_ts`, `trial_start`, `trial_end`, `started_at` — single source of truth, no clock drift between Stripe call and DB write.
+- AC2 — Existing `Subscription` row is UPDATEd via attribute assignment then flushed; `stripe_customer_id` is never touched (verified by `test_stripe_customer_id_preserved_after_trial_provisioning`). No `session.add()` for trial provisioning.
+- AC3 — Three-layer idempotency: (a) explicit pre-Stripe `existing.stripe_subscription_id` check returning False, (b) Stripe `idempotency_key`, (c) DB UNIQUE on `subscriptions.company_id` from migration 027. `provision_stripe_customer` would also no-op on retry due to its own `stripe_customer_id` check.
+- AC4 — `EventPublisher.publish()` is invoked OUTSIDE the `async with session_factory()` block, gated on `if trial_provisioned`, with publish failures caught and logged WARNING (non-fatal). Event payload matches the spec exactly (`old_tier="free"`, `new_tier="professional"`, `timestamp=ISO8601`, `tenant_id=str(company_id)`, `source_service="client-api"`).
+- AC5 — All three skip branches present and tested: no `stripe_customer_id` → WARNING `trial_provisioning_skipped_no_customer`; no `stripe_professional_price_id` → WARNING `trial_provisioning_skipped_no_price_id`; `StripeError` → ERROR `trial_provisioning_failed` and swallowed.
+- AC6 — `auth.py` imports `provision_new_company_billing_bg` and enqueues it (verified line 26 + line 55 of `auth.py`). `provision_stripe_customer_bg` retained with DEPRECATED docstring; both `test_auth_module_imports_provision_new_company_billing_bg` and `test_register_endpoint_background_task_is_provision_new_company_billing_bg` pin this.
+- AC7 — `_ALLOWED_STATUSES = ["active", "trialing"]` added to BOTH `tier_gate.py` (line 77) and `opportunity_tier_gate.py` (line 67); `_get_tier_with_cache` and `get_opportunity_tier_gate` both use `Subscription.status.in_(_ALLOWED_STATUSES)`. `_ALLOWED_STATUSES` correctly NOT in `__all__` (private). Module docstrings and inline comments updated.
+- AC8 — Test coverage is comprehensive: 4 unit-test modules covering happy path, idempotency, all 4 skip branches, audit emission, sequencing, event publishing post-commit, rollback on inner exception, event-publish failure non-fatal, and full integration flow with seeded company FK.
+
+**Resilience checks (out of band):**
+- Partial-failure recovery: if Stripe call succeeds but DB flush fails, the outer `try/except` in `provision_new_company_billing_bg` rolls back the session. On retry, the local `stripe_subscription_id` is null so the explicit check does NOT short-circuit, but Stripe's `idempotency_key` will return the same subscription, and the local row is updated normally. Recoverable.
+- Concurrent invocation: only one BG task fires per registration (FastAPI `BackgroundTasks` is per-request). The Stripe `idempotency_key` + DB UNIQUE on `company_id` form belt-and-braces if the BG task were ever re-fired (e.g., from a future retry layer).
+- The lazy-import-of-`get_redis_client` recommendation in the spec was overcautious — module-level import works because `client_api.dependencies` does not import `billing_service`. No circular dependency exists. Tests confirm.
+
+**No new findings.** No deviations. No scope creep. All previous-review observations remain non-blocking and are not introduced by this story.
+
+**Final disposition:** Story status updated from `review` to `done`. Sprint status synced. Proceed to Story 8.4 review.

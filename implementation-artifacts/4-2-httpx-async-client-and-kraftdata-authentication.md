@@ -1,10 +1,11 @@
 # Story 4.2: httpx Async Client and KraftData Authentication
 
-Status: review
+Status: done
 
 ## Change Log
 
 - 2026-04-14: S04.02 implemented — singleton httpx.AsyncClient with KraftData auth, typed exceptions, lifespan wiring, respx dev dep, 9 unit tests + 1 integration smoke test (16/16 pass, 1 skipped in CI). Agent: Claude Sonnet 4.5
+- 2026-04-23: Review-fix — restored `Authorization: Bearer` + `Content-Type: application/json` headers (AC 2, 3); stripped circuit breaker / retry / rate limiter scope creep out of `call_kraftdata` and into a new `kraftdata_resilient.py` wrapper owned by S04.06/S04.09; updated unit test assertions to match the corrected headers; re-wired execution router to the resilient wrapper so downstream S04.04/S04.06/S04.09 behaviour is preserved. 3 review action items resolved (116/116 ai-gateway unit tests pass).
 
 ## Story
 
@@ -76,6 +77,12 @@ so that **every subsequent AI gateway story (S04.04–S04.09) has a single, well
 - [x] Task 6: Write integration smoke test — `tests/integration/test_kraftdata_live.py` (AC: 2, skipped in CI)
   - [x] 6.1 Mark entire module `@pytest.mark.skipif(not os.getenv("KRAFTDATA_API_KEY"), reason="KraftData credentials not available")`
   - [x] 6.2 Test `test_live_auth_succeeds`: call a real KraftData endpoint (e.g., `/client/api/v1/health` or equivalent); assert 200 or 401 (not connection error); assert auth header sent
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][Blocking][CONTRADICTORY_SPEC] Replace `X-API-Key: <key>` with `Authorization: Bearer <key>` and add `Content-Type: application/json` as default headers in `init_client()` (AC 2, 3). — Fixed in `src/ai_gateway/services/kraftdata_client.py::init_client`.
+- [x] [AI-Review][Blocking][SCOPE_CREEP] Remove circuit breaker, retry, and rate limiter imports and logic from `call_kraftdata`; S04.02 provides only the raw HTTP client. — Fixed: `call_kraftdata` reverted to a single bare HTTP attempt with typed exception wrapping and the `_settings`/`_raw_call_kraftdata` indirection removed. The resilience layers are now composed in a new S04.06/S04.09-owned module `src/ai_gateway/services/kraftdata_resilient.py::call_kraftdata_resilient`, which the execution router calls for agent/workflow/team runs.
+- [x] [AI-Review][Blocking][ACCEPTANCE_GAP] Update `test_auth_header_injected` and `test_no_auth_header_no_request_sent` to assert `Authorization: Bearer <key>` + `Content-Type: application/json` (per E04-P0-003). — Fixed in `tests/unit/test_kraftdata_client.py`.
 
 ## Dev Notes
 
@@ -419,15 +426,94 @@ Claude Sonnet 4.5 (claude-sonnet-4-5)
 - **Task 4:** Added `respx>=0.21` to `[project.optional-dependencies] dev` in `pyproject.toml`. Installed version: 0.23.1.
 - **Task 5:** 9 unit tests written and all passing. Covers E04-P0-003, E04-P1-020, E04-P2-014 plus all exception and happy-path scenarios.
 - **Task 6:** Integration smoke test written, correctly skipped in CI (no `KRAFTDATA_API_KEY`).
-- **Test results:** 16 passed, 1 skipped, 0 failed. No regressions to prior S04.01 tests.
+- **Test results (initial):** 16 passed, 1 skipped, 0 failed. No regressions to prior S04.01 tests.
 - **Linting:** All story files pass ruff. 4 pre-existing lint issues in S04.01 files not modified by this story.
+- **2026-04-23 Review-fix session:**
+  - ✅ Resolved review finding [Blocking/CONTRADICTORY_SPEC]: Restored `Authorization: Bearer <KRAFTDATA_API_KEY>` + `Content-Type: application/json` headers in `init_client()` (AC 2, 3).
+  - ✅ Resolved review finding [Blocking/SCOPE_CREEP]: Removed circuit-breaker / retry / rate-limiter imports and logic from `call_kraftdata`. The S04.02 client is now purely a raw HTTP call with typed exception wrapping. The resilience composition moved to a new dedicated module `src/ai_gateway/services/kraftdata_resilient.py` (`call_kraftdata_resilient`) owned by S04.06/S04.09. The execution router (S04.04) was updated to call `call_kraftdata_resilient(..., agent_name=id)` for agent / workflow / team runs while still calling the bare `call_kraftdata` for storage uploads (no resilience policy on storage writes).
+  - ✅ Resolved review finding [Blocking/ACCEPTANCE_GAP]: Updated `test_auth_header_injected` and `test_no_auth_header_no_request_sent` in `tests/unit/test_kraftdata_client.py` to assert `Authorization: Bearer <key>` and `Content-Type: application/json` per E04-P0-003.
+  - Updated `tests/unit/test_execution_router.py` patches: 7 agent/workflow/team test patches retargeted from `call_kraftdata` → `call_kraftdata_resilient` (storage test retains `call_kraftdata` patch).
+
+### Test Results
+
+Verbatim `pytest tests/unit/ --no-cov` summary (ai-gateway unit suite, all 116 tests including the 9 kraftdata_client unit tests and 15 execution_router tests):
+
+```
+116 passed, 1 warning in 1.94s
+```
+
+Story-scoped tests only (`pytest tests/unit/test_kraftdata_client.py tests/integration/test_kraftdata_live.py --no-cov`):
+
+```
+9 passed, 1 skipped in 0.14s
+```
+
+Ruff lint on all S04.02-owned files (`kraftdata_client.py`, `kraftdata_resilient.py`, `test_kraftdata_client.py`): `All checks passed!`
+
+The ai-gateway integration e2e tests (`tests/integration/test_e2e_gateway.py`, `test_e2e_webhooks_ratelimit.py`) currently fail with 422 on all POST bodies — this is a pre-existing environment issue caused by uncommitted schema drift in `packages/eusolicit-kraftdata/src/eusolicit_kraftdata/requests.py` (`input` → `message` rename) and reproduces on `git stash`-ed worktree without S04.02 changes. Out of scope for this review-fix.
 
 ### File List
 
-- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/exceptions.py` (created)
-- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/kraftdata_client.py` (created)
-- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/__init__.py` (modified — added exception re-exports)
-- `eusolicit-app/services/ai-gateway/src/ai_gateway/main.py` (modified — wired init_client/close_client into lifespan)
-- `eusolicit-app/services/ai-gateway/pyproject.toml` (modified — added respx>=0.21 to dev deps)
-- `eusolicit-app/services/ai-gateway/tests/unit/test_kraftdata_client.py` (created)
-- `eusolicit-app/services/ai-gateway/tests/integration/test_kraftdata_live.py` (created)
+**New**
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/exceptions.py` (initial implementation)
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/kraftdata_client.py` (initial implementation; review-fix removed scope creep)
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/kraftdata_resilient.py` (review-fix — new S04.06/S04.09-owned module hosting `call_kraftdata_resilient` composition)
+- `eusolicit-app/services/ai-gateway/tests/unit/test_kraftdata_client.py` (initial implementation; review-fix updated header assertions)
+- `eusolicit-app/services/ai-gateway/tests/integration/test_kraftdata_live.py` (initial implementation)
+
+**Modified**
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/services/__init__.py` (added exception re-exports in initial implementation)
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/main.py` (wired `init_client` / `close_client` into lifespan)
+- `eusolicit-app/services/ai-gateway/pyproject.toml` (added `respx>=0.21` to dev deps)
+- `eusolicit-app/services/ai-gateway/src/ai_gateway/routers/execution.py` (review-fix — swapped `call_kraftdata(..., agent_name=id)` to `call_kraftdata_resilient(..., agent_name=id)` in the three agent/workflow/team sync endpoints; storage upload still uses bare `call_kraftdata`)
+- `eusolicit-app/services/ai-gateway/tests/unit/test_execution_router.py` (review-fix — 7 patches retargeted from `call_kraftdata` → `call_kraftdata_resilient`)
+
+## Senior Developer Review
+
+**Status:** REVIEW: Approve (re-review 2026-04-23).
+
+### Re-review 2026-04-23 — Verdict: Approve
+
+All three previously blocking findings are resolved and independently verified against the current working tree:
+
+- AC 2 + AC 3: `init_client()` in `src/ai_gateway/services/kraftdata_client.py:87-90` sets `Authorization: Bearer <KRAFTDATA_API_KEY>` and `Content-Type: application/json`.
+- S04.02 scope: `call_kraftdata` in `src/ai_gateway/services/kraftdata_client.py:116-205` is a single bare HTTP attempt with typed-exception wrapping only — no imports from `circuit_breaker` / `retry` / `rate_limiter`. Resilience composition lives in `src/ai_gateway/services/kraftdata_resilient.py` and is consumed from `routers/execution.py`.
+- Test contract: `test_auth_header_injected` and `test_no_auth_header_no_request_sent` in `tests/unit/test_kraftdata_client.py` assert `Authorization: Bearer <key>` + `Content-Type: application/json` (E04-P0-003).
+
+**Verification (local):**
+
+```
+.venv/bin/python -m pytest tests/unit/test_kraftdata_client.py --no-cov -q
+9 passed, 1 warning in 0.34s
+
+.venv/bin/python -m pytest tests/unit/ --no-cov -q
+116 passed, 2 warnings in 1.81s
+```
+
+All 11 acceptance criteria are satisfied and no new blocking issues were surfaced by the adversarial pass (Blind Hunter + Edge Case Hunter).
+
+### Deferred Observations (non-blocking, logged for future hardening)
+
+These are edge-case hardening opportunities surfaced by the adversarial re-review. None violate an acceptance criterion for S04.02 and none block promotion to `done`. They are candidates for follow-up tickets or absorption into S04.06 / S04.09 hardening work:
+
+- `httpx.ConnectTimeout` classification — `ConnectTimeout` is a subclass of both `httpx.TimeoutException` and `httpx.ConnectError`; the current `except` ordering wraps it as `KraftDataTimeoutError`. AC 8's language (`httpx.TimeoutException → KraftDataTimeoutError`) technically covers this, but operators triaging a connect-phase timeout may expect `KraftDataConnectionError`. Consider re-ordering or explicit handling if downstream retry policy diverges.
+- Missing `latency_ms` on the `ConnectError` warn branch (`kraftdata_client.py:180-186`) — inconsistent with the `TimeoutException` and `HTTPStatusError` warn events that both emit `latency_ms`. Observability dashboards that group on `latency_ms` will drop these rows.
+- `KraftDataAPIError.body = exc.response.text` (`kraftdata_client.py:200-205`) is not length-capped; the DEBUG response_body log is truncated at 2 000 chars but the exception attribute is unbounded. Large KraftData error bodies (HTML stack traces, echoed payloads) can inflate exception memory and propagate into upstream logs.
+- `init_client` has no re-entrancy guard — a second call without an intervening `close_client()` leaks the previous `AsyncClient`. In FastAPI lifespan this is a non-issue; worth a defensive check if hot-reload or test-fixture ordering ever invokes it twice.
+- `close_client` does not drain in-flight requests — if a `call_kraftdata` is awaiting mid-shutdown, the resulting `httpx` error is not in the three-branch except set and escapes as an uncaught `httpx` exception. Acceptable given lifespan ordering; noted for future hardening.
+- `concurrency_limit=0` would deadlock the pool (PoolTimeout after 10s); `concurrency_limit=1` silently disables keepalive (`1 // 2 == 0`). Spec defaults to 10, and `AIGatewaySettings` does not currently guard these values.
+- Empty `kraftdata_base_url` is not warned on startup (only empty API key is). `httpx.AsyncClient(base_url="")` + a relative `path` will raise an uncaught `httpx.InvalidURL` at request time rather than failing fast at boot.
+- DEBUG response-body logging (AC 7) emits the first 2 000 chars of KraftData responses without content redaction. This is per-spec, but with DEBUG enabled in any shared environment, PII or agent-run output will land in logs. Consider a redaction helper in a future logging-hardening story.
+
+**Originally blocking (resolved — retained for audit trail):**
+- [x] **Contradictory Spec (Blocking):** AC2 and AC3 state headers should be `Authorization: Bearer {key}` and `Content-Type: application/json`. The implementation used `X-API-Key` and omitted `Content-Type`. Test `test_auth_header_injected` asserted `x-api-key`, which directly violated test design E04-P0-003. — **Resolved 2026-04-23:** headers restored in `init_client()`; unit tests updated.
+- [x] **Scope Creep (Blocking):** The implementation of `call_kraftdata` introduced circuit breaker, retry, and rate limiting logic, importing from `ai_gateway.services.circuit_breaker`, `retry`, and `rate_limiter`. These are explicitly scoped for future stories (S04.06, S04.09). — **Resolved 2026-04-23:** `call_kraftdata` reverted to a bare raw HTTP call; resilience moved into a new `kraftdata_resilient.py` (S04.06/S04.09 scope); execution router updated to call the resilient wrapper.
+- [x] **Acceptance Gap (Blocking):** Tests asserted `x-api-key` instead of `Authorization`/`Content-Type`. — **Resolved 2026-04-23:** tests updated to match E04-P0-003.
+
+## Known Deviations
+
+### Detected by `3-code-review` at 2026-04-23T12:15:53Z (all resolved 2026-04-23)
+
+- ~~Implementation of HTTP headers uses `X-API-Key` instead of `Authorization: Bearer {KRAFTDATA_API_KEY}` and omits `Content-Type: application/json`. _(type: `CONTRADICTORY_SPEC`; severity: `blocking`)_~~ — **Resolved**: `init_client()` now sets `{"Authorization": "Bearer <key>", "Content-Type": "application/json"}` on the `httpx.AsyncClient`; assertions added in `test_auth_header_injected` / `test_no_auth_header_no_request_sent`.
+- ~~Implementation of `call_kraftdata` includes circuit breaker, retry, and rate limiting logic. These import from and depend on S04.06 and S04.09 modules which are out of scope for S04.02. _(type: `SCOPE_CREEP`; severity: `blocking`)_~~ — **Resolved**: `call_kraftdata` no longer imports `circuit_breaker`, `retry`, or `rate_limiter`; it is a single bare HTTP attempt with typed exception wrapping. The S04.06/S04.09 composition lives in a new dedicated module `src/ai_gateway/services/kraftdata_resilient.py`.
+- ~~Tests `test_auth_header_injected` and `test_no_auth_header_no_request_sent` assert the incorrect `x-api-key` header, directly violating the test design spec E04-P0-003. _(type: `ACCEPTANCE_GAP`; severity: `blocking`)_~~ — **Resolved**: both tests now assert `Authorization: Bearer <key>` and `Content-Type: application/json`, matching E04-P0-003.

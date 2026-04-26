@@ -1215,6 +1215,7 @@ to be future-proof.
 | 2026-04-19 | 1.2 | bmad-code-review | Adversarial review — Changes Requested (3 blocking, 2 high, 3 medium, 3 low) |
 | 2026-04-19 | 1.3 | claude-sonnet-4-5 | Addressed code review findings — 8 items resolved (B-1, B-2, B-3, H-1, H-2, M-1, M-2, M-3); L-1 / L-2 acknowledged; status stays `review` for re-review |
 | 2026-04-19 | 1.4 | bmad-code-review | Re-review pass — **Approve**. All 8 findings verified resolved in code; 30/30 Story 8.10 unit tests pass; AC coverage complete. |
+| 2026-04-24 | 1.5 | bmad-code-review | Re-verification pass — **Approve** (verdict unchanged). Code inspection confirms B-1, B-2, B-3, H-1, H-2, M-1, M-2, M-3 remain fixed at claimed line references. No regressions. One minor follow-up noted (non-blocking): `CompanyProfilePutRequest.tax_id` / `CompanyProfilePatchRequest.tax_id` do not apply the same `StringConstraints(strip_whitespace=True, to_upper=True)` as H-2 introduced for `VatValidateRequest.vat_number`; a user submitting `"de 123 456 789"` via PUT/PATCH would have the background task persist the raw, un-normalised string. Out of Story 8.10 AC scope — candidate for a follow-up story if `companies.tax_id` deduplication becomes a concern. |
 
 ---
 

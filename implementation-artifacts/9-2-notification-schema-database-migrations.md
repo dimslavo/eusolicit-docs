@@ -1,6 +1,6 @@
 # Story 9.2: Notification Schema Database Migrations
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -745,11 +745,23 @@ services/notification/tests/integration/test_002_migration.py (new — updated: 
 
 ## Senior Developer Review
 
-**Status:** Changes Requested
+**Status:** Approved (2026-04-24)
 
-### Findings
-1. **DEVIATION (ACCEPTANCE_GAP):** `test_alembic_check_no_error` in `services/notification/tests/integration/test_002_migration.py` expects `alembic check` to succeed but fails because `target_metadata = None` in `env.py`. This is a gap in the test design.
-2. **DEVIATION (ARCHITECTURAL_DRIFT):** The ORM models (`alert_log.py`, `email_log.py`, `sync_log.py`) use `Mapped[datetime]` without explicitly defining the timezone-aware timestamp type (`TIMESTAMP(timezone=True)`). SQLAlchemy 2 maps `datetime` to naive `TIMESTAMP` by default, violating the explicit architectural instruction: "ORM models use TIMESTAMP(timezone=True) / TIMESTAMPTZ — never naive TIMESTAMP."
+### Prior Findings (Resolved)
+1. **DEVIATION (ACCEPTANCE_GAP):** `test_alembic_check_no_error` expected `alembic check` to succeed but fails because `target_metadata = None` in `env.py`. **Resolved 2026-04-19** — replaced with `test_target_metadata_none_and_db_at_head` which verifies the AC7 intent via (a) assertion that `env.py` declares `target_metadata = None` (autogenerate disabled by design), and (b) `alembic current` shows `(head)`. Verified at `services/notification/tests/integration/test_002_migration.py:1386-1425`.
+2. **DEVIATION (ARCHITECTURAL_DRIFT):** ORM models used `Mapped[datetime]` without explicit `TIMESTAMP(timezone=True)`. **Resolved 2026-04-19** — all datetime columns now explicitly type as `TIMESTAMP(timezone=True)`:
+   - `alert_log.py:46-48` — `sent_at`
+   - `email_log.py:43-45` — `sent_at`
+   - `sync_log.py:58-63` — `started_at` and `completed_at`
+
+### Approval Notes (2026-04-24 review pass)
+- Migration 002 correctly implements the enum lifecycle split (`sa.Enum` for `.create()`/`.drop()`; `postgresql.ENUM(create_type=False)` for column bindings) to avoid double `CREATE TYPE` under Alembic's `before_create` event.
+- Schema-scoped enums verified (`schema='notification'`); AC6 meta-test confirms absence from `public` schema.
+- ARRAY column `opportunity_ids` uses `sa.text("'{}'::uuid[]")` default per Dev Notes guidance.
+- Downgrade executes in reverse dependency order (indexes → tables → enums).
+- Cross-schema FKs correctly omitted on `user_id` and `calendar_connection_id` per project pattern.
+- All 8 ACs covered by integration tests E09-DB-001 through E09-DB-012 plus AC7-ORM-001 through AC7-ORM-006 (44/44 pass; 240/240 total service tests pass; zero regressions).
+- No new blocking, deferrable, or architectural issues detected.
 
 ## Known Deviations
 

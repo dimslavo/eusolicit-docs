@@ -1,6 +1,6 @@
 # Story 11.5: Budget Builder Agent Integration
 
-Status: review
+Status: done  <!-- reconciled 2026-04-25 retro — sprint-status.yaml authoritative -->
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

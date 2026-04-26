@@ -831,6 +831,93 @@ All schedule endpoints require:
 
 ---
 
+## Senior Developer Review (2026-04-25)
+
+**Reviewer:** claude-sonnet-4-7 (autopilot — adversarial 3-layer review: Acceptance Auditor + Edge Case Hunter + Blind Hunter)
+**Verdict:** **Changes Requested** — 11 patch items, 6 deferred. Prior review's 5 patches are confirmed applied; this pass surfaces additional defects, several of which fall in the same E12-R-001 / spec-drift class.
+
+### Patch Items (must fix before merge)
+
+- [x] [Review][Patch] **E12-R-001 tenant isolation gap on URL-refresh UPDATE** [`services/client-api/src/client_api/services/report_service.py:243-247`] — When a completed job's signed URL has expired, the refresh `UPDATE report_jobs ... WHERE id = job_id` is missing the mandatory `company_id` filter. Every other query in this module enforces `company_id` per E12-R-001. This is the same class of bug as the prior review's patch on `report_schedule_service.py`. Fix: add `.where(report_jobs.c.company_id == user.company_id)` before the `id` predicate.
+
+- [x] [Review][Patch] **`date.today()` uses local timezone, not UTC** [`services/notification/src/notification/tasks/scheduled_report_delivery.py:199, 374`] — AC11 says "today (UTC)"; `date.today()` returns the system local date. If a Celery worker container's TZ != UTC, weekly/monthly schedules fire on the wrong UTC date (or skip days near midnight UTC). Fix: replace with `datetime.now(UTC).date()` at line 199 and `datetime.now(UTC).date().isoformat()` at line 374.
+
+- [x] [Review][Patch] **`status` query parameter shadows `status` import and is unvalidated** [`services/client-api/src/client_api/api/v1/reports.py:35, 109`] — `from fastapi import ... status` is imported, then `status: Annotated[str | None, Query()] = None` shadows it inside `list_reports`. Worse: the parameter is `str | None` with no validation — arbitrary strings flow into the SQL `WHERE status = :v` filter. Fix: rename the parameter to `status_filter` (and pass it as `status_filter=status_filter`) and tighten the type to `Literal["pending", "processing", "complete", "failed"] | None`.
+
+- [x] [Review][Patch] **Date range fields not parsed or validated** [`services/client-api/src/client_api/schemas/reports.py` (CreateReportRequest)] — `date_from` / `date_to` are typed as `str | None`; the existing validator only checks presence, never parses or compares. A user can submit `date_from="2026-13-99"` (5xx from PostgreSQL on insert instead of a clean 422) or a reversed range (`date_from > date_to`) that silently yields an empty report. Fix: type them as `date | None` so Pydantic enforces ISO-8601 parsing, and add a model-level validator asserting `date_from <= date_to` when `report_type == "custom_date_range"`.
+
+- [x] [Review][Patch] **Per-schedule loop in `check_scheduled_reports` has no try/except** [`services/notification/src/notification/tasks/scheduled_report_delivery.py:219-275`] — A single bad schedule (e.g. `created_by_id` references a deleted user → FK violation, or a row with `report_type` that the report engine cannot render) raises out of the loop and aborts every later company's daily/weekly report dispatch for that frequency batch. Fix: wrap the per-schedule body in `try/except Exception as exc:` that logs `scheduled_report.dispatch_failed` with `schedule_id` and continues.
+
+- [x] [Review][Patch] **Celery dispatch failure leaves orphan `pending` `report_jobs`** [`services/client-api/src/client_api/services/report_service.py` (`create_report_job`)] — The DB INSERT for the job is committed before `dispatch_generate_report(...)` is called. If the broker is unreachable, the dispatch raises 500 to the client, but the orphan `pending` row remains and the frontend modal polls it forever (see polling-cap finding below). Fix: wrap the `dispatch_generate_report` call in try/except — on failure either delete the just-inserted row (so the client retries cleanly) or set `status='failed'` with `error_message="dispatch failed"` before re-raising.
+
+- [x] [Review][Patch] **URL-refresh failure silently returns the stale URL** [`services/client-api/src/client_api/services/report_service.py:251-256`] — When `_refresh_presigned_url` raises (S3 down, IAM revoked, key missing), the broad `except Exception` logs a warning and falls through, returning `row_dict` with the **expired** `download_url`. The frontend then renders a Download link that 403s on S3. Fix: on refresh failure either set `row_dict["download_url"] = None` and `row_dict["url_expires_at"] = None` before returning, or raise to surface a 502 to the client.
+
+- [x] [Review][Patch] **Missing explicit timeouts on S3 GetObject and SendGrid send** [`services/notification/src/notification/tasks/scheduled_report_delivery.py:362-366, 417`] — Project rule (CLAUDE.md) requires explicit timeouts on all external HTTP. Both calls rely on default boto3 / SendGrid timeouts, which can wedge a Celery worker for minutes. Fix: build the boto3 client with `botocore.config.Config(connect_timeout=5, read_timeout=30)` and either pass `timeout=` to the SendGrid send call or wrap it with an explicit transport timeout.
+
+- [x] [Review][Patch] **`GenerateReportModal` polling has no maximum duration** [`frontend/packages/ui/src/components/GenerateReportModal.tsx:137-148`] — `refetchInterval` returns 2000ms forever as long as `status` is `pending`/`processing`. If `generate_report` is stuck (orphan job, dead worker, broker down), the browser polls every 2s indefinitely (hundreds of API calls per hour, per stuck job) and the user sees no failure state. Fix: track polling start time; after a threshold (e.g. 5 minutes) stop polling and show `t("reports.modal.generationFailed")` with a "View in reports list" link.
+
+- [x] [Review][Patch] **Recipients parsing in schedule form skips max=20 / dedupe / email validation** [`frontend/apps/client/app/[locale]/(protected)/settings/reports/components/ReportScheduleSettings.tsx:79-84, 62-74`] — `parseRecipients` only filters empties; it does not cap at 20, dedupe, or validate emails client-side. The local Zod schema validates `recipients_raw` as a non-empty string, so a user submitting 50 emails or `"not-an-email"` sees only a generic "Failed to create schedule" toast after a server round-trip. The prior review deferred swapping in `reportScheduleSchema`; that deferral is upgraded to a patch because the user-facing behaviour is materially worse than the spec. Fix: import `reportScheduleSchema` from `lib/schemas/reports.ts`, parse recipients from the textarea via a controlled-input adapter that sets the `recipients` array on form state, and surface field-level errors.
+
+- [x] [Review][Patch] **PUT `/schedules/{id}` recipients update path under-validated** [`services/client-api/src/client_api/api/v1/reports.py:213-214` + `client_api/schemas/reports.py` (`UpdateScheduleRequest`)] — On update, `payload.recipients` is converted via `[str(r) for r in updates["recipients"]]`. Verify (and tighten if missing) that `UpdateScheduleRequest.recipients` is `list[EmailStr] | None` with `Field(min_length=1, max_length=20)` so the create-vs-update validation rules match AC7. An admin should not be able to PUT an empty list or non-email strings.
+
+### Deferred Items (out of scope or design decisions)
+
+- [x] [Review][Defer] **AC11 spec drift: extra `send_scheduled_report_to_admins` and `ensure_default_company_schedules` tasks** [`services/notification/src/notification/tasks/scheduled_report_delivery.py:445-687`] — Implementation adds an admin-fanout fallback when a schedule's `recipients` is empty, plus a default-schedule seeding task. Neither is in AC11–AC13 and AC22–AC24 do not cover them. Functional and additive, but introduces surface area not gated by the spec's tests. — defer to scope-alignment follow-up.
+- [x] [Review][Defer] **Idempotency on Beat retries / `acks_late` retries → duplicate emails** [`services/notification/src/notification/tasks/scheduled_report_delivery.py:184-285, 298-442`] — `check_scheduled_reports` has no `last_run_at` guard, and `send_scheduled_report_email` is `acks_late=True` with broad `except Exception → self.retry`. A Beat double-fire or worker SIGKILL after a successful SendGrid send results in duplicate report jobs / duplicate recipient emails. Requires design (idempotency token, `last_dispatched_at` column, or SendGrid Idempotency-Key). — defer, design decision.
+- [x] [Review][Defer] **SendGrid 4xx vs 5xx not differentiated** [`scheduled_report_delivery.py:417, 426`] — All exceptions retried indiscriminately; permanent failures (e.g. unverified sender, malformed email) burn 3 retries before being silently suppressed. — defer, depends on retry-policy design.
+- [x] [Review][Defer] **ISO timestamps return `+00:00` instead of `Z`** [`services/client-api/src/client_api/services/report_service.py` (_row_to_dict)] — Spec example responses use `"2026-04-13T06:00:00Z"`; Python `datetime.isoformat()` on a UTC-aware datetime yields `"2026-04-13T06:00:00+00:00"`. Functional but format-mismatched. — defer, cosmetic.
+- [x] [Review][Defer] **Migration 014 GRANT statements have no role-existence guard** [`services/client-api/alembic/versions/014_report_schedules.py:67-72`] — `GRANT ... TO notification_role` will fail on environments where the role doesn't exist. Project bootstrap creates the roles, so this only bites manual local recoveries. — defer, infra rule.
+- [x] [Review][Defer] **`ReportScheduleSettings` missing inline edit for recipients** [`ReportScheduleSettings.tsx:144-149`] — Only `is_active` toggle and delete are wired; admins must delete + recreate to change recipients. Backend supports PUT with recipients (per AC9). — defer, UX gap, not a spec violation.
+
+### Confirmed: prior review's patches are applied
+
+All five patch items from the 2026-04-13 review are verified in the current implementation:
+1. `update_schedule` re-fetch query now includes `company_id` filter (`report_schedule_service.py:201-205`).
+2. `GenerateReportModal` shows date inputs when `report_type === "custom_date_range"` even without `showDateRange` prop (`GenerateReportModal.tsx:252`).
+3. Modal report-type labels use `useTranslations("reports.types")` (`GenerateReportModal.tsx:122, 178-183`).
+4. `createButton` i18n key present in EN+BG and used for the idle button state (`ReportScheduleSettings.tsx:365`).
+5. `toast.success(t("scheduleCreated"))` fires on successful schedule creation (`ReportScheduleSettings.tsx:117`).
+
+EN/BG `reports.*` and `settings.reports.*` namespaces have identical key structure (AC20 parity ✓). All required `data-testid` attributes for AC16/AC17/AC18 are present.
+
+---
+
+## Senior Developer Review (2026-04-25 — verification pass)
+
+**Reviewer:** claude-sonnet-4-7 (autopilot follow-up review after dev-phase patches)
+**Verdict:** **Approve**
+
+All 11 patch items from the 2026-04-25 senior review are verified applied in the current code:
+
+| # | Patch | Verified location |
+|---|---|---|
+| P1 | E12-R-001 on URL-refresh UPDATE | `services/client-api/src/client_api/services/report_service.py:269-274` — `.where(report_jobs.c.company_id == user.company_id)` precedes the `.id` predicate. |
+| P2 | UTC date helper, no worker-TZ drift | `services/notification/src/notification/tasks/scheduled_report_delivery.py:151-159` (`_today_utc()`); used at L223 and L418. |
+| P3 | `status` query-param `Literal` + alias | `services/client-api/src/client_api/api/v1/reports.py:114-117` — `status_filter: Literal["pending","processing","complete","failed"] \| None` with `Query(alias="status")`. |
+| P4 | `date_from`/`date_to` typed as `date`, range validation | `services/client-api/src/client_api/schemas/reports.py:50-74` — `date \| None` + `model_validator` rejecting reversed range. |
+| P5 | Per-schedule `try/except` in batch | `scheduled_report_delivery.py:261-329` — broad except logs `scheduled_report.dispatch_failed` with `schedule_id`/`company_id`/`frequency`, rolls back, continues. |
+| P6 | Dispatch-failure flips job to `failed` | `report_service.py:157-185` — orphan-pending row replaced with `status='failed'`, `error_message='dispatch failed'` before re-raise. |
+| P7 | URL-refresh failure no longer returns stale URL | `report_service.py:278-288` — sets `download_url=None`, `url_expires_at=None`. |
+| P8 | S3 + SendGrid explicit timeouts | `scheduled_report_delivery.py:184-189` (`BotoConfig(connect_timeout=5, read_timeout=30)`); L462-467 (`sg_client.client.timeout = 30`). |
+| P9 | Modal polling cap | `frontend/packages/ui/src/components/GenerateReportModal.tsx:131-173, 206` — 5-min cap, terminal failure UX with `report-generation-error`. |
+| P10 | Shared schedule-form schema | `ReportScheduleSettings.tsx:59, 149-163` — `useZodForm(reportScheduleSchema)` with textarea-to-array adapter, dedupe, per-email + min=1/max=20 client-side. |
+| P11 | `UpdateScheduleRequest.recipients` tightened | `schemas/reports.py:155-158` — `list[EmailStr]` with `min_length=1, max_length=20`, doc updated. |
+
+Tenant isolation (E12-R-001) is consistently enforced: every SQL read/write to `report_jobs` and `report_schedules` in `report_service.py`, `report_schedule_service.py`, and the v1 router includes `company_id = user.company_id` as the first non-optional WHERE clause. The two tasks in `scheduled_report_delivery.py` that bypass the filter (per AC21 carve-out) operate on internally-generated IDs only.
+
+Verbatim final pytest summary lines from the dev-phase run (PB-DEVACCEPT-006 §2):
+- `services/client-api/tests/api/{test_reports.py,test_report_schedules.py}` — `19 passed, 7 warnings in 2.38s` (AC22 + AC23)
+- `services/notification/tests/{test_scheduled_report_delivery.py, integration/test_scheduled_report_admin_fanout.py, worker/test_check_scheduled_reports_routing.py}` — `16 passed, 2 warnings in 2.53s`
+- `services/notification/tests/` (full suite) — `466 passed, 3 skipped, 5 warnings in 14.86s`
+- Frontend type-check: clean for both `@eusolicit/ui` and `client`.
+- `ruff check` on the four modified Python files: clean.
+
+Deferred items from the 2026-04-25 review (extra admin-fanout / default-schedule tasks, idempotency on Beat retries, SendGrid 4xx/5xx differentiation, ISO `Z` vs `+00:00`, GRANT role-existence guard, inline recipient editing) remain valid follow-ups but are explicitly out-of-scope or design-decisions for this story and are not blocking.
+
+Approving for QA. No new defects surfaced on this verification pass.
+
+---
+
 ## Dev Notes
 
 ### Migration 014 Placement
@@ -1088,6 +1175,19 @@ claude-sonnet-4-5
 
 None.
 
+### Test Results
+
+Per PB-DEVACCEPT-006 §2 — verbatim final pytest summary lines from the 2026-04-25 dev-phase review-fix run:
+
+- Client-API report endpoints (AC22 + AC23):
+  `19 passed, 7 warnings in 2.38s`
+- Notification scheduled-report tests (AC24 + S09.14 routing + admin fan-out integration):
+  `16 passed, 2 warnings in 2.53s`
+- Notification full suite (regression check across all notification tasks):
+  `466 passed, 3 skipped, 5 warnings in 14.86s`
+- Frontend type-check (`pnpm --filter "@eusolicit/ui" type-check` and `pnpm --filter "client" type-check`): both exit 0, no errors.
+- Lint (`ruff check`) on the four modified Python files: 0 errors remaining (4 import-order issues auto-fixed by `ruff check --fix`).
+
 ### Completion Notes List
 
 - Implemented all 18 tasks covering AC1–AC24 in full autopilot mode.
@@ -1112,6 +1212,25 @@ None.
 - `GenerateReportModal` uses injected `createReport`/`getReportJob` props to avoid circular imports between `packages/ui` and `apps/client`.
 - All 9 AC22 tests (on-demand endpoints) and all 10 AC23 tests (schedule endpoints) implemented with fixture-based dependency override pattern.
 - All 9 AC24 integration tests implemented with SQLite in-memory engine + module-level patch pattern matching `test_report_generation.py`.
+
+**Review Patch Fixes (2026-04-25 — addressing 11 patch items from second senior review):**
+- ✅ [P1] E12-R-001 URL-refresh UPDATE in `report_service.get_report_job` now scoped by `company_id` first, then `id`.
+- ✅ [P2] `check_scheduled_reports` and `today_str` in `send_scheduled_report_email` now use `_today_utc()` helper (`datetime.now(UTC).date()`), eliminating worker-TZ drift. Tests updated to patch `_today_utc` instead of `date`.
+- ✅ [P3] `GET /api/v1/reports?status=` parameter renamed to `status_filter` internally (with `alias="status"`), and typed `Literal["pending","processing","complete","failed"] | None`. Eliminates `fastapi.status` shadowing and unvalidated SQL pass-through.
+- ✅ [P4] `CreateReportRequest.date_from` / `date_to` retyped from `str | None` to `date | None`, gaining ISO-8601 422 enforcement; range validator now also rejects reversed `date_from > date_to`.
+- ✅ [P5] Per-schedule body in `check_scheduled_reports` wrapped in `try/except Exception`; on failure logs `scheduled_report.dispatch_failed` with `schedule_id` + `company_id` + `frequency` and continues, so one bad schedule cannot abort the daily batch.
+- ✅ [P6] `create_report_job` now wraps `dispatch_generate_report` in `try/except`; on dispatch failure flips the just-inserted job row to `status='failed'` with `error_message='dispatch failed'` and re-raises (no orphan pending rows).
+- ✅ [P7] URL-refresh failure path no longer returns the stale URL — sets `download_url=None` and `url_expires_at=None` instead, so the frontend cannot render a 403-bound link.
+- ✅ [P8] S3 client built with `botocore.config.Config(connect_timeout=5, read_timeout=30)`. SendGrid client's underlying `python_http_client` timeout set to 30s before `send()`.
+- ✅ [P9] `GenerateReportModal` polling capped at 5 minutes; on timeout `pollTimedOut` flips and the failure UX (`report-generation-error`) renders with `t("generationFailed")`. State reset on modal close.
+- ✅ [P10] `ReportScheduleSettings` form now uses the shared `reportScheduleSchema` from `@/lib/schemas/reports.ts` with `recipients: string[]` (per-email `.email()` validation, min=1, max=20). Textarea-to-array adapter dedupes; field-level errors surfaced.
+- ✅ [P11] `UpdateScheduleRequest.recipients` confirmed as `list[EmailStr] | None` with `min_length=1, max_length=20`; docstring tightened to make the symmetric AC7 contract explicit.
+- Test results (verbatim final lines):
+  - `services/client-api/tests/api/test_reports.py + test_report_schedules.py`: `19 passed, 7 warnings in 2.38s`
+  - `services/notification/tests/` (full suite): `466 passed, 3 skipped, 5 warnings in 14.86s`
+  - `services/notification/tests/{test_scheduled_report_delivery.py, integration/test_scheduled_report_admin_fanout.py, worker/test_check_scheduled_reports_routing.py}`: `16 passed, 2 warnings in 2.53s`
+- Type-check (frontend): `pnpm --filter "@eusolicit/ui" type-check` and `pnpm --filter "client" type-check` both clean.
+- Lint: `ruff check` clean on all four modified Python files (4 import-order issues auto-fixed).
 
 ### File List
 
@@ -1164,6 +1283,7 @@ None.
 |------|--------|--------|
 | 2026-04-13 | Full implementation: Tasks 1–18 completed in autopilot mode | claude-sonnet-4-5 |
 | 2026-04-13 | Addressed code review findings — 5 patch items resolved: tenant isolation re-fetch, date range visibility, i18n report type labels, createButton key, success toast; also fixed pre-existing test bugs (UUID handling, matplotlib import chain, date-fns dependency, EmptyState icon prop) | claude-sonnet-4-5 |
+| 2026-04-25 | Addressed 2026-04-25 senior review — 11 patch items resolved (E12-R-001 URL-refresh UPDATE, UTC date in scheduled task, status-param Literal validation, date range parsing/order, per-schedule try/except, dispatch-failure orphan-job handling, URL-refresh failure no-stale-URL, S3+SendGrid timeouts, modal poll cap, shared schedule-form schema, UpdateScheduleRequest tightened doc); test patches rewired from `date.today` mock to `_today_utc` helper. | claude-sonnet-4-7 |
 
 #### New Files
 

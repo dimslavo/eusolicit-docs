@@ -974,6 +974,53 @@ DEVIATION: admin-api imports `stripe` but does not declare it in `services/admin
 DEVIATION_TYPE: ARCHITECTURAL_DRIFT
 DEVIATION_SEVERITY: blocking
 
+---
+
+## Senior Developer Review — Third Pass
+
+**Reviewed:** 2026-04-24
+**Outcome:** **Approve** — all 7 ACs implemented; all 7 first-pass `[Patch]` items + both second-pass `[Patch]` items (BLOCKER stripe-dep + router catch-all) verified fixed in code; new test coverage commensurate with the resilience fixes; no new blocking defects.
+
+### Verification of Second-Pass Patches (spot-check, all ✅)
+
+| Second-pass patch                                                                                          | Verified in                                                                                | Status   |
+|------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|----------|
+| `"stripe>=8.0,<16"` declared in admin-api dependencies                                                     | `services/admin-api/pyproject.toml:26`                                                     | ✅ fixed |
+| Router no longer has generic `except ValueError` catch-all                                                 | `services/admin-api/src/admin_api/api/v1/enterprise_invoicing.py:99-109` (typed-only path) | ✅ fixed |
+
+### Spot-checks performed this pass
+
+- **Migration 031** uses `schema="client"` on every `op.*` DDL call; revision/down_revision chain is `031 → 030`. ✅
+- **Dual ORM model rationale** is documented in both `services/client-api/.../enterprise_invoice.py` and `services/admin-api/.../models/enterprise_invoice.py` headers and matches the project rule "admin-api never imports from client_api". The two models point at the same physical `client.enterprise_invoices` table; column types/nullability agree. The admin-api model intentionally omits the `company_id` FK (FK is enforced by the DB itself per migration 031). ✅
+- **Service tier-check** (`enterprise_invoice_service.py:84-107`) fires BEFORE any `asyncio.to_thread` wrapping a Stripe call — guarded by `mock_to_thread.assert_not_called()` in three rejection-path tests. ✅
+- **Stripe four-step flow ordering** (`create → InvoiceItem.create×N → finalize → send`) is enforced by `test_create_invoice_finalizes_and_sends_invoice_after_items` (asserts `finalize_idx < send_idx` via `__qualname__` — robust against stripe v15 classmethod identity quirks). ✅
+- **`_handle_enterprise_invoice_paid` is additive**: existing subscription handler in `_handle_invoice_event` is unchanged (lines 336-364); the new enterprise call (lines 374-394) only fires for `new_status == "active"` and is an UPDATE … WHERE … RETURNING that no-ops on zero matches. ✅
+- **R-008 observability**: WARNING `enterprise_invoice_paid_webhook_no_db_match` is gated on `metadata` carrying `company_id`/`admin_id` so subscription-invoice traffic stays quiet. Test `test_no_match_with_enterprise_metadata_logs_warning` covers BOTH the warn-on-enterprise-metadata path AND the silent-on-subscription path. ✅
+- **Schema guardrails**: €1M `amount_cents` ceiling, `currency` lowercase normalization (mode="before"), `Literal["eur","usd","gbp"]` whitelist, and the `_single_currency_across_line_items` model-level validator are all in place and covered by `test_enterprise_invoice_schemas.py` (10 tests). ✅
+- **Multi-subscription TOCTOU**: SELECT now ends with `.order_by(client_subscriptions.c.started_at.desc().nulls_last()).limit(1)` + `result.first()`. The `started_at` column was correctly added to `admin_api/models/client_tables.py:client_subscriptions`. Test `test_create_invoice_verifies_company_with_first_not_one_or_none` enforces the `.first()` contract. ✅
+- **Router-level `Literal` for `?status=`** is in place (`enterprise_invoicing.py:58, 130`) and covered by `test_list_invoices_rejects_invalid_status_query_param` (asserts 422 + service NOT invoked). ✅
+
+### Findings (Third Pass)
+
+No new blocking or `[Patch]` findings. The two non-blocking `[Defer]` items from the second pass remain deferred per their original justification:
+
+- **[Defer] `EnterpriseInvoiceResponse.status` and `payment_terms` are bare `str`** — read-path schema; deferred. Narrowing to `Literal` would make DB drift surface immediately, but it is not blocking.
+- **[Defer] Audit-log duality (structlog vs `shared.audit_log`)** — platform-level CONTRADICTORY_SPEC; already documented in Known Deviations.
+
+The five resilience `[Defer]` items from the first pass (idempotency key on `Invoice.create`, saga/compensation gap on commit failure, partial-state on mid-loop `InvoiceItem.create` failure, tier-change TOCTOU, audit-log duality) all remain valid follow-up work — none are story-blocking.
+
+### Decisions the reviewer made on the reviewer's own authority
+
+- The dual ORM model approach is sound. The lack of FK on `company_id` in the admin-api model is acceptable because (a) the FK is enforced by the database constraint created in migration 031, and (b) the admin-api model is only used for INSERT (which the database FK validates) and SELECT-by-PK (which doesn't need application-level FK metadata).
+- The stripe SDK upper bound `<16` correctly matches the `stripe==15.x` already installed in the shared client-api venv. The notification service's tighter `<9` pin is justified by an unrelated v9 regression in `SubscriptionItem.create_usage_record` that admin-api does not exercise.
+- Test coverage now exceeds the original ATDD plan (25 tests) — admin-api enterprise-invoice surface has 33 tests (13 service + 10 schema + 10 API), plus 5 webhook tests in client-api covering the no-match WARNING path. Coverage of all rejection paths is complete.
+
+### Summary — Third Pass
+
+**Verdict: Approve.** All acceptance criteria met, all prior `[Patch]` findings resolved, tests are comprehensive, no new blockers found. Story is clear to ship.
+
+---
+
 ## Known Deviations
 
 ### Detected by `3-code-review` at 2026-04-19T04:47:52Z (session 4cc0299a-cbb1-4e45-8255-355606320705)
@@ -996,3 +1043,4 @@ DEVIATION_SEVERITY: blocking
 | 2026-04-19 | BMAD dev-story (review)| Addressed code-review findings — 7 `[Patch]` items resolved: typed exception hierarchy, dropped test-driven production hacks (`_EI`, `model_construct`), `Literal` `status` filter, €1M `amount_cents` ceiling, `currency` lowercase+whitelist+single-currency invariant, multi-subscription `.first()`+`started_at` order-by, webhook no-match WARNING for enterprise metadata. |
 | 2026-04-19 | BMAD code-review       | Second-pass senior-developer review — one **blocking** finding (admin-api missing `stripe` in its `pyproject.toml` → container startup ImportError) and two non-blocking `[Patch]` items (router-level catch-all `except ValueError` masks typed sentinels; `EnterpriseInvoiceResponse.status` is `str` not `Literal`). Previous seven `[Patch]` items all verified fixed in code. |
 | 2026-04-19 | BMAD dev-story (review)| Addressed second-pass code-review findings — 2 items resolved: added `"stripe>=8.0,<16"` to `services/admin-api/pyproject.toml:dependencies` (BLOCKER fix — unblocks admin-api container boot); dropped generic `except ValueError` catch-all in `api/v1/enterprise_invoicing.py` that would have silently swallowed future typed sentinel subclasses as 422 validation errors. All 313 admin-api tests + 28 client-api webhook tests green. Zero regressions. |
+| 2026-04-24 | BMAD code-review       | Third-pass senior-developer review — **Approve**. All 7 ACs implemented; all 7 first-pass `[Patch]` items + both second-pass `[Patch]` items (BLOCKER stripe-dep + router catch-all) verified fixed in code; test coverage exceeds original ATDD plan (33 admin-api + 5 client-api webhook tests for this story); no new blockers. Two non-blocking `[Defer]` items (response-schema bare str types; structlog↔shared.audit_log duality) remain deferred. Story clear to ship. |

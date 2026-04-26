@@ -427,3 +427,207 @@
 ## Anti-Patterns
 
 - Discovered in Epic 8: — 8 new patterns, 9 new [ACTION] items**
+
+## Patterns
+
+- Discovered in Epic 9: ` | Dual-layer idempotency: DB constraint + Redis SETNX | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | `asyncio.to_thread` for Celery `.delay()` in async consumers | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | 404 (not 403) for cross-user scoped resource access | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | Narrow except clauses — never swallow `celery.exceptions.Retry` | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | Fernet encryption canonical module for OAuth tokens | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | Stripe counter: read → API(idempotency-key) → GETDEL | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | ECDSA webhook validation on raw body, fail-closed | — | — |
+
+## Patterns
+
+- Discovered in Epic 9: ` | Beat schedule constants cross-checked vs spec before story creation | — | — |
+
+## Anti-Patterns
+
+- Discovered in Epic 9: ` | Story file left at pre-dev status after completion (RC2 — 2nd recurrence) | — | — |
+
+## Anti-Patterns
+
+- Discovered in Epic 9: ` | Frontend component test deferral without activation story | — | — |
+
+## Anti-Patterns
+
+- Discovered in Epic 9: ` | Shipping new long-running service without Prometheus metrics | — | — |
+
+## Anti-Patterns
+
+- Discovered in Epic 9: ` | `epic-N: in-progress` not closed when all stories done (4th recurrence) | — | — |
+
+## Anti-Patterns
+
+- Discovered in Epic 10: Missing Epic-Level Test Design:** No `test-design-epic-10.md` exists, leaving NFR verification (Performance, Scalability) undefined.
+
+## Anti-Patterns
+
+- Discovered in Epic 10: Security Isolation Gap:** Delayed S10.02 middleware leaves proposal workspace endpoints exposed to UUID-based existence leaks.
+
+## Anti-Patterns
+
+- Discovered in Epic 10: TEA Coverage Gap:** 0 of 16 stories have TEA review scores, marking the 7th consecutive epic with this gap.
+
+## Patterns
+
+- Discovered in Epic 10: 100% RED-Phase Traceability:** All 14 Epic ACs are mapped to failing tests, providing a robust TDD foundation.
+
+## Patterns
+
+- Discovered in Epic 10: Audit & i18n Consistency:** 100% compliance on backend audit trail assertions and frontend EN/BG parity checks.
+
+## Patterns
+
+- Discovered in Epic 11: **Agent Integration Pattern (frozen standard)** — All agent calls use `AiGatewayClient.run_agent(agent_name, payload)`, flat 503 body `{"message": "...", "code": "AGENT_UNAVAILABLE"}`, `X-Caller-Service` header, configurable timeout, no client-side retry. S11.04 is the canonical backend reference; S11.09 is the canonical admin-api reference. Deviations block review approval.
+
+## Patterns
+
+- Discovered in Epic 11: **Null vs. Empty List for Optional Response Fields** — `null` signals field absence (UI suppresses component), `[]` signals presence with no content (UI shows empty state). This distinction must be preserved in AC, Pydantic schema, parser function, and frontend conditional render. Reference: S11.07 `gantt_data` graceful degradation.
+
+## Patterns
+
+- Discovered in Epic 11: **Migration Downgrade Multi-Row Safety** — Any migration downgrade that recreates a UNIQUE or PK constraint must include a regression test inserting ≥2 rows under the same grouping key before downgrading. Reference: S11.01 `ROW_NUMBER() OVER (PARTITION BY company_id)` pattern.
+
+## Patterns
+
+- Discovered in Epic 11: **Arithmetic Tolerance Constant** — Float comparisons in financial/budget calculations use a module-level `_ARITHMETIC_TOLERANCE = 0.01` constant. EU grant budgets don't go below half-euro; 1-cent tolerance avoids float precision failures. Reference: S11.05.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] "Done = Stub"** — [ACTION] `IMPACT: standards_update` `SEVERITY: critical` — Story marked `done` with frontend using stub API functions and zero GREEN backend tests for covered ACs. S11.07 TRACE_GATE FAIL (AC4/AC5 GAP) is the instance. Done gate must verify: (1) no stub references for story-owned endpoints, (2) ≥1 GREEN test per covered AC.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] Hardcoded English Strings in TSX Fix Passes** — [ACTION] `IMPACT: standards_update` `SEVERITY: high` — Developers add i18n keys for AC-specified strings but add literal English for strings introduced during fix passes (toast messages, placeholders, validation messages). Occurred in S11.11, S11.13, S11.14 across 3 review rounds. Fix: `no-literal-text` ESLint rule for `apps/client` and `apps/admin` — lint error, not review finding.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] Design System Component Violations Not Caught at ATDD Level** — [ACTION] `IMPACT: prompt_adjustment` `SEVERITY: high` — `<select>` (native) used instead of `<Select>` from `@eusolicit/ui` in two panels (S11.12). AC specified design system component. ATDD source-inspection assertion catches this at RED phase: `assert "<Select" in component_source`. Add to frontend story template for all `<Select>`, `<Dialog>`, `<Sheet>`, `<Tabs>` usages.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] Retry Buttons Bypassing Form Validation** — [ACTION] `IMPACT: prompt_adjustment` `SEVERITY: high` — Three panels in S11.12 called `mutation.mutate()` directly on retry, bypassing Zod validation. Retry must always route through `form.handleSubmit()` or add explicit pre-mutate validation guards. Add as explicit AC requirement: "Retry re-validates via `form.handleSubmit()`."
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] TEA Reviews in Separate Injected Stories** — [ACTION] `IMPACT: config_tuning` `SEVERITY: critical` — `inj-03-tea-review-backlog` has been `ready-for-dev` for 9 consecutive epics; never executed. Separate stories get pre-empted. Fix: TEA review must be an AC on each story's done transition, not a standalone story.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] 503 Error Body Assertion Checking Wrong Shape** — [ACTION] `IMPACT: standards_update` `SEVERITY: high` — S11.03 Pass 3: tests asserted `data["detail"][...]` for 503 responses but router returns flat `{"message", "code"}` via JSONResponse. Template: `assert "message" in data and "code" in data and "detail" not in data` for all agent-unavailable tests.
+
+## Anti-Patterns
+
+- Discovered in Epic 11: **[ANTI-PATTERN] Null JSONB List Field Patch Semantics Undefined** — [ACTION] `IMPACT: prompt_adjustment` `SEVERITY: medium` — `PATCH {"rules": null}` returned 500 in S11.08 round 1. All PATCH endpoints with nullable list fields must include explicit AC: `PATCH with null for list field → 200, field becomes []` (clear semantics). Add to admin CRUD story template.
+
+## Patterns
+
+- Discovered in Epic 3: ** 7 positive patterns confirmed and codified (QueryGuard, useZodForm+FormField, dual-layer auth guard, packages/ui as platform library, TRACE_GATE loop-closure, server-compatible shell wrappers, deferred-work tracking)
+
+## Anti-Patterns
+
+- Discovered in Epic 3: ** 7 anti-patterns captured, including 2 **new** additions to `project-context.md`:
+
+## Patterns
+
+- Discovered in Epic 4: `/`[ANTI-PATTERN]` + `IMPACT`/`SEVERITY` tags
+
+## Anti-Patterns
+
+- Discovered in Epic 4: SEVERITY: high`
+
+## Anti-Patterns
+
+- Discovered in Epic 4: ` + `IMPACT`/`SEVERITY` tags
+
+## Patterns
+
+- Discovered in Epic 5: | Severity |
+
+## Anti-Patterns
+
+- Discovered in Epic 5: | Severity |
+
+## Patterns
+
+- Discovered in Epic 9: /[ANTI-PATTERN]/[ACTION] findings are in the retro artifact for the project-context merge. Good work shipping a complex notification stack, Deb. Epic 10 is waiting — and this time, we run k6 *first*."
+
+## Anti-Patterns
+
+- Discovered in Epic 9: /[ACTION] findings are in the retro artifact for the project-context merge. Good work shipping a complex notification stack, Deb. Epic 10 is waiting — and this time, we run k6 *first*."
+
+## Patterns
+
+- Discovered in Epic 13: **NFR hot-fix + proper story workflow** — Emergency inline commit unblocks NFR halt same day; proper hardening story created in parallel for full spec implementation. Two-step pattern: (1) minimal inline patch to restore NFR PASS, (2) proper story for refactor+tests+audit. Reference: S07.17 `2d41fcf` + story 7-17.
+
+## Patterns
+
+- Discovered in Epic 13: **`asyncio.CancelledError` requires explicit handler in Python 3.8+** — `CancelledError` inherits from `BaseException`, not `Exception`. Bare `except Exception` silently drops cancel signals in coroutines. Every `async def` with `async with / try / finally` blocks must include `except asyncio.CancelledError: raise` (or handle explicitly). This is invisible in eager-mode tests.
+
+## Patterns
+
+- Discovered in Epic 13: **structlog stdlib routing required for pytest caplog** — `structlog.PrintLoggerFactory()` bypasses stdlib logging; pytest `caplog` only captures stdlib records. Fix: session-scoped autouse fixture `configure_structlog_stdlib` in service `conftest.py` routes structlog through `stdlib.LoggerFactory()`. Required in every service's test suite.
+
+## Patterns
+
+- Discovered in Epic 13: **Fire-and-forget audit write canonical form (Rule 45)** — `asyncio.create_task(_write_generation_audit(...))` scheduled from `_run_generation_task.finally`. Task owns its own `async with session.begin()`, catches all exceptions, logs `audit_write_failed` at ERROR. NEVER `await write_audit_entry()` + `await session.commit()` inline on the TTFB path. Canonical form established in S07.17 review follow-up.
+
+## Patterns
+
+- Discovered in Epic 13: **Single-point SSE error sanitization helper** — All SSE error frames for a given endpoint MUST flow through one `_sanitize_error(exc, *, correlation_id, ...)` helper. No inline `{"error": ..., "code": ...}` construction outside the helper. Helper emits stable machine code + correlation_id; never raw exception fields. Reference: `_sanitize_generation_error()` in `proposal_service.py`.
+
+## Patterns
+
+- Discovered in Epic 13: **Coordinator story pattern for multi-concern hardening epics** — A coordinator story owns end-to-end AC acceptance + close-out gate; narrow sub-stories deliver independent slices. Coordinator cannot be `done` until all sub-story ACs are GREEN. Prevents mega-story scope explosion. Reference: `drift-recovery-story` + `inj-01/02/03` + `dw-01/02/03` in E13.
+
+## Patterns
+
+- Discovered in Epic 13: **Hot-Fix Context section in story Dev Notes** — Any story building on a prior emergency fix must include a "Hot-Fix Context" section: exact commit hash, which files were changed, what was done inline vs. what remains for the story. Prevents dev agents from re-implementing already-merged changes. Reference: S07.17 "Hot-Fix Context (Pre-Applied — Verify, Don't Re-Implement)".
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] Dev session regression overwrites approved code** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — A new dev session modified an endpoint (proposals.py) for an unrelated AC (AC18 sibling story), introducing a duplicate audit-row pattern that contradicted the 2nd-pass approved code. Root cause: the agent did not re-read prior resolved findings before editing shared files. Fix: dev-story template must include: "Before editing any file with prior resolved review findings, re-read the file and list all resolved deviations to preserve." Reference: S07.17 F10/F11/F12, 3rd review pass 2026-04-23.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] Review approval without quoted test execution output** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — 2nd-pass adversarial review approved Story 7-17 claiming all tests passing; 3rd review found 3 integration tests failing at HEAD. The 2nd-pass reviewer trusted the agent's summary instead of re-executing. Fix: code-review template MUST require a quoted pytest output line (e.g., `3 failed, 16 passed`) for any "all tests passing" claim. Approval without a quoted execution result is invalid. Reference: S07.17 3rd review, 2026-04-23.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] sprint-status `done` set without cross-checking story file status** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `high` — Story 7-17 shows `done` in sprint-status.yaml but `review` in story file with 3 blocking findings. False completion signal to orchestrator and retrospective tooling. Fix: orchestrator story-close workflow must verify story file status = `done` before writing `done` to sprint-status. Reference: 7-17 discrepancy at E13 retro time.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] AC text not updated to reflect implementation-time schema choices** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `medium` — AC1 still specifies `{"error":"ai_gateway_error","correlation_id":"<uuid>"}` but implementation emits `{"error": "<prose>", "code": "gateway_error", "correlation_id": "<uuid>"}`. Future reviewers will rediscover as spec violation. Fix: any implementation-time deviation from an AC schema must update the AC text before review approves. AC text is the contract. Reference: S07.17 Known Deviations, 2026-04-18 / 2026-04-23.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] Injected carry-forward stories deprioritized behind new feature work** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — Epic 13 was created to close 6+ carry-forwards (Dependabot, k6, TEA reviews, Stripe CB, billing metrics). At partial retrospective time, 0/6 carry-forwards are closed; all 7 non-7-17 stories remain at `ready-for-dev`. Injected `inj-*` stories must be set as p0 priority and execute BEFORE any new feature stories. Carry-forward accumulation → orchestrator config change required. Reference: E13 partial retro 2026-04-25.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] Pydantic response schema uses bare `str` for enumerable status fields** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — `ProposalDetailResponse.status` was bare `str` rather than `Literal["draft", "active", "archived"]`. Prevents OpenAPI enum schema + allows unknown values. Fix: all Pydantic response schemas with known value sets MUST use `Literal[...]` or `StrEnum`. Add to backend story template. Reference: S07.17 DW-01 AC5.
+
+## Anti-Patterns
+
+- Discovered in Epic 13: **[ANTI-PATTERN] `asyncio.get_event_loop()` in Celery tasks (deprecated Python 3.12)** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — DW-02 documents `asyncio.get_event_loop()` deprecated in Python 3.12; Celery sync→async bridge must use `asyncio.new_event_loop()` in `try/finally loop.close()`. Never `asyncio.run()` (fails with running loop). Add to Celery task template. Reference: DW-02 Dev Notes.

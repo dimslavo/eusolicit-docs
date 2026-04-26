@@ -1,13 +1,13 @@
 ---
 title: 'TEA Test Design → BMAD Handoff Document'
-version: '1.3'
+version: '1.4'
 workflowType: 'testarch-test-design-handoff'
 inputDocuments:
   - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
   - 'eusolicit-docs/test-artifacts/test-design-qa.md'
 sourceWorkflow: 'testarch-test-design'
 generatedBy: 'TEA Master Test Architect'
-generatedAt: '2026-04-09'
+generatedAt: '2026-04-19'
 projectName: 'EU Solicit'
 ---
 
@@ -22,6 +22,7 @@ This document bridges TEA's test design outputs with BMAD's epic/story decomposi
 - v1.1 (2026-04-07): R-003 (SSE saturation) and R-006 (entity RBAC) elevated to HIGH; agent count corrected
 - v1.2 (2026-04-09): Agent count corrected to 29 (per Architecture v4 §11.2); added R-016 (locale routing, score 4) and R-017 (JWT refresh race, score 4); risk register expanded to 17; coverage updated to 92 tests; data-testid requirements added; pre-implementation blocker TB-04 (Redis DLQ) added
 - v1.3 (2026-04-09): Added R-018 (ESPD XML conformance, score 6) from E11 epic-level analysis; risk register expanded to 18; coverage updated to 94 tests; E11 quality gate updated; R-018 added to risk-to-story mapping
+- v1.4 (2026-04-19): Synchronized with test-design v2 documents; corrected critical architecture references (Kafka → Redis 7 Streams; Elasticsearch → PostgreSQL FTS; "AI Solicit Service" → KraftData AI Gateway 29 agents); system-level scenario plan expanded to 32 canonical scenarios (P0×8 / P1×12 / P2×8 / P3×4); added Python/eusolicit-test-utils code examples; testability concerns section refreshed with TB-01–TB-04 blockers aligned to current codebase; architectural gap list updated
 
 ## TEA Artifacts Inventory
 

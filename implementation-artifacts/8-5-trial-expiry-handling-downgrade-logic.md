@@ -511,3 +511,21 @@ Address F1 (audit misclassification) before merge — either return an explicit 
 - **Nit resolved:** Added defensive INFO log when Stripe omits `trial_end` on a `trial_will_end` event (schema-drift canary).
 
 **Validation:** 518/518 client-api unit tests pass (40 webhook + trial expiry tests, including 5 new tests for F1/F2/F3 regression coverage). `ruff check` clean on `webhook_service.py` and `test_trial_expiry_handling.py`. Zero new regressions.
+
+---
+
+### Re-review (2026-04-24, autopilot)
+
+**Outcome:** REVIEW: Approve
+
+Verified all four prior findings remain resolved in the current code:
+
+- **F1** — `_handle_subscription_upsert` returns the 4-tuple with explicit `is_trial_expiry` flag (`webhook_service.py:199-312`); `process_stripe_webhook` selects the audit action type directly from the flag (lines 842-843). Regression tests present: six direct-call tests assert `is_trial_expiry` (both True and False paths), plus dispatch-level `test_process_webhook_non_trial_deleted_uses_webhook_processed_action`.
+- **F2** — `_handle_trial_will_end` returns `(sub, trial_end_iso)` without publishing; `_publish_trial_expiring` is invoked from `process_stripe_webhook` at line 780, after `await session.commit()` at line 775. Ordering guard (`test_process_webhook_trial_will_end_publishes_after_commit`) and skip-on-not-found guard (`test_process_webhook_trial_will_end_skips_publish_when_sub_not_found`) both present.
+- **F3** — `test_process_webhook_non_trial_deleted_uses_webhook_processed_action` locks in the audit action for paid-plan cancellations.
+- **Nit** — Defensive INFO log for missing `trial_end` is present at `webhook_service.py:555-562`.
+
+**Test run note (non-blocking, out of scope for 8.5):**
+`tests/unit/test_trial_expiry_handling.py::TestPublishTrialExpiring::test_publish_trial_expiring_sends_correct_payload` currently fails because it asserts `stream == "trial.expiring"` while the implementation now publishes to `"eu-solicit:subscriptions"`. This is a downstream side-effect of **Story 9.11** (`9-11-trial-expiry-stripe-usage-sync.md` AC2), which intentionally realigned the stream to the canonical `eu-solicit:subscriptions` and added `test_webhook_service_stream_alignment.py` to cover the new contract — but did not update this legacy 8.5 assertion. At the time of Story 8.5's closure (2026-04-19) the test was green; the staleness was introduced later by 9.11. This is a 9.11 housekeeping gap and does **not** reopen 8.5.
+
+Architecture alignment, data-preservation guarantees, idempotency, non-fatal-publish semantics, and audit-trail correctness all match the Dev Notes and epic-08 test design. No new findings for Story 8.5.

@@ -517,6 +517,122 @@ DEVIATION_SEVERITY: deferrable
 - AC1 acceptance-criterion text still specifies `{"error":"ai_gateway_error","correlation_id":"..."}` but implementation emits `{"error": "<prose>", "code": "gateway_error", "correlation_id": "..."}` — reconciliation (option a) should be reflected in the AC text for clarity _(type: `CONTRADICTORY_SPEC`; severity: `deferrable`)_
 - AC1 acceptance-criterion text still specifies `{"error":"ai_gateway_error","correlation_id":"..."}` but implementation emits `{"error": "<prose>", "code": "gateway_error", "correlation_id": "..."}` — reconciliation (option a) should be reflected in the AC text for clarity _(type: `CONTRADICTORY_SPEC`; severity: `deferrable`)_
 
+### Detected by `3-code-review` at 2026-04-23T19:23:48Z (session 1c094726-da6d-49dc-b6c5-1ce591235b40)
+
+- Duplicate audit rows per POST /generate breaks AC3 "exactly one row" _(type: `CONTRADICTORY_SPEC`; severity: `blocking`)_
+- Synchronous audit write + commit re-introduced on TTFB path _(type: `ARCHITECTURAL_DRIFT`; severity: `blocking`)_
+- Story change log claims "all tests green" but 3 integration tests fail at HEAD _(type: `ACCEPTANCE_GAP`; severity: `blocking`)_
+- Duplicate audit rows per POST /generate breaks AC3 "exactly one row" _(type: `CONTRADICTORY_SPEC`; severity: `blocking`)_
+- Synchronous audit write + commit re-introduced on TTFB path _(type: `CONTRADICTORY_SPEC`; severity: `blocking`)_
+- Story change log claims "all tests green" but 3 integration tests fail at HEAD _(type: `CONTRADICTORY_SPEC`; severity: `blocking`)_
+
+## Senior Developer Review — Third Pass
+
+**Reviewer:** bmad-code-review (adversarial, parallel hunters)
+**Date:** 2026-04-23 (third pass)
+**Verdict:** **REVIEW: Changes Requested**
+**Test verification:** Re-ran the story's integration tests from a clean checkout at HEAD (`b133f4e`) with current working-tree changes applied. **3 integration tests now FAIL** against claims in the second-pass review:
+
+```
+FAILED test_generate_audit_log.py::TestGenerateAuditLog::test_audit_log_row_has_correct_shape
+FAILED test_generate_audit_log.py::TestGenerateAuditLog::test_audit_after_populated_on_failure_path
+FAILED test_generate_audit_log.py::TestGenerateAuditLog::test_exactly_one_audit_row_per_invocation
+3 failed, 16 passed  (across all four new integration files)
+```
+
+### Blocking Findings (must fix before merge)
+
+#### F10 — AC3 regression: duplicate audit rows per invocation (HIGH)
+
+The endpoint was changed since the second-pass review to write **two** `shared.audit_log` rows per `POST /generate`:
+
+1. Synchronous "entry" row in `proposals.py:723-734` with `after={"status": "generating"}`, committed at `session.commit()` on line 736 — **on the TTFB path**, before the `StreamingResponse` is returned.
+2. Fire-and-forget "terminal" row scheduled from `_run_generation_task`'s `finally` block via `asyncio.create_task(_write_generation_audit(...))` with the real terminal `after` outcome.
+
+This directly contradicts the F2 resolution recorded in the change log ("audit write is now fire-and-forget from `_run_generation_task.finally`") and violates:
+
+- **AC3** — story acceptance: *"exactly one row is inserted into shared.audit_log"* — now 2 rows per call.
+- **AC4** measurable target — *"Audit write non-blocking latency < +10 ms TTFB"* — the entry write is synchronous `await write_audit_entry(...)` followed by `await session.commit()`, both on the TTFB path.
+- **F2 resolution verification** in the second-pass review (`test_audit_log_row_has_correct_shape` is presented as PASS but actually FAILS because the first row returned by the unordered query has `after={"status":"generating"}`, not `{"version_number", "content_hash"}`).
+
+The inline comment on line 719-722 justifies the synchronous write as "AC18 audit contract" — AC18 is not part of Story 7-17; it appears to belong to a sibling story (likely S7.18) and has been bolted on without reconciling with Story 7-17's AC3.
+
+**Repro (verified 2026-04-23, HEAD = `b133f4e` + current working tree):**
+```
+pytest services/client-api/tests/integration/test_generate_audit_log.py -q
+→ 3 failed, 2 passed
+```
+
+Test failure evidence:
+```
+test_audit_log_row_has_correct_shape:
+  assert "version_number" in after
+  E   AssertionError: got keys: ['status']
+  E   assert 'version_number' in {'status': 'generating'}
+```
+
+**Fix options (pick one and reconcile):**
+- (a) Remove the synchronous entry audit write in `proposals.py:723-734` and rely solely on the fire-and-forget terminal write from the background task (matches F2 resolution and AC3 "exactly one row").
+- (b) Keep the entry write but convert it to an UPDATE-in-place pattern: assign a known `id` to the entry row, and have `_write_generation_audit` UPDATE that row with the terminal `after` instead of INSERTing a second row. Update AC3 to acknowledge two "phases" of the single row.
+- (c) If AC18 from the sibling story genuinely requires a pre-response audit row, split the two audit concerns in the spec and update Story 7-17's AC3 explicitly — don't leave contradictory ACs live.
+
+DEVIATION: Duplicate audit rows per `POST /generate` — one synchronous entry row (after=`{"status":"generating"}`) + one fire-and-forget terminal row. Contradicts AC3, breaks 3 integration tests, and reverts the F2 resolution.
+DEVIATION_TYPE: CONTRADICTORY_SPEC
+DEVIATION_SEVERITY: blocking
+
+#### F11 — Synchronous audit write on the TTFB path (HIGH)
+
+Rule 45 and Dev Notes explicitly prescribe `asyncio.create_task(_write_generation_audit(…))` for the audit write. The F4 follow-up resolution removed the synchronous path; the current code re-introduces it at `proposals.py:723-736` (`await write_audit_entry(...)` + `await session.commit()`). The "< +10 ms TTFB" measurable target is not instrumented and the synchronous DB round-trip + commit are now part of the user-visible latency.
+
+DEVIATION: Audit write is synchronous `await` + `await session.commit()` on the pre-stream TTFB path, reverting F4 and violating Rule 45 / the "< +10 ms TTFB" NFR measurable target.
+DEVIATION_TYPE: ARCHITECTURAL_DRIFT
+DEVIATION_SEVERITY: blocking
+
+#### F12 — Story status/change log overstates green bar (HIGH)
+
+- Change Log row dated 2026-04-18 claims *"All 19 integration tests green"*.
+- Second-pass review approves with *"test_audit_log_row_has_correct_shape asserts after.version_number and after.content_hash"* presented as PASS.
+- Dev Agent Record *"All 41 ATDD tests (27 unit + 14 integration) GREEN"*.
+
+All three statements are wrong as of today's re-verification (3 failures in `test_generate_audit_log.py`). The prior verdict trusted the agent's summary rather than re-executing the suite. The Zero-Output Guard principle applies in reverse here: **a review that claims "approve, all tests pass" without re-running the tests is itself a false positive**.
+
+DEVIATION: Story status `review` + Change Log + Senior Review second-pass all claim full green bar, but 3 integration tests fail against current HEAD.
+DEVIATION_TYPE: ACCEPTANCE_GAP
+DEVIATION_SEVERITY: blocking
+
+### Non-Blocking Findings (carryover)
+
+- **F6** (claim_generation order-of-ops comment) — still unchanged; low risk, tracked.
+- **F8** (deferred-work.md / traceability not reconciled with migration 025, now renamed `025_audit_hardening.py` per migration-file header) — still unchanged; documentation debt.
+- **F9** (uncommitted working tree) — the full Story 7-17 diff + unrelated changes are still in the working tree. Migration file has been renamed (`025_audit_log_company_correlation.py` → `025_audit_hardening.py` per the file's own docstring referencing "Story 9.9 bug fixes"). Before merging, stage and commit deliberately.
+
+### What the second-pass review got right (unchanged)
+
+- F1 correlation_id in SSE error frame — still threaded correctly through `_sanitize_generation_error`.
+- F3 cross-tenant timing tests — 3 integration tests pass locally.
+- F5 `stream_incomplete` routed through the helper — still correct.
+- F7 hardened-header integration assertion — still passes.
+
+### Playbook Markers
+
+FAILURE_REASON: Three integration tests fail against HEAD because the endpoint was amended to write an entry-time "generation started" audit row in addition to the fire-and-forget terminal row. This (a) violates Story 7-17 AC3 "exactly one row", (b) reverts the F2/F4 resolutions that moved the audit write off the TTFB path, and (c) falsifies the second-pass "REVIEW: Approve" conclusion that was recorded without re-executing the test suite.
+FAILURE_CATEGORY: test_coverage
+SUGGESTED_FIX: Remove the synchronous entry-time audit write (`proposals.py:723-736`) and keep only the fire-and-forget terminal write scheduled from `_run_generation_task.finally`. If a pre-response audit row is genuinely required by a sibling story (AC18 in the inline comment), either (a) reconcile the two ACs and update Story 7-17 to accept a two-row contract + update test `test_exactly_one_audit_row_per_invocation` and `test_audit_log_row_has_correct_shape` (ORDER BY created_at DESC), or (b) implement UPDATE-in-place on a single row instead of two INSERTs. Re-run `pytest services/client-api/tests/integration/test_generate_audit_log.py -q` and confirm 5 passed before re-submitting.
+
+DEVIATION: Duplicate audit rows per POST /generate — entry + terminal; breaks AC3 and 3 tests
+DEVIATION_TYPE: CONTRADICTORY_SPEC
+DEVIATION_SEVERITY: blocking
+
+DEVIATION: Synchronous `await write_audit_entry` + `await session.commit()` re-introduced on TTFB path
+DEVIATION_TYPE: ARCHITECTURAL_DRIFT
+DEVIATION_SEVERITY: blocking
+
+DEVIATION: Status `review` + green-bar claims in change log are inconsistent with re-verified test failures
+DEVIATION_TYPE: ACCEPTANCE_GAP
+DEVIATION_SEVERITY: blocking
+
+---
+
 ## Senior Developer Review — Second Pass
 
 **Reviewer:** bmad-code-review (adversarial, parallel hunters)

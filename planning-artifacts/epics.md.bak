@@ -1,0 +1,451 @@
+---
+stepsCompleted:
+  - "step-01-validate-prerequisites.md"
+  - "step-02-design-epics.md"
+  - "step-03-create-stories.md"
+  - "step-04-final-validation.md"
+inputDocuments:
+  - "eusolicit-docs/EU_Solicit_PRD_v2.md"
+  - "eusolicit-docs/EU_Solicit_Requirements_Brief_v5.md"
+  - "eusolicit-docs/EU_Solicit_Solution_Architecture_v5.md"
+  - "eusolicit-docs/EU_Solicit_UX_Supplement_v1.md"
+  - "eusolicit-docs/EU_Solicit_User_Journeys_and_Workflows_v1.md"
+
+---
+
+# EU Solicit - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for EU Solicit, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+FR: Multi-source monitoring - AOP, TED, and EU grant portals crawled by local Celery tasks on schedule; new opportunities appear within 24h of publication
+FR: Opportunity listing - Searchable, filterable by CPV, region, budget, deadline, status; paginated results
+FR: Free-tier limited view - Free users see name, deadline, location, type, status only; all other fields gated
+FR: Paid-tier full view - Paid users see full documentation, budget, evaluation criteria, AI analysis (within tier limits)
+FR: AI summary generation - One-page executive summary of tender documents generated via KraftData agent; streaming response
+FR: Smart matching - Relevance score (0-100) computed against company profile, displayed on listing and detail
+FR: Configurable email alerts - Users set CPV sectors, regions, budget range, deadline proximity; digest sent on schedule
+FR: Competitor tracking - Publicly available award data aggregated; competitor win rates and pricing displayed
+FR: Pipeline forecasting - Predicted upcoming tenders based on historical procurement cycles shown on dashboard
+FR: Document upload - Tender documents (PDF, DOCX, ZIP) uploaded to S3; virus scanned via ClamAV; max 100MB/file, 500MB/package
+FR: Submission guides - Portal-specific step-by-step submission instructions displayed on opportunity detail
+FR: Document parser - Extracts requirements, evaluation criteria, deadlines, mandatory documents, financial thresholds from tender packages
+FR: Requirement checklist - Auto-generated compliance checklist mapping every mandatory requirement to a trackable item
+FR: Clause risk flagging - High-risk clauses (unlimited liability, IP assignment, penalties) identified and flagged for legal review
+FR: Multi-language processing - Source documents processed in BG, EN, DE, FR, RO; outputs generated in user's preferred language
+FR: AI draft generator - Multi-agent workflow generates first-draft proposal from tender requirements + company profile; SSE streaming
+FR: Template library - Sector-specific proposal templates available via RAG in the Proposal Generator Workflow
+FR: Scoring simulator - Predicted evaluator scores per criterion with improvement suggestions; scorecard UI
+FR: Compliance validator - Pre-submission check: mandatory sections, page limits, required attachments, formatting rules
+FR: Pricing assistant - Competitive pricing suggestion based on historical award data and budget ceilings
+FR: Proposal editor - Rich text editor (Tiptap) with versioning; section-level editing
+FR: Version control - Proposal versions tracked with diff capability; rollback to previous versions
+FR: Document export - Proposals, checklists, compliance reports exportable as PDF and DOCX
+FR: Content blocks library - Reusable boilerplate sections (company overview, quality management, etc.) stored, tagged, versioned
+FR: Win theme extractor - AI identifies key win themes from tender requirements for proposal positioning
+FR: Per-proposal roles - Users assigned roles (bid manager, technical writer, financial analyst, legal reviewer, read-only) per proposal
+FR: Entity-level RBAC - Access controlled per opportunity/proposal; company role sets ceiling, entity permission narrows
+FR: Section locking - Pessimistic locking: one editor per section; 15-min TTL; locked sections show editor name
+FR: Proposal comments - Threaded comments anchored to section + version; resolvable; carry forward across versions
+FR: Task orchestration - Tasks with assignments, deadlines, dependencies (DAG); templates per opportunity type; overdue alerts
+FR: Approval workflows - Configurable stage sequences (technical → legal → management); sign-off decisions logged
+FR: Bid/no-bid decision - Structured scoring (strategic fit, win probability, resources, margin); AI recommendation with override
+FR: Bid outcome tracking - Record won/lost/withdrawn with optional evaluator feedback and scores
+FR: Preparation time logging - Users log hours and costs per proposal for ROI tracking
+FR: Grant eligibility matcher - Company/municipality profile mapped against active EU programmes (Horizon Europe, Digital Europe, structural funds, etc.)
+FR: Budget builder - AI-assisted budget following EU cost category rules, overhead calculations, co-financing requirements
+FR: Consortium finder - Partner suggestions from database of organizations that have participated in similar grants
+FR: Logframe generator - Auto-generated logical frameworks, work packages, Gantt charts, deliverable tables from narrative
+FR: Reporting template generator - Post-award periodic report and financial statement templates pre-filled from project data
+FR: Compliance framework CRUD - Platform admins create/edit compliance frameworks (Bulgarian ZOP, EU directives, programme rules)
+FR: Per-opportunity assignment - Admin assigns applicable framework to each opportunity; hybrid scenarios supported
+FR: Framework auto-suggestion - Platform suggests framework based on country, source, funding type; admin confirms/overrides
+FR: ESPD auto-fill - Pre-populated European Single Procurement Document from stored company data; structured form
+FR: Regulation tracker - AI agent monitors changes to ZOP, EU procurement directives, and grant programme rules
+FR: Audit trail - Immutable log of all platform actions with timestamp, user, action type, entity ref, before/after values
+FR: Email alerts - Configurable digest (immediate/daily/weekly) matching user's alert preferences; sent via SendGrid
+FR: iCal feed - Subscribable URL with deadlines for tracked opportunities; works with any calendar app
+FR: Google Calendar sync - Two-way sync via Google Calendar API; creates/updates/deletes events for deadlines
+FR: Outlook sync - Two-way sync via Microsoft Graph API; same functionality as Google Calendar
+FR: Task notifications - Email alerts on task assignment, approaching deadlines, and overdue tasks
+FR: Approval notifications - Email alerts when approval is requested and when decisions are made
+FR: Trial expiry reminder - Email 3 days before trial ends with upgrade prompt
+FR: Market intelligence - Sector-level analytics: procurement volumes, avg contract values, active authorities, seasonal trends
+FR: ROI tracker - Return on bid investment: preparation time/cost vs. contract value won
+FR: Team performance - Per-user metrics: bids submitted, win rate, average preparation time
+FR: Competitor intelligence - Aggregated competitor bidding patterns, win rates, pricing benchmarks
+FR: Pipeline forecast - Predicted upcoming opportunities based on historical patterns
+FR: Usage dashboard - Current period usage vs. tier limits (AI summaries, proposal drafts, compliance checks)
+FR: Report export - Management reports (pipeline value, success rates, deadlines) as PDF/DOCX; scheduled or on-demand
+FR: Tier definitions - Free, Starter (€29), Professional (€59), Enterprise (€109+) with correct feature/limit mappings
+FR: Stripe Checkout - Upgrade flow via Stripe Checkout; subscription created with correct tier
+FR: Customer portal - Self-service upgrade, downgrade, cancel, update payment method via Stripe Customer Portal
+FR: 14-day trial - New registrations get Professional tier for 14 days, no credit card; graceful downgrade to Free on expiry
+FR: Usage metering - AI summaries, proposal drafts, compliance checks tracked per period; blocked on limit with upgrade prompt
+FR: Per-bid add-ons - One-time purchases for premium AI features on specific opportunities; via Stripe Checkout
+FR: EU VAT - Automatic VAT calculation via Stripe Tax; tax ID collection; reverse charge for B2B
+FR: Enterprise invoicing - Custom invoicing with NET 30/60 payment terms for Enterprise tier
+FR: Admin authentication - Separate admin auth with `platform_admin` role; VPN/IP-restricted access
+FR: Tenant management - View/manage companies, subscriptions, usage
+FR: Crawler management - View crawler run history, configure schedules, trigger manual runs
+FR: White-label configuration - Custom subdomain, logo, brand colors, email sender domain for Enterprise clients
+FR: Audit log viewer - Searchable, filterable audit log with export capability
+FR: Platform analytics - Signup funnel, tier conversion, usage patterns, churn metrics
+FR: Enterprise API - RESTful API documented via auto-generated OpenAPI spec for Enterprise tier clients
+FR: Requirement - Target
+FR: Availability - 99.5% uptime
+FR: API latency (p95) - < 200ms for REST, < 500ms TTFB for SSE
+FR: Data residency - All data within EU (AWS eu-central-1)
+FR: Security - JWT RS256, TLS 1.3, AES-256 at rest, ClamAV
+FR: Scalability - 10K+ active tenders, concurrent agent execution per tenant
+FR: GDPR compliance - Right to erasure, DPAs with KraftData, data processing records
+FR: Agent quality - KraftData eval-runs for continuous quality monitoring
+FR: i18n - Bulgarian + English in MVP; AI outputs in user's language
+FR: Metric - Target
+FR: Opportunities loaded - 500+ from AOP + TED
+FR: Search-to-detail flow - < 3 clicks
+FR: AI summary generation - < 30s for 100-page document
+FR: Proposal draft generation - < 2 min for first draft
+FR: End-to-end flow - Registration → opportunity → proposal in one session
+FR: Metric - Target
+FR: Registered companies - 100
+FR: Free → paid conversion - 10%
+FR: Trial → paid conversion - 25%
+FR: Active paid subscribers - 25
+FR: Proposals generated - 200
+FR: NPS score - > 40
+FR: Billing provider - : Stripe (supports EUR, recurring subscriptions, usage-based metering, customer portal).
+FR: Subscription lifecycle - : Free registration → optional upgrade to paid tier → Stripe Checkout for payment → automatic renewal → Stripe Customer Portal for self-service management (upgrade, downgrade, cancel, update payment method).
+FR: Usage metering - : AI summaries, proposal drafts, and compliance checks are tracked per billing period. When a user reaches their monthly limit, the platform blocks further requests for that feature and presents an upgrade prompt.
+FR: Trial period - : 14-day free trial of Professional tier for new registrations (no credit card required).
+FR: Invoicing - : Stripe-generated invoices with EU VAT handling. Enterprise tier supports custom invoicing.
+FR: Agents - — Purpose-built AI agents for specific tasks (document analysis, proposal generation, compliance checking, market intelligence).
+FR: Teams - — Coordinated multi-agent groups that handle complex workflows requiring sequential or parallel agent collaboration.
+FR: Workflows - — Multi-step orchestrated pipelines that chain agents, data retrieval, validation, and output generation.
+FR: Storage Resources - — Vector stores for RAG (Retrieval Augmented Generation) enabling domain-specific knowledge bases (RFP templates, past proposals, regulatory texts).
+FR: Sessions - — Persistent conversation contexts that maintain state across multi-turn interactions.
+FR: Evaluations - — Built-in eval framework for measuring agent accuracy and output quality.
+FR: Policies - — Multi-level governance controls (organization, project, team, agent) for output safety and compliance.
+FR: Webhooks - — Event-driven notifications for asynchronous workflow completion.
+FR: Multi-source monitoring - (MVP: Bulgaria + EU): Automated crawling of AOP (Bulgarian Agency for Public Procurement), TED (Tenders Electronic Daily), and EU funding portals. Each source has a dedicated crawler agent. Additional national portals can be added post-MVP.
+FR: Data normalization agent team - : A KraftData Team that standardizes heterogeneous data formats (HTML, PDF, XML) into a unified schema in the central data store.
+FR: Smart matching agent - : AI agent that scores opportunity relevance against company profile, past bids, capabilities, certifications, and financial capacity.
+FR: Configurable email alerts - : Users configure alert preferences (CPV sectors, regions, budget range, deadline proximity, contracting authority). The platform sends matching opportunity digest emails on a configurable schedule (immediate, daily, weekly). In-app and Slack notification channels are deferred to post-MVP.
+FR: Competitor tracking agent - : Monitors publicly available award data to identify competitor bidding patterns, win rates, and pricing. Results are displayed in a dedicated Competitor Intelligence view accessible to Professional and Enterprise tiers.
+FR: Pipeline forecasting agent - : Predicts upcoming tenders based on historical procurement cycles, budget planning documents, and framework agreement renewal schedules. Forecasts are shown as a "Predicted Opportunities" section on the dashboard.
+FR: AI document parser agent - : Ingests full tender packages (PDF, DOCX, ZIP) and extracts structured data - requirements, evaluation criteria, deadlines, mandatory documents, financial thresholds.
+FR: Executive summary agent - : Generates one-page summaries of complex 200+ page procurement documents, highlighting key risks and requirements.
+FR: Requirement checklist builder - : Auto-generates compliance checklists mapping every mandatory requirement to a trackable item.
+FR: Clause risk flagging agent - : Identifies unusual or high-risk contractual clauses (unlimited liability, IP assignment, penalty structures) and flags for legal review.
+FR: Multi-language processing - : The KraftData agents process source documents in their original language (Bulgarian, English, German, French, Romanian) and generate outputs (summaries, checklists, proposals) in the user's preferred language. The platform UI supports Bulgarian and English in the MVP, with additional languages post-MVP.
+FR: Document storage & management - : Tender documents are uploaded to S3-compatible object storage, linked to the opportunity record. Maximum file size: 100MB per file, 500MB per tender package. Documents are retained for the lifetime of the opportunity + 2 years (configurable). Virus scanning via ClamAV on upload.
+FR: Template library - : Pre-built, sector-specific proposal templates in vector storage resources, accessible via RAG.
+FR: AI draft generator workflow - : Multi-agent workflow that generates first-draft proposals from tender requirements + company profile, including technical approach, methodology, team composition, and timeline.
+FR: Scoring model simulator agent - : Predicts evaluator scoring against published criteria and suggests specific improvements to maximize points. Results are presented as a scorecard with per-criterion breakdown and improvement suggestions.
+FR: Pricing assistant agent - : Suggests competitive pricing based on historical award data, budget ceilings, and market benchmarks.
+FR: Version control & collaboration - : Multi-user editing with role-based access (bid manager, technical writer, financial analyst, legal reviewer).
+FR: Document export - : Generated proposals, checklists, and compliance reports exportable as PDF and DOCX.
+FR: Grant eligibility matcher agent - : Maps company/municipality profile against active EU programmes (Horizon Europe, Digital Europe, structural funds, CAP, Interreg).
+FR: Budget builder agent - : AI-assisted budget construction following EU cost category rules, overhead calculations, and co-financing requirements.
+FR: Consortium finder - : Suggests potential partners from a database of organizations that have participated in similar grants.
+FR: Logframe generator agent - : Auto-generates logical frameworks, work packages, Gantt charts, and deliverable tables from project narrative descriptions.
+FR: Reporting template generator - : Post-award periodic report and financial statement templates pre-filled from project data.
+FR: Company profile vault - : Centralized repository of company credentials, past project references, team CVs, certifications, financial statements - auto-populated into proposals via RAG.
+FR: Bid history & outcome tracking - : Users record bid outcomes (won, lost, withdrawn) with optional evaluator feedback and scores. This data feeds the Lessons Learned Agent and analytics dashboards.
+FR: Bid history analytics agent - : Tracks win/loss rates, average scores, common feedback themes, and improvement trends. Generates periodic reports and recommendations.
+FR: Reusable content blocks - : Library of approved boilerplate sections (company overview, quality management, sustainability policy) stored in vector stores.
+FR: Bid/no-bid decision agent - : Structured scoring tool evaluating strategic fit, win probability, resource availability, and margin potential. Presents a recommendation (bid / no-bid / conditional) with a score breakdown and key risk factors. Users can override the recommendation with a justification that is logged.
+FR: Task orchestration - : Automated workflow from opportunity identification through final submission, with task assignments, dependencies, and deadline tracking.
+FR: Approval gates - : Configurable review and sign-off stages before submission (technical, legal, management).
+FR: Framework auto-suggestion - : The platform suggests an applicable framework based on the opportunity's country, source, and funding type. The admin confirms or overrides.
+FR: Regulation tracker agent - : Monitors changes to Bulgarian ZOP, EU procurement directives, and grant programme rules.
+FR: ESPD auto-fill - : Pre-populates European Single Procurement Document from stored company data.
+FR: Market intelligence agent - : Sector-level analytics on procurement volumes, average contract values, most active contracting authorities, seasonal trends. Presented as interactive charts and filterable tables.
+FR: ROI tracker - : Calculates return on bid investment (preparation time + cost vs. contract value won).
+FR: Competitor intelligence view - : Aggregated competitor bidding patterns, win rates, and pricing benchmarks (Professional and Enterprise tiers).
+FR: Pipeline forecasting view - : Predicted upcoming opportunities based on historical patterns.
+FR: Usage dashboard - : Current billing period usage vs. tier limits (AI summaries consumed, proposal drafts remaining, etc.).
+FR: Custom reporting - : Exportable reports for management - pipeline value, success rate trends, upcoming deadlines.
+FR: KraftData API - : Full integration via REST API with API key auth, SSE streaming, webhook callbacks.
+FR: Stripe - : Subscription billing, usage metering, customer portal, invoicing.
+FR: Google Calendar API - : Two-way calendar sync for Professional and Enterprise tiers (OAuth2).
+FR: Microsoft Graph API - : Two-way Outlook calendar sync for Professional and Enterprise tiers (OAuth2).
+FR: Google OAuth2 - : Social login for authentication.
+FR: SMTP / Transactional email - : Email alerts and notifications (SendGrid or AWS SES).
+FR: S3-compatible object storage - : Tender document files, generated proposals, exports.
+FR: Multi-tenant architecture - : White-label option for consulting firms (Enterprise tier). Includes custom subdomain (`clientname.eusolicit.com`), configurable logo/brand colors, and custom email sender domain.
+FR: Role-based access control - : Admin, bid manager, contributor, reviewer, read-only - with per-tender permission granularity.
+FR: KraftData Policy enforcement - : Organization and project-level AI governance via KraftData's multi-level policy system.
+FR: Authentication - : Email/password registration with Google OAuth2 social login. Microsoft OAuth2 deferred to post-MVP.
+FR: Data residency - : All tender data and client information stored within EU (GDPR compliance). Infrastructure hosted in EU region.
+FR: Scalability - : Central DB must handle 10K+ active tenders with full-text search; KraftData agents must support concurrent execution per tenant.
+FR: Monitoring - : KraftData eval runs for continuous agent quality measurement; alerting on degradation.
+FR: Authentication - : Email/password + Google OAuth2 (MVP). RS256 JWT with 15-min access token + 7-day refresh token.
+
+### NonFunctional Requirements
+
+NFR: Compliance validator agent - : Automated pre-submission check - mandatory sections addressed, page limits respected, required attachments present, formatting rules followed. Validation runs against the compliance framework assigned to that opportunity.
+NFR: Lessons learned engine - : Post-bid-outcome analysis agent that captures what worked, what didn't, and generates improvement recommendations. Insights are fed back into the Proposal Generator Workflow to improve future drafts.
+NFR: Compliance validation against assigned framework - : The Compliance Checker Agent validates proposals against the specific regulatory framework assigned to that opportunity by the admin - not a generic ruleset.
+NFR: Audit trail - : Full traceability of all platform actions - compliance framework assignments, proposal edits, approval decisions, bid/no-bid overrides, and document downloads. Stored in an immutable audit log with timestamp, user ID, action type, entity reference, and before/after values.
+NFR: Team performance metrics - : Productivity per bid manager - bids submitted, win rate, average preparation time.
+NFR: Availability - : 99.5% uptime SLA for the EU Solicit client platform.
+NFR: Latency - : Streaming responses (`run-stream`) for all user-facing AI operations; no blocking waits for proposal generation.
+NFR: Security - : API key rotation, JWT RS256 auth, audit logging, encryption at rest (AES-256) and in transit (TLS 1.3). Virus scanning on all file uploads.
+NFR: Compliance - : GDPR-compliant data handling. Right to erasure. Data processing agreements with KraftData.
+
+### Additional Requirements
+
+- Backend: Python 3.12 + FastAPI: Python + FastAPI over Java/Spring Boot or PHP/Laravel.
+- Architecture Pattern: Hybrid SOA (5 Services): Service-oriented architecture with 5 services from day one, not a monolith or full microservices.
+- Inter-Service Communication: REST + Async Events: Synchronous REST for queries, async Redis Streams for events.
+- Frontend: React 18 + Next.js 14: Next.js App Router with React Server Components. SSR for SEO on public tender listings, client-side interactivity for dashboards and proposal editors.
+- Database: PostgreSQL 16, Shared Instance with Schema Isolation: Single PostgreSQL instance, 6 schemas, per-service DB roles with enforced access boundaries.
+- Deployment: Docker + Kubernetes: Containerized services on Kubernetes with Helm charts. Each service has its own Dockerfile, Helm chart, and CI pipeline.
+- KraftData Agent & Vector Store Management: All KraftData agents, teams, and workflows are created and configured manually via the KraftData admin interface. Vector stores (storage resources) are provisioned and managed through the KraftData API (`/client/api/v1/storage-resources/*`). EU Solicit does not maintain its own vector search infrastructure.
+- MVP Scope Boundaries
+
+**In scope**: Opportunity intelligence (Bulgaria + EU), document analysis, AI-assisted proposals, EU grant specialization, compliance framework management, alert digests (email), calendar sync (Google + Outlook), analytics dashboards, Stripe billing, white-label (Enterprise).
+
+**Out of scope for MVP**: Electronic bid submission, Microsoft OAuth2 (deferred post-MVP), e-procurement portal integration, ERP/CRM integration, Slack/Teams notifications, digital signatures (eIDAS), consultant marketplace.
+
+### 1.9 Data Residency & GDPR Compliance: All tender data and client information stored within EU data centres. Infrastructure hosted in EU region (AWS eu-central-1 or equivalent).
+- Document Retention Policy: Documents (uploaded tender files, generated proposals, exports) are retained for the lifetime of the opportunity + 2 years. Retention period is configurable per tenant at the Admin API level.
+- Data Pipeline Crawlers: Local Celery Tasks: All crawlers (AOP, TED, EU Grant portals) are implemented as local Celery tasks within the Data Pipeline service, not as KraftData agents.
+- Task Orchestration & Approval Gates: The Client API owns a task orchestration engine and configurable approval workflow system.
+- Proposal Collaboration & Entity-Level RBAC: Proposals support multi-user collaboration with per-entity role assignments. RBAC is enforced at two levels: company-wide role (sets the ceiling) and entity-level permission (narrows access per opportunity/proposal).
+- Billing: Trials, Add-Ons, EU VAT: The billing model supports three flows beyond basic subscriptions: (1) 14-day free trial of Professional tier without credit card, (2) per-bid add-on purchases as Stripe one-time charges, (3) EU VAT compliance via Stripe Tax.
+- Self-Service Bidding: Guided Submission & ESPD: The platform provides structured submission guidance and ESPD auto-fill as core features of the self-service bidding model.
+- Starter Template: Project uses a monorepo setup (Turborepo) with Next.js and FastAPI.
+
+### UX Design Requirements
+
+UX-DR: 1.4 Design Tokens - Color Tokens
+UX-DR: 1.4 Design Tokens - Typography Tokens
+UX-DR: 1.4 Design Tokens - Spacing Scale
+UX-DR: 1.4 Design Tokens - Elevation
+UX-DR: 1.4 Design Tokens - Border Radius
+UX-DR: 1.4 Design Tokens - Transition Tokens
+UX-DR: 5.5 Mobile Responsive Adaptations - Sidebar to Bottom Tab Bar
+UX-DR: 5.5 Mobile Responsive Adaptations - DataTable to Card List
+UX-DR: 5.5 Mobile Responsive Adaptations - Detail Pages
+UX-DR: 5.5 Mobile Responsive Adaptations - Right Inspector Panel
+UX-DR: 5.5 Mobile Responsive Adaptations - Modals and Dialogs
+UX-DR: 5.5 Mobile Responsive Adaptations - Filter Panel
+UX-DR: 5.5 Mobile Responsive Adaptations - Charts (Recharts)
+UX-DR: 5.5 Mobile Responsive Adaptations - Proposal Editor (Tiptap)
+UX-DR: 5.5 Mobile Responsive Adaptations - Multi-Column Layouts
+UX-DR: 5.5 Mobile Responsive Adaptations - Drag-and-Drop
+
+### FR Coverage Map
+
+### FR Coverage Map
+
+FR6: Epic 1 - Smart matching
+FR16: Epic 1 - AI draft generator
+FR27: Epic 1 - Entity-level RBAC
+FR35: Epic 1 - Grant eligibility matcher
+FR37: Epic 1 - Consortium finder
+FR53: Epic 1 - Market intelligence
+FR68: Epic 1 - Admin authentication
+FR69: Epic 1 - Tenant management
+FR80: Epic 1 - Scalability
+FR91: Epic 1 - Registered companies
+FR108: Epic 1 - Policies
+FR112: Epic 1 - Smart matching agent
+FR113: Epic 1 - Configurable email alerts
+FR123: Epic 1 - AI draft generator workflow
+FR128: Epic 1 - Grant eligibility matcher agent
+FR130: Epic 1 - Consortium finder
+FR133: Epic 1 - Company profile vault
+FR134: Epic 1 - Bid history & outcome tracking
+FR143: Epic 1 - Market intelligence agent
+FR149: Epic 1 - KraftData API
+FR151: Epic 1 - Google Calendar API
+FR152: Epic 1 - Microsoft Graph API
+FR153: Epic 1 - Google OAuth2
+FR156: Epic 1 - Multi-tenant architecture
+FR158: Epic 1 - KraftData Policy enforcement
+FR159: Epic 1 - Authentication
+FR161: Epic 1 - Scalability
+FR163: Epic 1 - Authentication
+FR17: Epic 1 - Template library
+FR30: Epic 1 - Task orchestration
+FR31: Epic 1 - Approval workflows
+FR34: Epic 1 - Preparation time logging
+FR42: Epic 1 - Framework auto-suggestion
+FR44: Epic 1 - Regulation tracker
+FR45: Epic 1 - Audit trail
+FR47: Epic 1 - iCal feed
+FR48: Epic 1 - Google Calendar sync
+FR49: Epic 1 - Outlook sync
+FR50: Epic 1 - Task notifications
+FR52: Epic 1 - Trial expiry reminder
+FR60: Epic 1 - Tier definitions
+FR62: Epic 1 - Customer portal
+FR63: Epic 1 - 14-day trial
+FR66: Epic 1 - EU VAT
+FR67: Epic 1 - Enterprise invoicing
+FR71: Epic 1 - White-label configuration
+FR76: Epic 1 - Availability
+FR77: Epic 1 - API latency (p95)
+FR78: Epic 1 - Data residency
+FR79: Epic 1 - Security
+FR83: Epic 1 - i18n
+FR86: Epic 1 - Search-to-detail flow
+FR89: Epic 1 - End-to-end flow
+FR94: Epic 1 - Active paid subscribers
+FR96: Epic 1 - NPS score
+FR97: Epic 1 - Billing provider
+FR98: Epic 1 - Subscription lifecycle
+FR100: Epic 1 - Trial period
+FR106: Epic 1 - Sessions
+FR109: Epic 1 - Webhooks
+FR122: Epic 1 - Template library
+FR140: Epic 1 - Framework auto-suggestion
+FR141: Epic 1 - Regulation tracker agent
+FR150: Epic 1 - Stripe
+FR154: Epic 1 - SMTP / Transactional email
+FR1: Epic 2 - Multi-source monitoring
+FR2: Epic 2 - Opportunity listing
+FR3: Epic 2 - Free-tier limited view
+FR5: Epic 2 - AI summary generation
+FR8: Epic 2 - Competitor tracking
+FR9: Epic 2 - Pipeline forecasting
+FR13: Epic 2 - Requirement checklist
+FR14: Epic 2 - Clause risk flagging
+FR15: Epic 2 - Multi-language processing
+FR18: Epic 2 - Scoring simulator
+FR36: Epic 2 - Budget builder
+FR38: Epic 2 - Logframe generator
+FR41: Epic 2 - Per-opportunity assignment
+FR43: Epic 2 - ESPD auto-fill
+FR46: Epic 2 - Email alerts
+FR51: Epic 2 - Approval notifications
+FR55: Epic 2 - Team performance
+FR56: Epic 2 - Competitor intelligence
+FR57: Epic 2 - Pipeline forecast
+FR58: Epic 2 - Usage dashboard
+FR59: Epic 2 - Report export
+FR61: Epic 2 - Stripe Checkout
+FR70: Epic 2 - Crawler management
+FR74: Epic 2 - Enterprise API
+FR82: Epic 2 - Agent quality
+FR85: Epic 2 - Opportunities loaded
+FR95: Epic 2 - Proposals generated
+FR101: Epic 2 - Invoicing
+FR102: Epic 2 - Agents
+FR103: Epic 2 - Teams
+FR104: Epic 2 - Workflows
+FR105: Epic 2 - Storage Resources
+FR110: Epic 2 - Multi-source monitoring
+FR114: Epic 2 - Competitor tracking agent
+FR115: Epic 2 - Pipeline forecasting agent
+FR119: Epic 2 - Clause risk flagging agent
+FR124: Epic 2 - Scoring model simulator agent
+FR127: Epic 2 - Document export
+FR129: Epic 2 - Budget builder agent
+FR138: Epic 2 - Task orchestration
+FR145: Epic 2 - Competitor intelligence view
+FR146: Epic 2 - Pipeline forecasting view
+FR147: Epic 2 - Usage dashboard
+FR148: Epic 2 - Custom reporting
+FR155: Epic 2 - S3-compatible object storage
+FR160: Epic 2 - Data residency
+FR162: Epic 2 - Monitoring
+FR4: Epic 3 - Paid-tier full view
+FR10: Epic 3 - Document upload
+FR12: Epic 3 - Document parser
+FR23: Epic 3 - Document export
+FR25: Epic 3 - Win theme extractor
+FR64: Epic 3 - Usage metering
+FR75: Epic 3 - Requirement
+FR87: Epic 3 - AI summary generation
+FR99: Epic 3 - Usage metering
+FR111: Epic 3 - Data normalization agent team
+FR116: Epic 3 - AI document parser agent
+FR117: Epic 3 - Executive summary agent
+FR118: Epic 3 - Requirement checklist builder
+FR120: Epic 3 - Multi-language processing
+FR121: Epic 3 - Document storage & management
+FR142: Epic 3 - ESPD auto-fill
+FR26: Epic 4 - Per-proposal roles
+FR32: Epic 4 - Bid/no-bid decision
+FR33: Epic 4 - Bid outcome tracking
+FR54: Epic 4 - ROI tracker
+FR65: Epic 4 - Per-bid add-ons
+FR125: Epic 4 - Pricing assistant agent
+FR126: Epic 4 - Version control & collaboration
+FR135: Epic 4 - Bid history analytics agent
+FR137: Epic 4 - Bid/no-bid decision agent
+FR144: Epic 4 - ROI tracker
+FR157: Epic 4 - Role-based access control
+FR7: Epic 5 - Configurable email alerts
+FR20: Epic 5 - Pricing assistant
+FR131: Epic 5 - Logframe generator agent
+FR136: Epic 5 - Reusable content blocks
+FR21: Epic 6 - Proposal editor
+FR22: Epic 6 - Version control
+FR24: Epic 6 - Content blocks library
+FR28: Epic 6 - Section locking
+FR29: Epic 6 - Proposal comments
+FR73: Epic 6 - Platform analytics
+FR88: Epic 6 - Proposal draft generation
+FR92: Epic 6 - Free → paid conversion
+FR93: Epic 6 - Trial → paid conversion
+FR11: Epic 7 - Submission guides
+FR19: Epic 7 - Compliance validator
+FR40: Epic 7 - Compliance framework CRUD
+FR72: Epic 7 - Audit log viewer
+FR81: Epic 7 - GDPR compliance
+FR107: Epic 7 - Evaluations
+FR139: Epic 7 - Approval gates
+FR39: Epic 8 - Reporting template generator
+FR84: Epic 8 - Metric
+FR90: Epic 8 - Metric
+FR132: Epic 8 - Reporting template generator
+
+
+## Epic List
+
+## Epic List
+
+### Epic 1: Authentication, Identity & Organization Setup
+Users can securely register, login, configure MFA, and establish their organizational profile and RBAC structures. Provides the foundation for tenant-isolated data.
+**FRs covered:** FR6, FR16, FR27, FR35, FR37, FR53, FR68, FR69, FR80, FR91, FR108, FR112, FR113, FR123, FR128, FR130, FR133, FR134, FR143, FR149, FR151, FR152, FR153, FR156, FR158, FR159, FR161, FR163, FR17, FR30, FR31, FR34, FR42, FR44, FR45, FR47, FR48, FR49, FR50, FR52, FR60, FR62, FR63, FR66, FR67, FR71, FR76, FR77, FR78, FR79, FR83, FR86, FR89, FR94, FR96, FR97, FR98, FR100, FR106, FR109, FR122, FR140, FR141, FR150, FR154
+
+### Epic 2: Opportunity Intelligence & Discovery
+Users can automatically discover relevant procurement and grant opportunities from AOP, TED, and EU portals, matched to their organizational profile using AI scoring.
+**FRs covered:** FR1, FR2, FR3, FR5, FR8, FR9, FR13, FR14, FR15, FR18, FR36, FR38, FR41, FR43, FR46, FR51, FR55, FR56, FR57, FR58, FR59, FR61, FR70, FR74, FR82, FR85, FR95, FR101, FR102, FR103, FR104, FR105, FR110, FR114, FR115, FR119, FR124, FR127, FR129, FR138, FR145, FR146, FR147, FR148, FR155, FR160, FR162
+
+### Epic 3: Tender Document Analysis & Extraction
+Users can upload and analyze complex tender documents, automatically extracting executive summaries, technical requirements, and compliance checklists.
+**FRs covered:** FR4, FR10, FR12, FR23, FR25, FR64, FR75, FR87, FR99, FR111, FR116, FR117, FR118, FR120, FR121, FR142
+
+### Epic 4: Bid Strategy, Risk & Feasibility
+Users receive AI-driven bid/no-bid recommendations based on risk analysis, financial capability matching, and competitor analytics before investing resources.
+**FRs covered:** FR26, FR32, FR33, FR54, FR65, FR125, FR126, FR135, FR137, FR144, FR157
+
+### Epic 5: Proposal Planning & Resource Allocation
+Users can plan out the proposal workflow by building Gantt timelines, defining work packages, structuring compliant budgets, and finding consortium partners.
+**FRs covered:** FR7, FR20, FR131, FR136
+
+### Epic 6: Collaborative Proposal Drafting
+Users can collaboratively draft proposals with AI assistance, track version history, leave comments, and ensure consistent styling across sections.
+**FRs covered:** FR21, FR22, FR24, FR28, FR29, FR73, FR88, FR92, FR93
+
+### Epic 7: Compliance, Review & Export
+Users can validate their draft against compliance frameworks, fill out standard forms (like ESPD), and export a final, perfectly formatted document package for submission.
+**FRs covered:** FR11, FR19, FR40, FR72, FR81, FR107, FR139
+
+### Epic 8: Analytics, Learning & Optimization
+Users can track win/loss outcomes, generate post-bid 'lessons learned' reports, and monitor organizational performance across multiple bids.
+**FRs covered:** FR39, FR84, FR90, FR132
+
+
+

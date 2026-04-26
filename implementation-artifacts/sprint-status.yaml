@@ -1,9 +1,46 @@
-# Sprint Status — EU Solicit
-# Auto-managed by Orchestrator. Do not edit manually.
-state: running
-current_epic: 9
-current_story: 9-3-alert-preferences-crud-api-client-api
-last_updated: '2026-04-19'  # Story 9-5 FIX-2-TEST added (missing unit test for race-condition upper bound) → review
+# generated: 2026-04-22
+# last_updated: 2026-04-25  # Epic 13 partial retrospective completed (bmad-retrospective 2026-04-25). epic-13-retrospective marked done. 8 ACTION items (3 critical, 1 high, 4 medium). Critical: code regression between review passes, false-positive review approval, injected stories not executed. 0/6 carry-forwards closed; inj-01/02/03 remain at ready-for-dev.
+# project: eusolicit
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: /home/debian/Projects/eusolicit/eusolicit-docs/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-22
+last_updated: 2026-04-25
+project: eusolicit
+project_key: NOKEY
+tracking_system: file-system
+story_location: /home/debian/Projects/eusolicit/eusolicit-docs/implementation-artifacts
+
 development_status:
   epic-1: done
   1-1-monorepo-scaffold-project-structure: done
@@ -16,6 +53,7 @@ development_status:
   1-8-github-actions-ci-pipeline: done
   1-9-helm-chart-base-template-service-values: done
   1-10-terraform-scaffold-placeholder-modules: done
+  epic-1-retrospective: optional
   epic-2: done
   2-1-database-schema-auth-identity-tables: done
   2-2-email-password-registration: done
@@ -29,6 +67,7 @@ development_status:
   2-10-entity-level-rbac-middleware: done
   2-11-audit-trail-middleware: done
   2-12-espd-profile-crud: done
+  epic-2-retrospective: optional
   epic-3: done
   3-1-next-js-14-monorepo-scaffold: done
   3-2-tailwind-design-token-preset-shadcn-ui-theming: done
@@ -42,7 +81,7 @@ development_status:
   3-10-loading-states-error-boundaries-empty-states: done
   3-11-toast-notification-system: done
   3-12-client-side-route-guards-auth-redirects: done
-
+  epic-3-retrospective: done
   epic-4: done
   4-1-fastapi-service-scaffold-and-health-probes: done
   4-2-httpx-async-client-and-kraftdata-authentication: done
@@ -54,6 +93,7 @@ development_status:
   4-8-execution-logging-and-database-schema: done
   4-9-rate-limit-management-and-concurrency-control: done
   4-10-integration-tests-and-end-to-end-validation: done
+  epic-4-retrospective: done
   epic-5: done
   5-1-pipeline-schema-migration-and-model-layer: done
   5-2-celery-app-bootstrap-and-beat-schedule-configuration: done
@@ -67,6 +107,7 @@ development_status:
   5-10-expired-opportunity-cleanup-task: done
   5-11-enrichment-queue-worker: done
   5-12-end-to-end-integration-tests-and-pipeline-observability: done
+  epic-5-retrospective: done
   epic-6: done
   6-1-opportunity-search-api-with-full-text-search-filters: done
   6-2-tier-gated-response-serialization: done
@@ -82,6 +123,7 @@ development_status:
   6-12-document-upload-component: done
   6-13-ai-summary-panel-with-sse-streaming: done
   6-14-upgrade-prompt-modal-tier-gating-ui: done
+  epic-6-retrospective: done
   epic-7: done
   7-1-proposal-version-db-schema-migrations: done
   7-2-proposal-crud-api: done
@@ -99,7 +141,7 @@ development_status:
   7-14-requirement-checklist-compliance-panels: done
   7-15-scoring-simulator-pricing-win-themes-panels: done
   7-16-version-history-content-blocks-library-export-dialog: done
-  7-17-proposal-generate-security-audit-hardening: done  # 41 ATDD tests GREEN (14 integration + 27 unit); Tasks 6/7/8 deferred (live-service/E2E)
+  epic-7-retrospective: done
   epic-8: done
   8-1-stripe-customer-provisioning-on-company-registration: done
   8-2-subscription-tier-database-schema: done
@@ -115,22 +157,41 @@ development_status:
   8-12-pricing-page-tier-comparison-ui: done
   8-13-subscription-management-page-trial-banner: done
   8-14-subscription-changed-event-tier-cache-invalidation: done
-  epic-9: in-progress
+  epic-8-retrospective: done
+  epic-9: done
   9-1-notification-service-scaffold-celery-configuration: done
   9-2-notification-schema-database-migrations: done
   9-3-alert-preferences-crud-api-client-api: done
   9-4-alert-matching-immediate-dispatch: done
   9-5-daily-weekly-digest-assembly: done
-  9-6-sendgrid-email-delivery-template-management: in-progress
-  9-7-ical-feed-generation-client-api: backlog
-  9-8-google-calendar-oauth2-sync: backlog
-  9-9-microsoft-outlook-oauth2-sync: backlog
-  9-10-task-approval-notification-consumers: backlog
-  9-11-trial-expiry-stripe-usage-sync: backlog
-  9-12-alert-preferences-frontend-page: backlog
-  9-13-calendar-connection-management-frontend-page: backlog
-  9-14-scheduled-report-generation-task: backlog
-  epic-10: backlog
+  9-6-sendgrid-email-delivery-template-management: done
+  9-7-ical-feed-generation-client-api: done
+  9-8-google-calendar-oauth2-sync: done
+  9-9-microsoft-outlook-oauth2-sync: done
+  9-10-task-approval-notification-consumers: done
+  9-11-trial-expiry-stripe-usage-sync: done
+  9-12-alert-preferences-frontend-page: done
+  9-13-calendar-connection-management-frontend-page: done
+  9-14-scheduled-report-generation-task: done
+  epic-9-retrospective: done
+  epic-10: done
+  10-1-proposal-collaborator-crud-api: done
+  10-2-proposal-level-rbac-middleware: done
+  10-3-section-locking-api: done
+  10-4-proposal-comments-api: done
+  10-5-task-crud-api: done
+  10-6-task-dependencies-dag-validation: done
+  10-7-task-templates-crud-application: done
+  10-8-approval-workflow-stages-crud-api: done
+  10-9-approval-decision-engine: done
+  10-10-bid-no-bid-decision-api-ai-integration: done
+  10-11-bid-outcome-lessons-learned-integration: done
+  10-12-collaborator-management-lock-indicator-ui: done
+  10-13-comments-sidebar-ui: done
+  10-14-task-kanban-board-detail-modal: done
+  10-15-task-template-manager-ui: done
+  10-16-approval-pipeline-bid-decision-ui: done
+  epic-10-retrospective: done
   epic-11: done
   11-1-espd-profile-compliance-framework-db-schema-migrations: done
   11-2-espd-profile-crud-api: done
@@ -148,6 +209,7 @@ development_status:
   11-14-compliance-admin-framework-management-frontend: done
   11-15-compliance-admin-assignment-suggestions-regulation-tracker-frontend: done
   11-16-e2e-integration-testing-agent-error-handling-hardening: done
+  epic-11-retrospective: done
   epic-12: done
   12-1-analytics-materialized-views-refresh-infrastructure: done
   12-2-market-intelligence-dashboard-api: done
@@ -167,56 +229,14 @@ development_status:
   12-16-enterprise-api-documentation-page-usage-frontend: done
   12-17-performance-optimization-load-testing-security-audit: done
   12-18-user-onboarding-flow-launch-polish: done
-
-# TEA test automation status
-tea_status:
-  1-1-monorepo-scaffold-project-structure: done
-  1-2-docker-compose-local-development-environment: done
-  1-3-postgresql-schema-design-role-based-access: done
-  1-4-alembic-migration-scaffold: done
-  1-5-redis-streams-event-bus-setup: done
-  1-6-eusolicit-common-shared-package: done
-  1-7-eusolicit-models-eusolicit-kraftdata-shared-packages: done
-  2-1-database-schema-auth-identity-tables: done
-  2-2-email-password-registration: done
-  2-3-email-password-login-jwt-issuance: done
-  2-4-jwt-authentication-middleware: done
-  2-5-token-refresh-revocation: done
-  2-6-google-oauth2-social-login: done
-  2-7-password-reset-flow: done
-  2-8-company-profile-crud: done
-  2-9-team-member-management: done
-  2-10-entity-level-rbac-middleware: done
-  2-11-audit-trail-middleware: done
-  2-12-espd-profile-crud: done
-  3-1-next-js-14-monorepo-scaffold: done
-  3-2-tailwind-design-token-preset-shadcn-ui-theming: done
-  3-3-app-shell-layout-sidebar-top-bar-content-area: done
-  3-4-responsive-layout-strategy: done
-  3-5-zustand-stores-tanstack-query-setup: done
-  3-6-react-hook-form-zod-validation-patterns: done
-  3-7-i18n-setup-with-next-intl-bg-en: done
-  3-8-authentication-pages: done
-  3-9-company-profile-setup-wizard: done
-  3-10-loading-states-error-boundaries-empty-states: done
-  3-11-toast-notification-system: in-progress
-  3-12-client-side-route-guards-auth-redirects: done
-  11-1-espd-profile-compliance-framework-db-schema-migrations: done
-  11-2-espd-profile-crud-api: done
-  11-3-espd-auto-fill-agent-integration: done
-  11-4-grant-eligibility-agent-integration: done
-  11-5-budget-builder-agent-integration: done
-  11-6-consortium-finder-agent-integration: done
-  11-7-logframe-generator-reporting-template-agent-integrations: done
-  12-1-analytics-materialized-views-refresh-infrastructure: in-progress
-  7-1-proposal-version-db-schema-migrations: in-progress
-  7-2-proposal-crud-api: done
-  7-3-proposal-versioning-api: done
-  7-4-proposal-content-save-api-auto-save-full-save: done
-  7-5-ai-draft-generation-backend-sse-integration: done
-  7-6-requirement-checklist-agent-integration: done
-  7-7-compliance-risk-scoring-agent-integrations: done
-  7-8-pricing-assistant-win-theme-agent-integrations: done
-  7-9-content-blocks-crud-search-api: done
-  7-10-document-export-api-pdf-docx: done
-  7-11-proposal-workspace-page-layout-navigation: done
+  epic-12-retrospective: done
+  epic-13: done
+  drift-recovery-story: in-progress
+  7-17-proposal-generate-security-audit-hardening: done
+  dw-01-proposal-backend-schema-alignment: ready-for-dev
+  dw-02-celery-task-infrastructure-fixes: ready-for-dev
+  dw-03-ui-breakpoint-hook-fix: ready-for-dev
+  inj-01-dependabot-configuration: ready-for-dev
+  inj-02-k6-performance-baseline: ready-for-dev
+  inj-03-tea-review-backlog-epic8-epic9: ready-for-dev
+  epic-13-retrospective: done

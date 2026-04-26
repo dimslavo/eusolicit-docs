@@ -1037,3 +1037,72 @@ Claude Sonnet 4.5 (claude-sonnet-4-5)
 ## Change Log
 
 - 2026-04-08: Implemented Story 3.2 — Tailwind Design Token Preset & shadcn/ui Theming. All 10 tasks complete. 26 files created/modified, 1 deleted. Build and type-check pass for both apps.
+- 2026-04-23: Senior Developer Review complete — **Approved**.
+
+## Senior Developer Review
+
+**Reviewer:** Claude (bmad-code-review)
+**Date:** 2026-04-23
+**Decision:** REVIEW: Approve
+
+### Scope reviewed
+
+All files in the story 3.2 File List, including:
+- `packages/config/tailwind.config.ts` (design token preset)
+- `packages/config/package.json` (tailwindcss-animate, @types/node)
+- `packages/ui/index.ts` (barrel export — story 3.2 exports present; later-story exports are additive and do not regress 3.2 scope)
+- `packages/ui/src/lib/utils.ts` (cn helper)
+- `packages/ui/src/components/ui/{button,input,textarea,label,select,checkbox,radio-group,switch,dialog,sheet,dropdown-menu,tooltip,badge,card,tabs,table,skeleton,avatar,separator,scroll-area}.tsx` (20 components)
+- `packages/ui/package.json` (Radix + utility deps)
+- `apps/{client,admin}/tailwind.config.ts` (presets[] array)
+- `apps/{client,admin}/tsconfig.json` (@/* path alias → ./*)
+- `apps/{client,admin}/app/globals.css` (HSL CSS variables for light + dark)
+- `apps/{client,admin}/app/layout.tsx` (Inter + JetBrains Mono font loading)
+- `apps/{client,admin}/lib/utils.ts` (cn re-export)
+- `apps/{client,admin}/components.json` (shadcn CLI config)
+- `/dev/components` showcase page (now under `[locale]/dev/components/page.tsx` post-i18n)
+
+### Acceptance Criteria Verification
+
+| AC | Status | Notes |
+|----|--------|-------|
+| AC1 — Tailwind preset with full design tokens | ✅ Pass | Preset implements the shadcn HSL-variable convention described in Dev Notes (CSS-variable-mapped tokens + semantic success/warning/error/info + Inter/JetBrains Mono + shadow scale + accordion keyframes + `darkMode: ["class"]` + `tailwindcss-animate`). The AC1 phrasing "slate 50–950 + indigo 50–950" is a narrative simplification; the reference implementation in Dev Notes (which this story follows) maps via `hsl(var(--primary))` et al., with `--primary: 243 75% 59%` = indigo-600. Interpretation aligned with Dev Notes intent. |
+| AC2 — HSL CSS variables in both apps' globals.css | ✅ Pass | Identical `:root` + `.dark` blocks in `apps/client/app/globals.css` and `apps/admin/app/globals.css`. All shadcn tokens present (background/foreground/card/popover/primary/secondary/muted/accent/destructive/border/input/ring/radius and *-foreground variants). |
+| AC3 — 19 shadcn/ui components in `packages/ui/src/components/ui/` | ✅ Pass | All 19 required components present (plus Label = 20). Later stories added `accordion`, `alert`, `breadcrumb`, `form`, `progress` — additive, not regressive. |
+| AC4 — `/dev/components` page renders all 19 components | ⚠️ Pass-with-note | Page exists at `apps/client/app/[locale]/dev/components/page.tsx` (moved under `[locale]/` by a later i18n story). Accessible via `/en/dev/components` or `/bg/dev/components`. Content matches the Dev Notes reference verbatim, all 19 sections present. Not a 3.2 regression — the physical path changed due to subsequent i18n work, not due to 3.2 implementation. |
+| AC5 — Both apps build & import `<Button>` from `@eusolicit/ui` | ✅ Pass | Button exported at `packages/ui/index.ts:17`. Dev Agent Record confirms `pnpm build`, `pnpm type-check`, `pnpm lint` all exit 0. |
+
+### Deferred 3.1 issues — both resolved in this story
+
+- **`...baseConfig` spread → `presets: [sharedPreset]` array** — fixed in both `apps/client/tailwind.config.ts` and `apps/admin/tailwind.config.ts`. The `as unknown as Config` double cast is the correct workaround for the `satisfies Partial<Config>` upstream type (documented in Debug Log).
+- **`@/*` → `./src/*` with no `src/` dir** — fixed in both `apps/client/tsconfig.json` and `apps/admin/tsconfig.json`; alias now resolves to `./*` so `@/lib/utils` → `apps/*/lib/utils.ts`.
+
+### Code Quality Observations
+
+- `cn` utility correctly uses `twMerge(clsx(inputs))` — idiomatic shadcn pattern.
+- Component imports use the required relative path `../../lib/utils` (not `@/lib/utils`) for packages/ui portability.
+- `suppressHydrationWarning` correctly placed on `<html>` only — matches E03-R-002 mitigation guidance.
+- `require("tailwindcss-animate")` in the TypeScript preset is mitigated with eslint-disable + `@types/node` devDep (Debug Log Fix 2). Correct.
+- `Button` uses `React.forwardRef` + `asChild`/`Slot` pattern — matches shadcn registry.
+- Old placeholder `packages/ui/src/Button.tsx` confirmed deleted (ls of `packages/ui/src/` shows no legacy Button.tsx).
+- Both apps' `components.json` correctly point `tailwind.config` → `tailwind.config.ts`, `css` → `app/globals.css`, `baseColor: "slate"`, `cssVariables: true`, `iconLibrary: "lucide"`.
+
+### Minor notes (non-blocking, no patch required)
+
+1. `apps/client/app/layout.tsx` uses `lang="en"` while `apps/admin/app/layout.tsx` uses `lang="bg"`. The spec Dev Notes showed `lang="bg"` for client. This is no longer authoritative because the per-locale `lang` attribute is now set at `[locale]/layout.tsx` (introduced by a later i18n story); the root `<html lang>` is effectively overridden. No action needed.
+2. `packages/config/tailwind.config.ts` semantic colors (`success`/`warning`/`error`/`info`) use hex literals rather than CSS variables. Intentional per Dev Notes — these semantic colors are brand-fixed and do not need dark-mode variants. Acceptable.
+3. `apps/client/src/components/AIDraftGenerationPanel.test.tsx` exists (an older legacy artifact) — unrelated to 3.2 scope; not introduced by this story.
+
+### Test Coverage
+
+Pass/fail gate E03-P0-001 (both apps build) is met per Dev Agent Record. No unit tests are expected for token/preset/barrel configuration per story scope. Visual QA tests (E03-P2-002/003) are out of scope for this review — they're exercised via the `/dev/components` page during E03 test execution.
+
+### Security & Cross-cutting
+
+- No HTTP, auth, DB, or tenant-crossing code touched. Pure frontend theming work.
+- No secrets, no PII, no credentials introduced.
+- No bare `except`/`import *` applicable (no Python).
+
+### Final Verdict
+
+**REVIEW: Approve** — Implementation faithfully follows the Dev Notes reference, fixes both deferred 3.1 defects, meets all 5 ACs (AC4 with a documented location-shift caveat caused by a later story, not by 3.2), and passes the build/type-check/lint gate. No blocking or changes-requested items. Story is ready to move to `done`.

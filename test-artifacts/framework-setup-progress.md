@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight', 'step-02-select-framework', 'step-03-scaffold-framework', 'step-04-docs-and-scripts', 'step-05-validate-and-summary']
 lastStep: 'step-05-validate-and-summary'
-lastSaved: '2026-04-12'
+lastSaved: '2026-04-19'
 ---
 
 # Step 1: Preflight Checks - Summary
@@ -94,3 +94,73 @@ The existing test framework has been validated against `checklist.md` and meets 
     - `test-quality.md` (No hard waits + data-testid)
 
 **Framework setup is COMPLETE and verified.**
+
+---
+
+# Re-run: 2026-04-19 — Gap Audit & Remediation
+
+## Gaps Identified (Previous Run Incomplete)
+
+The 2026-04-12 run marked all steps complete but left the following critical gaps:
+
+| Gap | File | Status |
+|-----|------|--------|
+| `tests/api/conftest.py` had only ATDD stub placeholders | `tests/api/conftest.py` | ✅ Fixed |
+| `tests/smoke/conftest.py` missing (only `__init__.py`) | `tests/smoke/conftest.py` | ✅ Fixed |
+| `.env.example` absent from `eusolicit-app/` root | `eusolicit-app/.env.example` | ✅ Fixed |
+| `e2e/.env.example` absent from E2E directory | `eusolicit-app/e2e/.env.example` | ✅ Fixed |
+
+## Changes Applied
+
+### 1. `tests/api/conftest.py` — Full replacement (333 lines)
+
+Replaced ATDD placeholder stubs with complete production fixture set:
+
+**Live service clients (5 fixtures):**
+- `live_client_api` — httpx → Client API (8001); skips on unreachable
+- `live_admin_api` — httpx → Admin API (8002); skips on unreachable
+- `live_ai_gateway` — httpx → AI Gateway (8004); skips on unreachable
+- `live_data_pipeline` — httpx → Data Pipeline (8003); skips on unreachable
+- `live_notification` — httpx → Notification (8005); skips on unreachable
+
+**Role token fixtures (6 fixtures):**
+- `api_auth_token` (member), `api_admin_token`, `api_bid_manager_token`,
+  `api_contributor_token`, `api_reviewer_token`, `api_read_only_token`
+- All call `register_and_verify_with_role()` via test-login endpoint for real JWTs
+
+**Authenticated live clients (6 fixtures):**
+- `auth_live_client`, `auth_admin_client`, `auth_bid_manager_client`,
+  `auth_contributor_client`, `auth_reviewer_client`, `auth_read_only_client`
+
+**Aggregate fixtures (2 fixtures):**
+- `auth_role_clients` — dict of all 5 role clients for parametrized RBAC tests
+- `cross_tenant_clients` — two isolated company clients for cross-tenant 403 tests
+
+All fixtures follow patterns documented in `project-context.md` and `tests/README.md`.
+`pytestmark = pytest.mark.api` applied globally.
+
+### 2. `tests/smoke/conftest.py` — Created
+
+Simple conftest with `pytestmark = pytest.mark.smoke` and descriptive docstring.
+Clarifies that smoke tests skip (not fail) on unreachable services.
+
+### 3. `.env.example` — Created at eusolicit-app root
+
+All test environment variables documented with sensible docker compose defaults:
+- PostgreSQL: TEST_DATABASE_URL + 6 per-service role URLs
+- Redis: TEST_REDIS_URL, CLIENT_API_REDIS_URL (DB 1 for test isolation)
+- Service URLs: CLIENT_API_URL through ENTERPRISE_API_URL
+- Frontend: BASE_URL, ADMIN_BASE_URL
+- JWT: TEST_JWT_SECRET
+
+### 4. `e2e/.env.example` — Created at eusolicit-app/e2e/
+
+Playwright-specific env template with TEST_ENV, BASE_URL, ADMIN_BASE_URL,
+CLIENT_API_URL, ADMIN_API_URL, AI_GATEWAY_URL.
+
+## Validation
+
+- Python syntax: `tests/api/conftest.py` ✅ `tests/smoke/conftest.py` ✅
+- All documented fixtures from `tests/README.md` fixture reference implemented ✅
+- `pytestmark` applied in `api/`, `smoke/`, `unit/`, `integration/`, `cross_service/` ✅
+- No ATDD stubs remaining in `tests/api/conftest.py` ✅

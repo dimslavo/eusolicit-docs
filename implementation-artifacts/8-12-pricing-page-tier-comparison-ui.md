@@ -860,9 +860,44 @@ This is optional for this story since test coverage is provided by the ATDD stru
 - i18n: 23 keys added to `billing.pricing.*` in both en.json and bg.json
 - ATDD: 160 structural tests all GREEN
 
+## Senior Developer Review
+
+**Reviewer:** Senior Developer (adversarial code review)
+**Date:** 2026-04-24
+**Outcome:** ✅ **Approve**
+
+### Verdict
+
+All 13 acceptance criteria satisfied. ATDD suite 160/160 GREEN. No regressions in the broader frontend test baseline (9 failing files after vs. 10 before — the delta is this story's tests moving from RED to GREEN). Implementation matches the story spec precisely, including the file/folder layout (`app/[locale]/pricing/` — not inside `(protected)` or `(auth)`), the public unauthenticated `GET /api/v1/billing/tiers` endpoint, canonical tier ordering (free → starter → professional → enterprise), -1 sentinel handling via `formatLimit()`, Enterprise mailto via `<a target="_blank">` (not `next/link`), `ring-2 ring-indigo-500` highlight on Professional, `staleTime: 300_000` on `useTiers`, and 23 i18n keys merged (not replaced) under `billing.pricing` in both en.json and bg.json.
+
+### What was checked
+
+- **Backend (`client-api/api/v1/billing.py`):** `TierPolicyResponse` Pydantic model, `_TIER_ORDER` dict, `get_tier_policies()` function. No auth dependency injected. Uses the existing `_billing_session()` context manager consistent with Stripe webhook (unauthenticated) pattern. Module docstring updated.
+- **Frontend API module (`lib/api/billing.ts`):** No `"use client"` (server-usable). `TierName` union, `TierPolicy` interface, `TIER_PRICES`, `TIER_ORDER`, and `getTiers()` all exported. Extra subscription/usage/invoice helpers present from prior stories — non-regressive.
+- **Query hook (`lib/queries/use-billing.ts`):** Correct `queryKey`, `staleTime`, and `retry` config.
+- **`PricingPage.tsx`:** Client component. Uses static `TIER_CARD_TESTIDS` / `PRICE_TESTIDS` lookup maps so the literal testid strings exist in source (enabling static ATDD detection). `tierNameKey` map avoids the template-literal key pitfall flagged in Dev Notes. Responsive grid classes present. Hero, loading (4 × `SkeletonCard`), and error (`EmptyState` + `refetch()`) states all wired.
+- **EmptyState icon:** The story spec's code sample omitted the `icon` prop, but the production `EmptyState` component requires it. The dev correctly supplied `icon={AlertTriangle}` — a deviation from the spec sample but a *correct* deviation driven by the shared component's real API. Not a finding.
+- **i18n:** Both locale files remain valid JSON; billing namespace preserves all existing VAT/checkout/portal/subscription keys; pricing sub-object has identical key count (23) across en/bg.
+- **Sprint status:** Story marked `review`.
+
+### Non-blocking observations
+
+1. **Nested interactive elements (minor a11y / HTML validity):** `<Link href=...><Button>...</Button></Link>` renders as `<a><button>...</button></a>`, which is technically invalid HTML (interactive-in-interactive). The shared `Button` supports `asChild` via `@radix-ui/react-slot`, so the idiomatic pattern is `<Button asChild><Link ...>label</Link></Button>`. This is not a project-wide convention violation (few occurrences of either pattern in the client app), so treating as a minor follow-up rather than a blocker.
+
+2. **Unchecked tier cast:** `const tier = policy.tier as TierName;` has no runtime guard. If the backend ever returns a tier name outside the union (e.g. a future "team" tier not yet known to the frontend), `TIER_CARD_TESTIDS[tier]` and `TIER_PRICES[tier]` are undefined and the card renders broken. Low risk given the controlled `_TIER_ORDER` backend contract, but a `TIER_ORDER.includes(tier)` filter in `orderedTiers` construction (already applied via `.find()` + `.filter(Boolean)`) provides implicit protection; a defensive assertion would be belt-and-braces.
+
+3. **`max_budget_threshold` defined but never rendered:** The field exists in `TierPolicy` and `TierPolicyResponse` but is not displayed in the feature matrix. Per AC5 the nine displayed features do not include it — this is intentional, noted for clarity.
+
+4. **No backend integration test for the public endpoint:** Dev Notes marks the unit test optional and coverage is asserted via the ATDD structural test plus the migration 027 seed tests from Story 8-2. Acceptable for a P2 scenario but worth picking up in a hardening pass.
+
+5. **Tier card HTML semantic:** Each tier card renders a `<h2>` inside a `<div>` rather than a `<section>`/`<article>`. Cosmetic; does not affect ACs.
+
+None of the above change the verdict.
+
 ## Change Log
 
 - 2026-04-19: Story 8.12 implemented — backend public tier endpoint, pricing page UI (hero + 4-column grid with feature matrix + CTA), i18n keys (en/bg), ATDD 160/160 GREEN
+- 2026-04-24: Senior developer review completed — **Approve**. Minor non-blocking observations logged (nested interactive elements, unchecked tier cast, missing backend integration test).
 
 ## File List
 
@@ -896,3 +931,10 @@ This is optional for this story since test coverage is provided by the ATDD stru
 - [Source: eusolicit-app/frontend/packages/ui/index.ts] — available components: Badge, Button, SkeletonCard, EmptyState, cn
 - [Source: eusolicit-app/frontend/apps/client/messages/en.json] — existing `billing.*` keys; merge pricing sub-object
 - [Source: eusolicit-app/frontend/apps/client/messages/bg.json] — Bulgarian translations to match en.json
+
+## Known Deviations
+
+### Detected by `3-code-review` at 2026-04-24T07:50:06Z (session c75969f6-1801-4fb0-9f09-fb5f408c6cf2)
+
+- ` markers fire — implementation is faithful to the spec, and the one sample-code vs. real-API difference (EmptyState `icon`) was correctly resolved.
+- ` markers fire — implementation is faithful to the spec, and the one sample-code vs. real-API difference (EmptyState `icon`) was correctly resolved.

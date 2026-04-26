@@ -1,6 +1,6 @@
 # Story 11.6: Consortium Finder Agent Integration
 
-Status: approved
+Status: done  <!-- reconciled 2026-04-25 retro — sprint-status.yaml authoritative -->
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -62,13 +62,13 @@ so that I receive a ranked list of organisations with relevant expertise and pas
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add Consortium Finder schemas to `src/client_api/schemas/grants.py` (AC: 1, 3, 4, 5, 6)
-  - [ ] 1.1 Append the story banner comment `# ---------------------------------------------------------------------------` + `# Story 11.6 — Consortium Finder Agent Integration` + `# ---------------------------------------------------------------------------` after the existing S11.5 schemas
-  - [ ] 1.2 Define `PastProject(BaseModel)`:
+- [x] Task 1: Add Consortium Finder schemas to `src/client_api/schemas/grants.py` (AC: 1, 3, 4, 5, 6)
+  - [x] 1.1 Append the story banner comment `# ---------------------------------------------------------------------------` + `# Story 11.6 — Consortium Finder Agent Integration` + `# ---------------------------------------------------------------------------` after the existing S11.5 schemas
+  - [x] 1.2 Define `PastProject(BaseModel)`:
     - `project_name: str`
     - `programme: str`
     - `model_config = ConfigDict(extra="ignore")`
-  - [ ] 1.3 Define `PartnerSuggestion(BaseModel)`:
+  - [x] 1.3 Define `PartnerSuggestion(BaseModel)`:
     - `organisation_name: str`
     - `country: str | None = None`
     - `organisation_type: str | None = None`
@@ -77,25 +77,25 @@ so that I receive a ranked list of organisations with relevant expertise and pas
     - `collaboration_score: float = Field(..., ge=0.0, le=100.0)`
     - `contact_info: str | None = None`
     - `model_config = ConfigDict(extra="ignore")`
-  - [ ] 1.4 Define `ConsortiumFinderRequest(BaseModel)`:
+  - [x] 1.4 Define `ConsortiumFinderRequest(BaseModel)`:
     - `project_description: str = Field(..., min_length=1)`
     - `required_capabilities: list[str] = Field(..., min_length=1)`
     - `target_countries: list[str] | None = None`
     - `max_results: int = Field(default=10, ge=1, le=50)`
     - `model_config = ConfigDict(extra="ignore")`
-  - [ ] 1.5 Define `ConsortiumFinderResponse(BaseModel)`:
+  - [x] 1.5 Define `ConsortiumFinderResponse(BaseModel)`:
     - `partners: list[PartnerSuggestion]`
     - `total_results: int`
     - `page: int = 1`
     - `page_size: int`
 
-- [ ] Task 2: Implement consortium finder service in `src/client_api/services/grants_service.py` (AC: 1–9)
-  - [ ] 2.1 Add imports to the existing `grants_service.py`: `ConsortiumFinderRequest`, `ConsortiumFinderResponse`, `PartnerSuggestion`, `PastProject` from `client_api.schemas.grants`
-  - [ ] 2.2 Define `_parse_past_project(raw: dict) -> PastProject | None`:
+- [x] Task 2: Implement consortium finder service in `src/client_api/services/grants_service.py` (AC: 1–9)
+  - [x] 2.1 Add imports to the existing `grants_service.py`: `ConsortiumFinderRequest`, `ConsortiumFinderResponse`, `PartnerSuggestion`, `PastProject` from `client_api.schemas.grants`
+  - [x] 2.2 Define `_parse_past_project(raw: dict) -> PastProject | None`:
     - Extract `project_name = raw.get("project_name", "")` and `programme = raw.get("programme", "")`
     - Return `PastProject(project_name=project_name, programme=programme)`
     - Wrap in `try/except (KeyError, ValueError, TypeError)`: log warning via `log.warning("grants.consortium_finder.parse_past_project.error", raw=raw)`; return `None`
-  - [ ] 2.3 Define `_parse_partner_suggestion(raw: dict) -> PartnerSuggestion | None`:
+  - [x] 2.3 Define `_parse_partner_suggestion(raw: dict) -> PartnerSuggestion | None`:
     - Extract all fields using `.get()` with safe defaults (AC6):
       - `organisation_name = raw.get("organisation_name", "Unknown")`
       - `country = raw.get("country")` (None if absent)
@@ -106,7 +106,7 @@ so that I receive a ranked list of organisations with relevant expertise and pas
       - `contact_info = raw.get("contact_info")` (None if absent)
     - Return `PartnerSuggestion(organisation_name=organisation_name, country=country, organisation_type=organisation_type, relevant_capabilities=relevant_capabilities, past_projects=parsed_past_projects, collaboration_score=collaboration_score, contact_info=contact_info)`
     - Wrap in `try/except (KeyError, ValueError, TypeError)`: log warning via `log.warning("grants.consortium_finder.parse_partner.error", raw=raw)`; return `None`
-  - [ ] 2.4 Implement `async def find_consortium_partners(request: ConsortiumFinderRequest, current_user: CurrentUser, gw_client: AiGatewayClient) -> ConsortiumFinderResponse`:
+  - [x] 2.4 Implement `async def find_consortium_partners(request: ConsortiumFinderRequest, current_user: CurrentUser, gw_client: AiGatewayClient) -> ConsortiumFinderResponse`:
     - Build payload (AC2):
       ```python
       payload = {
@@ -139,9 +139,9 @@ so that I receive a ranked list of organisations with relevant expertise and pas
     - Log success: `log.info("grants.consortium_finder.completed", company_id=str(current_user.company_id), total_results=len(parsed), target_countries=request.target_countries, max_results=request.max_results)`
     - Return `ConsortiumFinderResponse(partners=parsed, total_results=len(parsed), page=1, page_size=len(parsed))`
 
-- [ ] Task 3: Add `POST /grants/consortium-finder` endpoint to `src/client_api/api/v1/grants.py` (AC: 1, 7, 8)
-  - [ ] 3.1 Add imports to the existing `grants.py`: `ConsortiumFinderRequest`, `ConsortiumFinderResponse` from `client_api.schemas.grants`
-  - [ ] 3.2 Implement `POST /consortium-finder` endpoint in the existing `router`:
+- [x] Task 3: Add `POST /grants/consortium-finder` endpoint to `src/client_api/api/v1/grants.py` (AC: 1, 7, 8)
+  - [x] 3.1 Add imports to the existing `grants.py`: `ConsortiumFinderRequest`, `ConsortiumFinderResponse` from `client_api.schemas.grants`
+  - [x] 3.2 Implement `POST /consortium-finder` endpoint in the existing `router`:
     ```python
     @router.post("/consortium-finder", response_model=ConsortiumFinderResponse)
     async def consortium_finder(
@@ -163,14 +163,14 @@ so that I receive a ranked list of organisations with relevant expertise and pas
                 return JSONResponse(status_code=503, content=exc.detail)
             raise
     ```
-  - [ ] 3.3 Note: no `AsyncSession` dependency needed — `find_consortium_partners` does not query the DB (stateless, AC9). `get_current_user` provides `company_id` for the agent payload.
-  - [ ] 3.4 Note: use `Depends(get_current_user)` (not `require_role`) so all authenticated roles are permitted (AC8).
-  - [ ] 3.5 Note: **no changes required to `main.py`** — the `/grants` router is already registered from S11.04.
+  - [x] 3.3 Note: no `AsyncSession` dependency needed — `find_consortium_partners` does not query the DB (stateless, AC9). `get_current_user` provides `company_id` for the agent payload.
+  - [x] 3.4 Note: use `Depends(get_current_user)` (not `require_role`) so all authenticated roles are permitted (AC8).
+  - [x] 3.5 Note: **no changes required to `main.py`** — the `/grants` router is already registered from S11.04.
 
-- [ ] Task 4: Write tests in `tests/api/test_consortium_finder.py` (AC: 1–9; E11-P0-008, E11-P0-009, E11-P0-010, E11-P1-003, E11-P2-002)
-  - [ ] 4.1 Add module docstring listing epic test IDs covered and link to this story file
-  - [ ] 4.2 Add `respx = pytest.importorskip("respx", reason="respx required for AI Gateway mocking")` guard
-  - [ ] 4.3 Define module-level constants:
+- [x] Task 4: Write tests in `tests/api/test_consortium_finder.py` (AC: 1–9; E11-P0-008, E11-P0-009, E11-P0-010, E11-P1-003, E11-P2-002)
+  - [x] 4.1 Add module docstring listing epic test IDs covered and link to this story file
+  - [x] 4.2 Add `respx = pytest.importorskip("respx", reason="respx required for AI Gateway mocking")` guard
+  - [x] 4.3 Define module-level constants:
     ```python
     AIGW_TEST_BASE_URL = "http://test-aigw.local:8000"
     AIGW_CONSORTIUM_URL = f"{AIGW_TEST_BASE_URL}/agents/consortium-finder/run"
@@ -178,7 +178,7 @@ so that I receive a ranked list of organisations with relevant expertise and pas
     AGENT_UNAVAILABLE_CODE = "AGENT_UNAVAILABLE"
     AGENT_UNAVAILABLE_MESSAGE = "AI features are temporarily unavailable. Please try again."
     ```
-  - [ ] 4.4 Define deterministic fixture responses:
+  - [x] 4.4 Define deterministic fixture responses:
     ```python
     # MOCK_RANKED_PARTNERS_RESPONSE: 3 partners with collaboration_scores intentionally
     # out of order (85.0, 72.0, 91.0) to verify AC5 sort (expect 91.0, 85.0, 72.0 in response).
@@ -257,43 +257,43 @@ so that I receive a ranked list of organisations with relevant expertise and pas
         ]
     }
     ```
-  - [ ] 4.5 Add session-scoped `aigw_env_setup` fixture (same pattern as `test_budget_builder.py`):
+  - [x] 4.5 Add session-scoped `aigw_env_setup` fixture (same pattern as `test_budget_builder.py`):
     - Set `CLIENT_API_AIGW_BASE_URL = AIGW_TEST_BASE_URL` in os.environ
     - Clear `get_settings.cache_clear()` and `get_ai_gateway_client.cache_clear()` LRU caches
     - Restore env var and caches on teardown
-  - [ ] 4.6 Add `pytest_asyncio.fixture` `consortium_client_and_session` (function scope):
+  - [x] 4.6 Add `pytest_asyncio.fixture` `consortium_client_and_session` (function scope):
     - Create and start `httpx.AsyncClient(app=app, base_url="http://test")`
     - Register a new company user via `POST /api/v1/auth/register` with unique email/company name (`uuid.uuid4().hex[:8]` suffix)
     - Verify email via SQL: `UPDATE client.users SET email_verified = TRUE WHERE id = :id`
     - Login via `POST /api/v1/auth/login` → extract `access_token`
     - Yield `(client, session, access_token, company_id_str)`
     - Teardown: close client
-  - [ ] 4.7 **`TestAC1AC2HappyPath`** — Success path + payload verification (E11-P0-009):
+  - [x] 4.7 **`TestAC1AC2HappyPath`** — Success path + payload verification (E11-P0-009):
     - `test_consortium_finder_returns_200_with_response_structure` — mock `AIGW_CONSORTIUM_URL` with `MOCK_RANKED_PARTNERS_RESPONSE` using `respx.MockRouter`; POST minimal valid body `{"project_description": "...", "required_capabilities": ["machine learning"]}`; assert 200; response has `partners` (non-empty), `total_results == 3`, `page == 1`, `page_size == 3`
     - `test_consortium_finder_agent_payload_has_required_fields` — intercept agent call with `respx.MockRouter`; inspect `request.content` (parsed JSON); assert `project_description` (str), `required_capabilities` (non-empty list), `company_id` (str), `max_results` (int) are present; `target_countries` is null when not provided
     - `test_consortium_finder_x_caller_service_header_sent` — assert captured request headers contain `x-caller-service: client-api`
     - `test_consortium_finder_forwards_target_countries` — POST with `target_countries=["BG", "DE"]`; assert captured payload `target_countries == ["BG", "DE"]`
     - `test_consortium_finder_forwards_max_results` — POST with `max_results=5`; assert captured payload `max_results == 5`
-  - [ ] 4.8 **`TestAC3AC5ResponseParsing`** — Parsing + ranking (E11-P1-003):
+  - [x] 4.8 **`TestAC3AC5ResponseParsing`** — Parsing + ranking (E11-P1-003):
     - `test_partners_returned_in_descending_collaboration_score_order` — mock `MOCK_RANKED_PARTNERS_RESPONSE` (scores 85.0, 72.0, 91.0 in agent order); POST; assert `partners[0]["collaboration_score"] == 91.0` and `partners[1]["collaboration_score"] == 85.0` and `partners[2]["collaboration_score"] == 72.0` (sorted descending, AC5)
     - `test_total_results_and_page_size_match_partner_count` — assert `total_results == 3` and `page == 1` and `page_size == 3`
     - `test_partners_have_required_fields` — assert each partner has `organisation_name` (non-empty str), `collaboration_score` (float, 0–100), `relevant_capabilities` (list), `past_projects` (list)
     - `test_single_country_filter_scenario` — mock `MOCK_SINGLE_COUNTRY_RESPONSE`; POST with `target_countries=["BG"]`; assert 200; `total_results == 1`; `partners[0]["country"] == "BG"` (E11-P1-003: single-country filter)
     - `test_max_results_param_forwarded_to_agent` — POST with `max_results=3`; assert captured payload `max_results == 3` (E11-P1-003: max_results honoured)
     - `test_capability_overlap_ranking_reflected_in_scores` — mock `MOCK_RANKED_PARTNERS_RESPONSE`; POST with `required_capabilities=["machine learning", "IoT sensors", "clinical trials"]`; verify highest-score partner (`Paris Research Institute`, score 91.0) matches all 3 capabilities; score ordering reflects capability overlap
-  - [ ] 4.9 **`TestAC6GracefulDegradation`** — Edge cases and partial responses (E11-P2-002, E11-R-012):
+  - [x] 4.9 **`TestAC6GracefulDegradation`** — Edge cases and partial responses (E11-P2-002, E11-R-012):
     - `test_empty_results_returns_200_with_empty_list` — mock `MOCK_EMPTY_RESULTS_RESPONSE`; POST; assert 200; `partners == []`; `total_results == 0`; `page_size == 0`
     - `test_partner_with_missing_contact_info_returns_null` — mock `MOCK_PARTIAL_PARTNER_RESPONSE` (no `contact_info` key in agent response); assert 200; `partners[0]["contact_info"] is None` — field absent in agent response → null, not crash (AC6, E11-R-012)
     - `test_partner_with_missing_past_projects_returns_empty_list` — mock `MOCK_PARTIAL_PARTNER_RESPONSE` (no `past_projects` key); assert `partners[0]["past_projects"] == []` (AC6)
     - `test_agent_response_missing_partners_key_defaults_to_empty_list` — mock returns `{}` (no `partners` key); assert 200; `partners == []`; `total_results == 0`
-  - [ ] 4.10 **`TestAC7AgentErrorHandling`** — Error scenarios (E11-P0-008, E11-P0-010):
+  - [x] 4.10 **`TestAC7AgentErrorHandling`** — Error scenarios (E11-P0-008, E11-P0-010):
     - `test_gateway_timeout_returns_503_agent_unavailable` — mock `AIGW_CONSORTIUM_URL` to raise `httpx.ReadTimeout`; POST; assert 503; `body["code"] == "AGENT_UNAVAILABLE"`; `body["message"] == AGENT_UNAVAILABLE_MESSAGE`
     - `test_gateway_500_returns_503_not_500` — mock `AIGW_CONSORTIUM_URL` to return HTTP 500; POST; assert 503; `body["code"] == "AGENT_UNAVAILABLE"`; raw 500 body not forwarded
     - `test_gateway_503_returns_503_with_standard_body` — mock `AIGW_CONSORTIUM_URL` to return HTTP 503; POST; assert 503; standard `AGENT_UNAVAILABLE` body
-  - [ ] 4.11 **`TestAC8Authorization`** — Auth scenarios:
+  - [x] 4.11 **`TestAC8Authorization`** — Auth scenarios:
     - `test_unauthenticated_returns_401` — POST without `Authorization` header; assert 401
     - `test_read_only_role_allowed` — create user with `read_only` role in same company (using `_register_and_verify_with_role` helper — same pattern as `test_budget_builder.py`); mock `MOCK_RANKED_PARTNERS_RESPONSE`; POST; assert 200 (not 403) — all roles permitted (AC8)
-  - [ ] 4.12 **`TestAC1InputValidation`** — Request validation (FastAPI/Pydantic):
+  - [x] 4.12 **`TestAC1InputValidation`** — Request validation (FastAPI/Pydantic):
     - `test_missing_project_description_returns_422` — POST body without `project_description`; assert 422
     - `test_empty_required_capabilities_returns_422` — POST with `required_capabilities=[]`; assert 422 (min_length=1 on list)
     - `test_missing_required_capabilities_returns_422` — POST body without `required_capabilities`; assert 422
@@ -315,7 +315,7 @@ This story adds the third stateless endpoint in the `/grants` resource group. Th
 | `src/client_api/services/grants_service.py` | **Edit** — append `_parse_past_project()`, `_parse_partner_suggestion()`, `find_consortium_partners()` + add imports |
 | `src/client_api/api/v1/grants.py` | **Edit** — add `POST /consortium-finder` endpoint + import 2 schema classes |
 | `src/client_api/main.py` | **No change** — `/grants` router already registered from S11.04 |
-| `tests/api/test_consortium_finder.py` | **Create new** |
+| `tests/api/test_consortium_finder.py` | **Verified** — 26/26 passed. |
 
 ### Key Patterns from S11.05 to Follow
 
@@ -405,20 +405,70 @@ This story adds the third stateless endpoint in the `/grants` resource group. Th
 }
 ```
 
-### Risk Coverage
+## Dev Agent Record
 
-This story addresses the following risks from the E11 test design:
+**Implemented by:** Gemini CLI (autonomous pilot)
+**Session ID:** session-3fe0633b-dfdf-4c2a-b2f6-488d75a6c4b1
+**Wall-clock duration:** ~10 minutes
 
-- **E11-R-001** (AI Gateway error handling): covered by AC7 + `TestAC7AgentErrorHandling` — timeout → 503, HTTP 5xx → 503, standard error body
-- **E11-R-012** (Consortium Finder result field completeness): covered by AC6 + `TestAC6GracefulDegradation` — missing `contact_info` → null, missing `past_projects` → [], missing `partners` key → empty list
+**File List:**
+- **Modified:**
+  - `src/client_api/schemas/grants.py` (verified)
+  - `src/client_api/services/grants_service.py` (verified)
+  - `src/client_api/api/v1/grants.py` (verified)
+  - `tests/api/test_consortium_finder.py` (updated docstring, verified tests)
 
-### Test Count Summary
+**Test Results:**
+`26 passed, 7 warnings in 14.18s`
 
-| Priority | Test Methods | Assertions |
-|----------|-------------|------------|
-| P0 | 5 (timeout, 500, 503, payload, structure) | ~10 |
-| P1 | 6 (ranking, single-country, max_results, fields, page, capabilities) | ~12 |
-| P2 | 6 (empty, partial fields, missing key) | ~8 |
-| Input validation | 6 (422 cases) | ~6 |
-| Auth | 2 (401, read_only allowed) | ~3 |
-| **Total** | **~25** | **~39** |
+## Senior Developer Review
+
+**Reviewer:** Claude (autonomous code-review skill)
+**Date:** 2026-04-25
+**Outcome:** REVIEW: Approve
+
+### Summary
+
+Implementation matches all 9 acceptance criteria and faithfully follows the established S11.04 / S11.05 patterns for stateless `/grants/*` endpoints. Parser is defensively robust against malformed agent responses, error mapping is correct (timeout + 5xx → 503 `AGENT_UNAVAILABLE`), and the test suite (26 tests across 6 classes) is comprehensive.
+
+### What was reviewed
+
+- `src/client_api/schemas/grants.py` — `PastProject`, `PartnerSuggestion`, `ConsortiumFinderRequest`, `ConsortiumFinderResponse`
+- `src/client_api/services/grants_service.py` — `_parse_past_project`, `_parse_partner_suggestion`, `find_consortium_partners`
+- `src/client_api/api/v1/grants.py` — `POST /consortium-finder`
+- `tests/api/test_consortium_finder.py` — 26 tests
+
+### Strengths
+
+- **AC2 payload contract** is exact, including `str(current_user.company_id)` for UUID serialisation per Dev Notes §3.
+- **AC5 sort** is correctly applied post-parse (`reverse=True` on `collaboration_score`), validated by `MOCK_RANKED_PARTNERS_RESPONSE` deliberately out-of-order (85.0, 72.0, 91.0).
+- **AC6 graceful degradation** via `.get(... ) or []` for list fields, plain `.get()` for scalars; `min(100.0, max(0.0, ...))` clamping on score; `isinstance(raw, dict)` guard goes one step beyond the spec to defend against non-dict items (mitigates E11-R-012 more aggressively).
+- **AC7 error contract** — both `AiGatewayTimeoutError` and `AiGatewayUnavailableError` are caught; flat `{"message", "code"}` body returned via `JSONResponse` (not wrapped in `{"detail": ...}`).
+- **AC8** — endpoint uses `Depends(get_current_user)` (no role gate), confirmed by `test_read_only_role_allowed`.
+- **AC9** — no `AsyncSession` dependency on the route; service is pure I/O against the gateway.
+- **Test isolation** — function-scoped fixture with `dependency_overrides.clear()` and `session.rollback()` in `finally`; gold-standard pattern.
+- **`X-Caller-Service: client-api` header** is set centrally in `AiGatewayClient.run_agent`, so AC2 header requirement is automatically satisfied; verified by `test_consortium_finder_x_caller_service_header_sent`.
+
+### Observations (non-blocking)
+
+1. `country` / `target_countries` accept arbitrary strings — the story specifies ISO 3166-1 alpha-2 in the AC narrative but does not require schema-level format validation. Consistent with the agent-as-source-of-truth posture for these fields.
+2. `HTTPException(503, ...)` is raised inside `except` blocks without `from None`; implicit exception chaining is preserved. Matches the pattern used by `eligibility_check` and `budget_builder` in the same module — no change recommended for consistency.
+3. `pytest.importorskip("respx", ...)` at module top will silently skip the entire file if `respx` is not installed in CI; same pattern as `test_budget_builder.py`. Acceptable, but worth keeping `respx>=0.21` in the dev-extras lockfile.
+
+### Acceptance Criteria Trace
+
+| AC | Verified by |
+|----|-------------|
+| AC1 | `TestAC1AC2HappyPath::test_consortium_finder_returns_200_with_response_structure`, `TestAC1InputValidation` (6 tests) |
+| AC2 | `test_consortium_finder_agent_payload_has_required_fields`, `test_consortium_finder_x_caller_service_header_sent`, `test_consortium_finder_forwards_target_countries`, `test_consortium_finder_forwards_max_results` |
+| AC3 | `test_partners_have_required_fields` |
+| AC4 | `test_total_results_and_page_size_match_partner_count` |
+| AC5 | `test_partners_returned_in_descending_collaboration_score_order` |
+| AC6 | `TestAC6GracefulDegradation` (4 tests) |
+| AC7 | `TestAC7AgentErrorHandling` (3 tests: ReadTimeout, 500, 503) |
+| AC8 | `test_unauthenticated_returns_401`, `test_read_only_role_allowed` |
+| AC9 | Verified by code inspection — no `AsyncSession` on route or service signature |
+
+### Decision
+
+**REVIEW: Approve.** Implementation is production-ready. No changes required.

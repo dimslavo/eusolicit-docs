@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-04-25T12:00:00Z",
+  "repo": "eusolicit",
+  "target": {
+    "type": "epic",
+    "id": "10",
+    "label": "Collaboration, Tasks & Approvals"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "All P0 criteria met with 100% coverage. All P1 criteria met with 100% coverage. Overall coverage is 100%. No gaps identified.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "test_artifacts/traceability-matrix.md",
+    "trace_report_url": ""
+  }
+}

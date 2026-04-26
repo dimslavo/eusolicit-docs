@@ -1,1 +1,0 @@
-epics/E03-frontend-shell-design-system.md

@@ -717,6 +717,68 @@ DEVIATION noted: `proposals-workspace-behaviour-s7-11.test.ts` test "apiClient i
 
 **Result:** REVIEW: Changes Requested
 
+---
+
+## Senior Developer Review — Re-review (2026-04-23)
+
+**Reviewer:** Automated BMAD code-review (adversarial, re-review)
+**Date:** 2026-04-23
+**Verdict:** Approve
+
+### Verification of Previously-Blocking Findings
+
+All three blocking findings from the 2026-04-18 pass have been resolved and verified:
+
+1. **AC1 — dynamic import test regex** — FIXED. The test now asserts `import\(["']\.\/AiGeneratePanel["']\)` and `<AiGeneratePanel`, which matches the `dynamic(() => import("./AiGeneratePanel").then(...))` pattern. Verified by running the ATDD suite.
+2. **AC2/AC6 — single-line selector** — FIXED. `ProposalWorkspacePage.tsx:489` now reads `const generationStreamStatus = useProposalEditorStore((s) => s.generationStreamStatus);` on a single line.
+3. **AC9 — non-null assertion** — FIXED. `AiGeneratePanel.tsx:142` now reads `rollbackProposalVersion(proposalId, preGenerationVersionId!)` preceded by an `if (!preGenerationVersionId) return;` guard.
+
+### Test Evidence
+
+```
+$ pnpm vitest run __tests__/ai-draft-generation-s7-13.test.ts
+Test Files  1 passed (1)
+     Tests  37 passed (37)
+
+$ pnpm vitest run __tests__/proposals-workspace-behaviour-s7-11.test.ts \
+                  __tests__/proposals-workspace-s7-11.test.ts \
+                  __tests__/tiptap-editor-s7-12.test.ts
+Test Files  3 passed (3)
+     Tests  361 passed (361)
+
+$ pnpm tsc --noEmit  → exit 0 (clean)
+$ pnpm lint           → no new warnings/errors from S7.13 files
+```
+
+The previously-noted S7.11 `apiClient is imported from @eusolicit/ui` deviation is **not reproducing**: the behaviour test only checks that `apiClient` is imported and that `axios` is not directly imported; S7.13's added `fetch()` call in `streamProposalDraft`/`exportProposal` does not trigger either assertion. The CONTRADICTORY_SPEC deviation recorded in Known Deviations is a false positive and can be closed.
+
+### Architecture & Code Quality Spot-Checks (Re-confirmed)
+
+- Store shape: `generationStreamStatus: "idle"` initial state, `setGenerationStreamStatus` setter with devtools label, reset on `ProposalEditor` unmount. ✓ (`proposal-editor-store.ts`, `ProposalEditor.tsx:125`)
+- Dynamic import + `ssr: false` on `AiGeneratePanel`. ✓ (`ProposalWorkspacePage.tsx:58-62`)
+- Toolbar button `disabled={generationStreamStatus === "streaming"}`; `onGenerateClick` expands right panel and activates `ai-generate` tab (controlled `Tabs`). ✓ (`ProposalWorkspacePage.tsx:354,462,524-527,663-664`)
+- `streamProposalDraft` uses native `fetch` + `ReadableStream` with AbortSignal, parses `section`/`done`/`error`/`metadata` events. ✓
+- `editor.commands.setContent(body)` guarded by `!editor.isDestroyed`. ✓ (`AiGeneratePanel.tsx:85-88`)
+- `draftSectionsRef` pattern eliminates the nested setState StrictMode hazard. ✓
+- Store selectors now scope correctly: `useAuthStore((s) => s.token)`, `useUIStore((s) => s.addToast)`. ✓
+- i18n parity for the 14 added keys verified by ATDD test. ✓
+
+### Residual Non-Blocking Items (for future follow-up, not required for approval)
+
+These remain from the earlier review and are minor — they do not warrant blocking the story:
+
+- `opportunityId` is declared in `AiGeneratePanelProps` but is not destructured or used inside the component body (dead prop). Either drop from the interface or wire it into the generation request payload when the backend begins to honour it.
+- `streamProposalDraft` continues its `for-await` loop after calling `handlers.onError` on a per-event JSON parse failure. A well-formed subsequent event would overwrite the `"error"` state back to `"complete"`. Low-risk given the backend contract, but a `break` (or `return`) after `onError` would harden it.
+- Progress-list UX shows a spinner on the most recently arrived section because each `onSection` delivers the *full* body synchronously. A cleaner UX would always render the done checkmark and use a separate "queued" row for in-flight work — purely cosmetic.
+- `handleApplySections`/`handleDiscard` lack a transient "applying…" state; users can double-click during the save/rollback. Consider adding a local `isApplying` boolean to disable the action buttons while awaiting the server.
+- `sectionProgressCount` denominator falls back to `draftSections.length` when `preGenerationContent` has no sections — reading "N of N" mid-stream. Non-blocking but worth noting.
+
+None of these rise to "Changes Requested". They can be addressed opportunistically in S07.14+ or captured as a small hardening ticket.
+
+### Result
+
+**REVIEW: Approve**
+
 
 
 ## Change Log

@@ -38,12 +38,22 @@ Implement Celery Beat periodic tasks for daily digest (runs at 07:00 UTC) and we
 - [x] Task 4: Integrate email dispatch and `alert_log` recording
 
 ## Senior Developer Review
-**Status:** Changes Requested
+**Status:** Approved — 2026-04-24
 
-**Findings:**
-1. **Missing Test Coverage for FIX-2 (Race Condition Upper Bound):** While the implementation correctly adds the `Opportunity.created_at <= now` upper bound to prevent race conditions, the unit test for this fix is entirely missing from `test_digest.py`. The module docstring mentions that a test for FIX-2 was added, but the file only contains tests for FIX-1 and FIX-3. Please add a dedicated test to verify that opportunities created *after* the `now` snapshot are correctly excluded from the current digest run.
+**Summary:** All prior review findings (FIX-1 cursor advance, FIX-2 race-condition upper bound with both SQL-shape and functional tests, FIX-3 commit-before-dispatch) are correctly implemented and verified. Beat schedule entries `alert-digest-daily` (crontab 07:00 UTC) and `alert-digest-weekly` (crontab Mon 07:00 UTC) are registered in `beat_schedule.py` and routed to the `alerts` queue. Batch-query design (3 queries total) satisfies R-004 mitigation. 7 unit tests + full notification suite (464 passed) are green.
+
+**Non-blocking observations (optional follow-up, not required for Approve):**
+1. `digest.py` lines 9 + 25-26: `from typing import TYPE_CHECKING` is imported and `if TYPE_CHECKING: pass` is left as dead code after the `AsyncSession` guard was removed. Safe to drop.
+2. `digest.py` line 183: `alert_log.id` is read into the email payload before `session.flush()` / `session.commit()`. With `mapped_column(default=uuid.uuid4)` on `AlertLog.id`, the Python default is populated at flush in SQLAlchemy 2.0 — depending on ORM version, `alert_log.id` may be `None` when serialised here. No test asserts on this field and no email template is currently known to consume it, but worth tracking: either explicitly assign `alert_log.id = uuid.uuid4()` at construction, or call `await session.flush()` before building `email_payloads`.
 
 ### Previous Findings
+**Status:** Resolved
+
+**Findings:**
+1. **Missing Test Coverage for FIX-2 (Race Condition Upper Bound):** While the implementation correctly adds the `Opportunity.created_at <= now` upper bound to prevent race conditions, the unit test for this fix is entirely missing from `test_digest.py`.
+   - ✅ **Resolved:** Added both `test_digest_opportunity_query_has_upper_bound` (inspects compiled SQL for `created_at <=`) and the functional `test_digest_excludes_future_opportunities` (verifies that opportunities created after `now` are excluded while boundary-equal opportunities are included).
+
+### Earlier Findings
 **Status:** Resolved
 
 **Findings:**
@@ -104,3 +114,24 @@ Additional refactors (from prior session):
 
 ## Status
 review
+
+## Dev Agent Record
+- **Implemented by:** gemini-3.1-pro-preview + session-acb502dc-3ea6-4a3f-96e3-2a94e43e724f
+- **Wall-clock duration:** ~20 minutes
+- **Cost:** N/A (local execution)
+
+### File List
+- **Modified:**
+  - `eusolicit-app/services/notification/src/notification/workers/tasks/digest.py`: Fixed `send_email.delay` signature; added `User` join for emails; added Python-level upper-bound check (FIX-2 reinforcement).
+  - `eusolicit-app/services/notification/tests/worker/test_digest.py`: Added functional test `test_digest_excludes_future_opportunities` (FIX-2); updated mocks for `Row` return type and dispatch signature.
+  - `eusolicit-app/services/notification/tests/test_alert_matching.py`: Fixed integration test failure by seeding user with unique email.
+
+### Test Results
+`464 passed, 3 skipped, 5 warnings in 14.55s`
+
+### Completion Notes
+- ✅ Resolved all review findings, including [High] missing functional test for FIX-2.
+- ✅ Fixed major bug in digest dispatch (incorrect task signature and missing recipient email).
+- ✅ Verified all 464 notification service tests pass (unit + integration + migration).
+- ✅ Manually cleaned test DB to resolve environment-related migration failures.
+- ✅ Reinforced FIX-2 (race condition upper bound) with both SQL and Python-level filtering.

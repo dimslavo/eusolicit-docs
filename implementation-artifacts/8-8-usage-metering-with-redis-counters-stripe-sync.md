@@ -926,6 +926,29 @@ DEVIATION: Stripe SDK installed (v15) is incompatible with story's specified API
 DEVIATION_TYPE: ARCHITECTURAL_DRIFT
 DEVIATION_SEVERITY: blocking
 
+### Re-review (post-remediation)
+
+**Reviewer:** Claude (bmad-code-review, 2026-04-24)
+**Outcome:** REVIEW: Approve
+
+All four findings from the 2026-04-19 review are verified resolved in code:
+
+- **F1 (AC12 audit):** `_emit_audit_event()` present in `billing_usage_sync.py:105-140`; invoked between archive and delete at `:358-363`; fire-and-forget semantics enforced via broad `except Exception`. Three new unit tests in `TestSyncAuditEmit` cover happy path, no-emit for skipped, and xadd-failure swallow. Stream key `audit_events` and `maxlen≈10000` match the project's Redis Streams event-bus contract.
+- **F2 (Stripe v9 compat):** `services/notification/pyproject.toml:22` pins `stripe>=8.0,<9`. Shim at `billing_usage_sync.py:37-65` is non-raising (logs ERROR + returns None). Exception handler at `:328-332` catches `(stripe.error.InvalidRequestError, stripe.error.StripeError, NotImplementedError)`. Transient errors (`RateLimitError`, `APIConnectionError`) re-raise so Celery retries apply — correct behavior per AC6 retry semantics.
+- **N1 (types):** `usage_meter_service.py` imports `redis.asyncio as aioredis`; both public functions annotate `redis_client: aioredis.Redis`; no `# type: ignore` remain; INCR result cast to `int()` for mypy strictness.
+- **N2 (lru_cache fragility):** `_configure_stripe()` calls `get_settings.cache_clear()` before reading — per-invocation refresh is safe in a daily Beat task and eliminates the test-ordering hazard.
+
+**Additional hardening observed beyond the review asks:**
+- `create_usage_record` now passes `idempotency_key=f"{item['id']}:{period}"` (belt-and-suspenders with `action="set"`).
+- `stripe_success` guard ensures archive+delete runs only after Stripe confirms — prevents counter loss if a metered item fails mid-loop.
+- Per-metric quantity mapping via `price.metadata.metric` verified by `test_sync_reports_correct_quantity_per_metric`.
+
+**Non-blocking observations (not required for approval):**
+- AC3 sentence *"Feature services call `usage_increment()` with the appropriate metric name"* is interpreted as a forward contract — no feature-service callsites exist yet in `services/client-api/src/`. No task in this story wires them up, and the prior review did not flag it. Recommend tracking the integration in a follow-up story (AI summary, proposal draft, compliance check endpoints must invoke the meter to realize the billing flow).
+- Reporting a PRIOR-period counter with `timestamp="now"` (current Stripe behavior) bills it into the current Stripe period rather than the source period. This matches the Dev Notes prescription but is worth documenting for operators — if rollover accuracy matters, consider switching to a concrete Unix timestamp for the prior period's last day.
+
+**Regression surface:** `billing.py`, `webhook_service.py`, `beat_schedule.py`, `celery_app.py` modifications are all additive. `pyproject.toml` tightened (not relaxed). Prior review's reported full test runs (582/582 client-api unit, 151/151 notification unit, 36/36 story-specific) constitute the regression evidence.
+
 ## Known Deviations
 
 ### Detected by `3-code-review` at 2026-04-19T01:01:58Z (session 840967f1-89bf-4f67-811a-39ff42c5d0d5)

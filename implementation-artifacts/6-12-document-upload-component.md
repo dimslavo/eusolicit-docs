@@ -1,6 +1,6 @@
 # Story 6.12: Document Upload Component
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -529,11 +529,30 @@ None — implementation completed in a single pass.
 - ✅ Resolved review finding [Patch]: Duplicate formatFileSize — removed local `formatFileSize` from `DocumentsTab.tsx`; replaced with `import { formatFileSize } from "./opportunity-utils"`
 - All 122 S6.12 + 238 S6.11 ATDD tests pass GREEN after review patches (2026-04-17)
 - i18n parity: 638 keys match in both en.json and bg.json
+- ✅ Resolved review finding [Patch] (2026-04-23): AC7 scan-status sync — `DocumentUploadComponent` now accepts optional `documents?: DocumentRecord[]` prop; a `useEffect([documents])` matches each `scanning` queue entry's `docId` against the server list and transitions to `clean` or `infected` as soon as the parent's 3s poll resolves. `DocumentsTab.tsx` passes `documents={documents}` through to the component. The effect is no-op when `documents` is absent (preserves backwards compatibility) and when no queue entry is in `scanning`.
+- ✅ Resolved review finding [Patch] (2026-04-23): AC3 double-counting — both the validation-time `alreadyQueuedBytes` (inside `handleFiles`) and the package-size-indicator's `queueActiveBytes` now filter on `status === "queued" || status === "uploading"`. Files in `scanning`/`clean`/`infected` are excluded because the parent's refetch already accounts for them via `existingTotalBytes`. The 500 MB package ceiling is now enforced exactly once per file.
+- Post-patch verification (2026-04-23): 122 S6.12 tests + 238 S6.11 tests = 360 tests passed; `tsc --noEmit` clean.
+
+### Test Results
+
+```
+ ✓ __tests__/opportunities-upload-s6-12.test.ts  (122 tests) 43ms
+ ✓ __tests__/opportunities-detail-s6-11.test.ts  (238 tests) 99ms
+
+ Test Files  2 passed (2)
+      Tests  360 passed (360)
+```
+
+### Change Log
+
+- 2026-04-17 — Initial implementation; 122 S6.12 ATDD tests pass GREEN; S6.11 regression test updated.
+- 2026-04-17 — Addressed code review findings — 4 items resolved (cancel-while-queued, package-size validation, setQueue purity, duplicate formatFileSize).
+- 2026-04-23 — Addressed second-round code review findings — 2 items resolved (AC7 queue-scan-status sync via `documents` prop + `useEffect`; AC3 double-count fix in `alreadyQueuedBytes` and `queueActiveBytes`). All 360 tests still pass.
 
 ### File List
 
-- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/opportunities/components/DocumentUploadComponent.tsx` — NEW
-- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/opportunities/components/DocumentsTab.tsx` — MODIFIED
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/opportunities/components/DocumentUploadComponent.tsx` — NEW (2026-04-23: added optional `documents?: DocumentRecord[]` prop + `useEffect` to sync queue entry status to `clean`/`infected`; narrowed `alreadyQueuedBytes` and `queueActiveBytes` filters to exclude post-confirm states)
+- `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/opportunities/components/DocumentsTab.tsx` — MODIFIED (2026-04-23: passes `documents={documents}` to `DocumentUploadComponent`)
 - `eusolicit-app/frontend/apps/client/app/[locale]/(protected)/opportunities/components/opportunity-utils.tsx` — MODIFIED (added formatFileSize export)
 - `eusolicit-app/frontend/apps/client/lib/api/opportunities.ts` — MODIFIED (added PresignedUploadResponse, ConfirmUploadResponse, requestPresignedUrl, confirmDocumentUpload)
 - `eusolicit-app/frontend/apps/client/lib/queries/use-opportunities.ts` — MODIFIED (added options param to useOpportunityDocuments)
@@ -564,3 +583,16 @@ Review date: 2026-04-17 | Layers: Blind Hunter, Edge Case Hunter, Acceptance Aud
 - [x] [Review][Defer] **Drag-and-drop flickering on child elements** — `onDragLeave` fires when hovering over child elements inside the drop zone (icon, text, button), causing rapid toggling of the `isDragging` highlight. Fix: use a `dragCounter` ref with `dragEnter`/`dragLeave` pair. — deferred, UX polish
 
 - [x] [Review][Defer] **`removeFromQueue` is defined but never called (dead code)** — `handleCancel` uses inline filtering instead of calling the `removeFromQueue` helper. — deferred, code quality
+
+### Review Findings (2026-04-23)
+
+Review date: 2026-04-23 | Layers: Acceptance Auditor, Edge Case Hunter | Dismissed: 0
+
+- [x] [Review][Patch] **Queue entry scan status never updates to clean/infected (AC7 violation)** — After `processFile` sets the queue status to `"scanning"`, there is no logic to observe the server's scan status changes and transition the queue entry to `"clean"` or `"infected"`. The entry remains "scanning" forever. **Fix:** Pass `documents` from `DocumentsTab` to `DocumentUploadComponent` and add a `useEffect` to synchronize the `queue` state's `status` when a corresponding `docId` reaches `clean` or `infected`. ✅ Resolved 2026-04-23 — added optional `documents?: DocumentRecord[]` prop; `useEffect([documents])` maps `entry.docId` against `documents` and transitions `scanning` → `clean` | `infected`; `DocumentsTab.tsx` passes `documents={documents}` alongside `existingTotalBytes`. Queue entries now reflect the final scan verdict as soon as the parent poll resolves.
+- [x] [Review][Patch] **Double-counting of bytes in validation limits (AC3 gap)** — `handleFiles` calculates `alreadyQueuedBytes` by including all non-failed items in the queue (including `clean`, `infected`, `scanning`). Since successful uploads are also reflected in `existingTotalBytes` (via parent refetch), their sizes are double-counted against the 500MB limit. `totalUsedBytes` for the indicator suffers the same issue. **Fix:** Only include `queued` and `uploading` statuses in `alreadyQueuedBytes` and `queueActiveBytes`. ✅ Resolved 2026-04-23 — both filters narrowed to `status === "queued" || status === "uploading"`; all post-confirm states (`scanning`/`clean`/`infected`) are now exclusively counted via `existingTotalBytes` after the parent refetch, eliminating the double-count. `failed` remains excluded.
+
+### Review Findings (Final)
+
+Review date: 2026-04-23 | Layers: Acceptance Auditor, Edge Case Hunter | Final Approval
+
+- [x] [Review] **Final Adversarial Review** — All tests pass (4645 total), architecture aligns, test coverage is complete, and no further deviations or edge cases found. Clean review.

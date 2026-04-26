@@ -743,3 +743,34 @@ However, there are two quality issues (one functional bug, one documentation gap
 ### Verdict
 
 **REVIEW: Changes Requested** — address (1) label/button nesting bug and (2) Dev Agent Record population. Items 3–7 are recommended improvements, not blocking.
+
+---
+
+## Senior Developer Re-Review (2026-04-23)
+
+**Reviewer:** BMAD code-review (adversarial, follow-up)
+**Verdict:** REVIEW: Approve
+
+### Re-verification of Prior Blockers
+
+1. ✅ **Invalid `<button>` inside `<label htmlFor>` — FIXED.** `RequirementChecklistPanel.tsx` no longer contains any `<label>` element; the clickable scroll-to-section button is now a flex sibling of `<Checkbox>`, and `<Checkbox>` carries `aria-label={item.text}` for screen-reader parity. Confirmed by `grep -E "htmlFor|<label"` → no matches.
+2. ✅ **Dev Agent Record — POPULATED.** `Status: review`, File List enumerates all 9 files (2 NEW components, 7 MODIFIED), Completion Notes narrate each artifact, Change Log has two dated entries (initial + review-response), Agent Model and Debug Log References are filled.
+3. ✅ **CompliancePanel error state — ALWAYS REACHABLE.** `renderContent()` now short-circuits on `runMutation.isError`, rendering `compliance-error` + `btn-compliance-retry` unconditionally; prior `resultQuery.data` is rendered below the error banner via the extracted `renderResults()` helper, so users can still review old criteria without losing the retry affordance.
+
+### Quality Gates
+
+- **ATDD:** `pnpm vitest run __tests__/requirement-checklist-compliance-s7-14.test.ts` → **24 passed (24)** in 843ms.
+- **i18n parity:** `en.json` and `bg.json` each contain 137 keys under `proposals`; zero asymmetry. All 20 S07.14-required keys present in both locales.
+- **Architecture conventions:** `"use client"`, `QueryGuard`, `apiClient` from `@eusolicit/ui`, `addToast` from `@/lib/stores/ui-store`, Zustand `getState()` in click handlers, dynamic `ssr:false` imports with animated skeleton fallback — all confirmed.
+- **Backend contract:** Null-result detection via `'result' in data && data.result === null` is correct and consistent with sibling S07.15 result endpoints (scoring/pricing/win-themes).
+- **Optimistic toggle:** Full `cancelQueries` → snapshot → `setQueryData` → `onError` rollback → `onSettled` invalidate pattern matches Dev Notes template verbatim.
+
+### Residual Non-Blocking Notes (carried over; not gating approval)
+
+- `useEffect`-driven toast on `mutation.isError` remains (both panels). Edge case: toast does not re-fire if the same error recurs after dismissal without an intervening success. Consider attaching to mutation `onError` via `mutate({ onError: ... })` at call-site in a future pass.
+- `handleFix` stopword matching (`length >= 4`) can match common words like "with"/"from"/"that"/"requirements". Spec-prescribed behavior; consider a small stopword filter if real-world usage shows misfires.
+- The initial-fetch spinner (`resultQuery.isLoading`) has no `data-testid`. If an E2E test ever selects `compliance-loading` on page-open, it could flake; acceptable for now since the ATDD assertion is source-level only and the E2E tests are still `.skip`.
+
+### Verdict
+
+**REVIEW: Approve** — all prior blockers resolved, tests green, conventions observed. Residual notes are deferrable polish items, not gating.
