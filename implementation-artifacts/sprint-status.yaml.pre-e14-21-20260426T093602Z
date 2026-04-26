@@ -1,6 +1,5 @@
 # generated: 2026-04-22
 # last_updated: 2026-04-25  # Epic 13 partial retrospective completed (bmad-retrospective 2026-04-25). epic-13-retrospective marked done. 8 ACTION items (3 critical, 1 high, 4 medium). Critical: code regression between review passes, false-positive review approval, injected stories not executed. 0/6 carry-forwards closed; inj-01/02/03 remain at ready-for-dev.
-# last_updated: 2026-04-26  # Net-new Epics 14-21 injected from bmad-correct-course (sprint-change-proposal-2026-04-25-v4). 8 epics + 28 stories added at status=backlog (story files not yet created in implementation-artifacts/). Epic 13 carry-forwards unchanged; pipeline now has visible work for orchestrator to dispatch.
 # project: eusolicit
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-04-26
+last_updated: 2026-04-25
 project: eusolicit
 project_key: NOKEY
 tracking_system: file-system
@@ -231,8 +230,8 @@ development_status:
   12-17-performance-optimization-load-testing-security-audit: done
   12-18-user-onboarding-flow-launch-polish: done
   epic-12-retrospective: done
-  epic-13: in-progress
-  drift-recovery-story: ready-for-dev
+  epic-13: done
+  drift-recovery-story: in-progress
   7-17-proposal-generate-security-audit-hardening: done
   dw-01-proposal-backend-schema-alignment: ready-for-dev
   dw-02-celery-task-infrastructure-fixes: ready-for-dev
@@ -241,48 +240,3 @@ development_status:
   inj-02-k6-performance-baseline: ready-for-dev
   inj-03-tea-review-backlog-epic8-epic9: ready-for-dev
   epic-13-retrospective: done
-  # ===== Epics 14-21 injected 2026-04-26 from bmad-correct-course (sprint-change-proposal-2026-04-25-v4). =====
-  # Story IDs sourced from planning-artifacts/epics/E14-...E21-...md (per-epic files authoritative).
-  # All new stories at status=backlog: story files not yet created in implementation-artifacts/.
-  epic-14: in-progress
-  14-0-schema-migration-atomic-default-workspace-backfill: done
-  14-1-workspace-crud-api-audit-trail-extension: done
-  14-2-rbac-extension-workspacescope-depends-tenant-admin-cross-workspace-bypass: in-progress
-  14-3-frontend-workspace-switcher-url-routing-zustand-migration: backlog
-  14-4-external-collaborator-magic-link-flow-comment-only-role: backlog
-  epic-14-retrospective: optional
-  epic-15: backlog
-  15-0-pro-plus-tier-definition-stripe-price-tier-cache-extension: backlog
-  15-1-per-bid-pricing-tiers-stripe-checkout-integration-admin-config: backlog
-  15-2-usage-lua-metering-bypass-concurrent-incr-integration-test: backlog
-  epic-15-retrospective: optional
-  epic-16: backlog
-  16-0-integrations-api-service-bootstrap-slack-teams-webhook-configuration-alert-routing: backlog
-  epic-16-retrospective: optional
-  epic-17: backlog
-  17-0-crm-connection-model-fernet-token-vault-sync-engine-scaffold-conflict-resolution-framework: backlog
-  17-1-hubspot-adapter-full-bi-directional-sync-deals-contacts: backlog
-  17-2-pipedrive-adapter: backlog
-  17-3-salesforce-adapter-daily-quota-aware: backlog
-  epic-17-retrospective: optional
-  epic-18: backlog
-  18-0-public-trust-route-mdx-pipeline-sub-processor-yaml-change-log-generator: backlog
-  18-1-pdf-artefact-pipeline-weasyprint-reuse-living-artefacts-git-managed-legal-artefacts: backlog
-  18-2-sub-processor-change-dpa-notification-flow-notification-service-extension: backlog
-  epic-18-retrospective: optional
-  epic-19: backlog
-  19-0-platform-attributed-flag-bid-outcome-capture-ui-materialized-views: backlog
-  19-1-outcome-dashboard-frontend-widgets-workspace-config-overrides: backlog
-  19-2-monthly-outcome-brief-pdf-generation-onboarding-milestone-tracker-csm-stall-alerts: backlog
-  epic-19-retrospective: optional
-  epic-20: backlog
-  20-0-third-party-nps-sdk-opt-in-routing-g2-capterra-privacy-disclosure: backlog
-  epic-20-retrospective: optional
-  epic-21: backlog
-  21-1-k6-baseline-closure: backlog
-  21-2-postgresql-ha-migration-managed-rds-multi-az-or-equivalent: backlog
-  21-3-redis-ha-migration-sentinel-or-managed-cluster: backlog
-  21-4-poddisruptionbudgets-min-replica-enforcement-across-all-services: backlog
-  21-5-slo-dashboards-prometheus-grafana-error-budget-alerting: backlog
-  21-6-on-call-rotation-runbook-authoring-incident-management-process: backlog
-  epic-21-retrospective: optional

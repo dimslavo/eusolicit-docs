@@ -48,3 +48,7 @@
 
 - **No SendGrid webhook event-id deduplication** — `notification/api/webhooks/sendgrid.py` does not track `sg_event_id` values. SendGrid retries a batch with the same event IDs on any non-2xx response (and occasionally even on 2xx). Result: the handler re-applies the status on every retry, which is idempotent for terminal states but wastes writes and can overwrite a later `bounced` with an earlier `delivered` if events arrive out of order. Add an event-id LRU or a `webhook_event_log` table keyed by `sg_event_id` for at-least-once → exactly-once semantics.
 - **Webhook DB error path yields 500 instead of logged-and-ok** — The `try/except Exception` around `db.execute(stmt)` in `sendgrid_webhook` swallows execute failures, but the `get_db_session` dependency then `session.commit()`s the invalidated transaction and raises, surfacing as a 500. SendGrid will retry, which is acceptable, but an explicit `session.rollback()` inside the except branch plus returning `{"status": "partial"}` would be cleaner for observability.
+
+## Deferred from: code review of story 14-1-workspace-crud-api-audit-trail-extension (2026-04-26)
+
+- **`WorkspaceResponse` lacks `is_archived` while `WorkspaceUpdate` accepts it** — Asymmetric API: clients submit `is_archived: bool` but receive only `archived_at: datetime | None` and must derive the boolean. Harmless for now (clients can compute), but worth tightening for v2 schema consistency. Either expose `is_archived` as a computed field on the response or rename the request field to `archived_at: datetime | None` for symmetry.

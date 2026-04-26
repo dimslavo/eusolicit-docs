@@ -230,6 +230,15 @@ This story moves to `done` **only when all of the following are GREEN**:
 
 ## Dev Notes
 
+### Operator Workflow Guidance (BMAD stream)
+The following free-form instructions come from the project config's `implementation_instructions` fallback (top-level). Treat them as authoritative workflow directives for this and subsequent BMAD skill invocations:
+
+- Before starting any epic, run [IR] Implementation Readiness to validate the specs are aligned with the epic goals and scope.
+- Before each story, ALWAYS run [VS] Validate Story. This is non-negotiable — it’s the only way to ensure the story is well-defined enough for dev work to proceed smoothly.
+- For epics with multiple stories, run [SR] Story Review after each story is complete to ensure the overall epic is on track.
+- For epics with complex or interdependent stories, run [ER] Epic Review after all stories are complete to validate the epic as a whole before it moves to QA.
+- For all epics, run [PR] Post-Review after code review is complete to catch any implementation gaps before QA testing begins.
+
 ### Architecture Compliance (Persistent Facts from `project-context.md`)
 
 The drift-recovery story exists precisely because patterns codified in `project-context.md` were **not extended** to the billing service. Quoting the patterns this story must conform to:
@@ -278,10 +287,11 @@ The epic-level test design lives in `test_artifacts/` (project root). Loaded for
   - **8.4-API-004** — `invoice.payment_failed → past_due`. Currently unit-only. Per `nfr-report.md` quick-win #3, add an integration test via `test_stripe_webhook_flow.py` using ASGI test client. **Recommended companion test for AC4 work** (since the CB wrapper touches the same call paths).
 - Recommended monitoring hooks (8 listed in §"Monitoring Hooks") map to the metrics in AC5; ensure metric names match so Grafana panels and alerts can reference them directly.
 
-**From `test_artifacts/traceability-matrix.md` (Epic 9 Traceability):**
-- Gate: PASS. 14/14 stories at FULL coverage across unit/integration/API/UI.
-- Recommended action verbatim: "Run /bmad:tea:test-review to assess test quality." → That action is `inj-03` (AC3).
-- Patterns codified for Epic 9 (test-quality-relevant): dual-layer idempotency (DB constraint + Redis SETNX), `asyncio.to_thread` for Celery `.delay()` from async consumers, 404 (not 403) for cross-user scoped resources, narrow `except` clauses (never swallow `celery.exceptions.Retry`), Fernet for OAuth token encryption, ECDSA webhook validation on raw body fail-closed. **TEA review under AC3 should sample these patterns** in S09.04, S09.08, S09.10.
+**From `test_artifacts/traceability-matrix.md` (Epic 13 Traceability):**
+- Gate: FAIL. P0 coverage is 0% (required: 100%). 5 critical requirements uncovered (AC1, AC3, AC4, AC5, DW-02).
+- Recommended action verbatim: "URGENT (P0): Implement and verify Prometheus metrics in client-api and notification services." and "URGENT (P0): Extend the ai-gateway circuit-breaker pattern to the Billing service and add failure-injection tests."
+- The matrix explicitly flags AC4 (Stripe Circuit-Breaker) and AC5 (Billing Prometheus Metrics) as P0 gaps with no `client-api` circuit breaker tests and missing `client-api/src/metrics.py`.
+- **Test expectations for this story**: Implement the missing `client-api` circuit breaker tests (including failure-injection tests) and metrics tests to clear the P0 gaps for AC4 and AC5. The coordinator gate (AC6) cannot pass until these tests are GREEN and the traceability matrix reflects 100% P0 coverage.
 
 **From `test_artifacts/gate-decision.json`:** Epic 9 PASS at 100% / 100% / 100% (P0/P1/overall). No critical gaps. Use it as the reference shape for the gate-decision artifact this drift-recovery story should produce on close (`test_artifacts/gate-decision-epic-13.json`, schema-compatible).
 
