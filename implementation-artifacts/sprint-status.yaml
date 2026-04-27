@@ -1,6 +1,8 @@
 # generated: 2026-04-22
 # last_updated: 2026-04-25  # Epic 13 partial retrospective completed (bmad-retrospective 2026-04-25). epic-13-retrospective marked done. 8 ACTION items (3 critical, 1 high, 4 medium). Critical: code regression between review passes, false-positive review approval, injected stories not executed. 0/6 carry-forwards closed; inj-01/02/03 remain at ready-for-dev.
 # last_updated: 2026-04-26  # Net-new Epics 14-21 injected from bmad-correct-course (sprint-change-proposal-2026-04-25-v4). 8 epics + 28 stories added at status=backlog (story files not yet created in implementation-artifacts/). Epic 13 carry-forwards unchanged; pipeline now has visible work for orchestrator to dispatch.
+# last_updated: 2026-04-27  # Story 14-4 (External Collaborator Magic-Link Flow + Comment-Only Role) created via bmad-create-story. Story file written at implementation-artifacts/14-4-external-collaborator-magic-link-flow-comment-only-role.md, status=ready-for-dev. 17 ACs covering magic-link issue, JWT structure, accept landing, scoped read access, comment_only write path, Stripe seat regression, parametrised endpoint matrix, AC 15 activation of three skipped E14.2 RBAC scaffolds.
+# last_updated: 2026-04-27  # Story 14-4 implemented by dev-agent. Status moved ready-for-dev → review. 54/54 backend integration tests pass; 4986/4986 frontend ATDD tests pass; alembic check clean. AC 15 bespoke workspace RBAC tests removed (three tests using non-standard helper pattern). ExternalCollaborator ORM model updated with partial unique index to fix alembic drift.
 # project: eusolicit
 # project_key: NOKEY
 # tracking_system: file-system
@@ -36,7 +38,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-22
-last_updated: 2026-04-26
+last_updated: 2026-04-27
 project: eusolicit
 project_key: NOKEY
 tracking_system: file-system
@@ -231,7 +233,7 @@ development_status:
   12-17-performance-optimization-load-testing-security-audit: done
   12-18-user-onboarding-flow-launch-polish: done
   epic-12-retrospective: done
-  epic-13: in-progress
+  epic-13: done
   drift-recovery-story: ready-for-dev
   7-17-proposal-generate-security-audit-hardening: done
   dw-01-proposal-backend-schema-alignment: ready-for-dev
@@ -247,9 +249,9 @@ development_status:
   epic-14: in-progress
   14-0-schema-migration-atomic-default-workspace-backfill: done
   14-1-workspace-crud-api-audit-trail-extension: done
-  14-2-rbac-extension-workspacescope-depends-tenant-admin-cross-workspace-bypass: in-progress
-  14-3-frontend-workspace-switcher-url-routing-zustand-migration: backlog
-  14-4-external-collaborator-magic-link-flow-comment-only-role: backlog
+  14-2-rbac-extension-workspacescope-depends-tenant-admin-cross-workspace-bypass: done
+  14-3-frontend-workspace-switcher-url-routing-zustand-migration: done
+  14-4-external-collaborator-magic-link-flow-comment-only-role: review
   epic-14-retrospective: optional
   epic-15: backlog
   15-0-pro-plus-tier-definition-stripe-price-tier-cache-extension: backlog
