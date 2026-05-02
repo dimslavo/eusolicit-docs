@@ -1,0 +1,369 @@
+---
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories"]
+inputDocuments: ["PRD.md", "architecture.md", "ux-design-specification.md"]
+---
+
+# EU Solicit - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for EU Solicit, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+FR1: Ingest AOP, TED, and EU grant portals data into a centralized PostgreSQL 16 data store.
+FR2: Smart Matching with AI relevance scoring against user capabilities, certifications, and financial capacities.
+FR3: Configurable email digests based on CPV, regions, budget, and deadlines.
+FR4: Ingest full tender packages (PDF, DOCX) up to 100MB per file, max 500MB per package.
+FR5: Generate one-page executive summaries of complex RFPs.
+FR6: Extract mandatory requirements into a compliance checklist.
+FR7: Risk Analysis to flag unusual or high-risk contractual clauses.
+FR8: Streamed generation of full technical proposals using KraftData vector stores (RAG) and user profiles.
+FR9: Predict evaluator scoring and suggest improvements.
+FR10: Automated compliance checks against admin-assigned regulatory frameworks (e.g., ZOP).
+FR11: Support Subscription Tiers: Free, Starter, Professional, Enterprise tiers gated by Stripe.
+FR12: Google and Outlook calendar sync (Pro/Enterprise) plus an iCal feed.
+FR13: Role-Based Access Control (RBAC) with company role ceiling and entity-level overrides.
+FR14: Audit Logging for user actions, IP, before/after values for POST/PATCH/DELETE endpoints.
+FR15: AI recommendation on bid viability with admin manual override capability.
+
+### NonFunctional Requirements
+
+NFR1: 99.5% uptime SLA.
+NFR2: All AI generation operations must use Server-Sent Events (SSE) with `run-stream`, no blocking waits.
+NFR3: SSE endpoints must implement idle timeout (120s), total timeout (600s), and heartbeat (15s).
+NFR4: Passwords bounded at `max_length=128` characters.
+NFR5: `hmac.compare_digest()` required for all inbound webhook validations.
+NFR6: AES-256 for data at rest; TLS 1.3 for transit.
+NFR7: `is_active` checked for all token endpoints.
+NFR8: Outbound calls must use circuit breakers wrapping exponential backoff.
+NFR9: Idempotent Redis Streams consumption via DB constraints + `SETNX`.
+NFR10: Atomic Lua scripts for rate/usage limits.
+NFR11: Celery background tasks use `SELECT FOR UPDATE SKIP LOCKED` for DB queues to prevent race conditions.
+NFR12: All data stored within the EU (GDPR compliance).
+
+### Additional Requirements
+
+- Use Next.js 14 App Router with TypeScript (strict mode).
+- Use Zustand (namespaced for UI/Auth state) & TanStack Query v5 for state management.
+- Use React Hook Form + Zod, shadcn/ui for forms and UI components.
+- Use next-intl v3 for i18n (BG/EN).
+- Use native `fetch` + `ReadableStream` for SSE streaming POST; Axios is prohibited for SSE.
+- Backend must be Python 3.12+ with FastAPI.
+- ORM & DB: SQLAlchemy (async), Alembic, PostgreSQL 16.
+- Background Tasks: Celery for long-running crawler/NLP tasks.
+- Event Bus: Redis 7 for fast stream processing with Lua script support.
+- Infrastructure: Docker multi-stage builds, Terraform >= 1.5, Helm 3.
+- Observability: structlog (JSON to stdlib routing), Prometheus (`CollectorRegistry`) for latency/business metrics.
+- Database relies on strict PostgreSQL schema isolation per service (`client`, `admin`, `pipeline`, `ai`, `notification`, `shared`).
+- Outbound external HTTP client calls must implement a two-layer resilience pattern (Circuit Breaker per-logical-name + inner Exponential Retry).
+- Webhook deduplication via `event_id` unique constraint in `webhook_events` table inside the processing transaction.
+- VIES VAT validation and similar services must fail-open to `pending` status on timeout/error. Stripe customer provisioning must run as a background task.
+- `TierGate` must be implemented via `Depends()`, not as global middleware.
+- Write audit trails using `asyncio.create_task()` catching all internal exceptions.
+- ThreadPoolExecutor & asyncio.to_thread for Synchronous I/O to prevent blocking the main FastAPI event loop.
+- Use `SELECT ... FOR UPDATE SKIP LOCKED` for DB-driven queues. Use content-hash optimistic locking (SHA-256) for collaborative document editing.
+
+### UX Design Requirements
+
+UX-DR1: Implement a Split-Pane Proposal Editor with left sidebar for document structure, center Tiptap rich-text editing canvas, and right sliding context panel.
+UX-DR2: Implement an AI Diff Review Block using side-by-side or inline text view showing deletions in red strike-through and additions in green highlight, with sticky Accept/Reject buttons, avoiding silent overwriting.
+UX-DR3: Implement a Compliance Metric Card with a circular progress ring, fractional compliance, and expandable accordion detailing missing mandatory items.
+UX-DR4: Use shadcn/ui components (Dialogs, Sheets, Tabs, Dropdowns) installed directly into `src/components/ui` and styled via Tailwind CSS with a strict 4px spacing scale.
+UX-DR5: Use `@tanstack/react-table` for highly interactive data tables and `Recharts` for analytics visualizations.
+UX-DR6: Support a themeable architecture using CSS custom properties for enterprise white-labeling and native dark mode support.
+UX-DR7: Ensure WCAG 2.1 AA compliance including strict color contrast (4.5:1 for text), keyboard navigation with explicit focus rings (`:focus-visible`), and screen reader support (ARIA).
+UX-DR8: Implement transient success Toasts (via Sonner), persistent inline Warning banners for critical states, and skeleton loaders matching incoming data shapes.
+UX-DR9: Build a responsive Application Shell featuring a collapsible left navigation sidebar, sticky top bar with global Cmd+K search, and an optional right-side Inspector Panel.
+UX-DR10: Provide a Wizard Stepper for complex forms like the ESPD builder to prevent cognitive overload.
+
+### FR Coverage Map
+
+FR1: Epic 2 - Ingest AOP, TED, and EU grant portals data
+FR2: Epic 2 - Smart Matching with AI relevance scoring
+FR3: Epic 2 - Configurable email digests
+FR4: Epic 3 - Ingest full tender packages
+FR5: Epic 3 - Generate one-page executive summaries
+FR6: Epic 3 - Extract mandatory requirements into a compliance checklist
+FR7: Epic 3 - Risk Analysis to flag high-risk clauses
+FR8: Epic 4 - Streamed generation of full technical proposals
+FR9: Epic 4 - Predict evaluator scoring and suggest improvements
+FR10: Epic 5 - Automated compliance checks against regulatory frameworks
+FR11: Epic 1 - Support Subscription Tiers
+FR12: Epic 6 - Google and Outlook calendar sync
+FR13: Epic 1 - Role-Based Access Control
+FR14: Epic 6 - Audit Logging
+FR15: Epic 6 - AI recommendation on bid viability with override
+
+## Epic List
+
+### Epic 1: User Registration & Subscription
+Users can create accounts, select a pricing tier, and manage their subscription.
+**FRs covered:** FR11, FR13
+
+### Epic 2: Opportunity Intelligence & Discovery
+Users can ingest public tender data, receive smart matches based on their profiles, and get configurable email digests.
+**FRs covered:** FR1, FR2, FR3
+
+### Epic 3: Document Analysis & Insights
+Users can upload large tender packages and receive AI-generated executive summaries, compliance checklists, and risk analyses.
+**FRs covered:** FR4, FR5, FR6, FR7
+
+### Epic 4: AI Proposal Generation
+Users can stream real-time AI-drafted proposals based on tender requirements, user profiles, and predict evaluator scores.
+**FRs covered:** FR8, FR9
+
+### Epic 5: Compliance & Regulatory Validation
+Users can automatically validate their drafted proposals against regulatory frameworks to ensure full compliance.
+**FRs covered:** FR10
+
+### Epic 6: Workflow, Collaboration & Approvals
+Admin users can make bid/no-bid decisions, sync calendars, and the system securely logs all actions for auditability.
+**FRs covered:** FR12, FR14, FR15
+
+## Epic 1: User Registration & Subscription
+
+Users can create accounts, select a pricing tier, and manage their subscription.
+
+### Story 1.1: User Registration
+
+As a new user,
+I want to register for an account using my email and password,
+So that I can access the platform.
+
+**Acceptance Criteria:**
+
+**Given** a valid email and password (max 128 chars)
+**When** I submit the registration form
+**Then** my account is created
+**And** password is hashed asynchronously and I am logged in
+
+### Story 1.2: Free Tier Selection
+
+As a registered user,
+I want to select the Free tier,
+So that I can evaluate the platform.
+
+**Acceptance Criteria:**
+
+**Given** I am a registered user
+**When** I select the Free tier
+**Then** my account is provisioned with Free tier access
+**And** VIES VAT validation fails-open to pending on timeout
+
+### Story 1.3: Subscription Upgrade
+
+As a free user,
+I want to upgrade to Professional tier via Stripe,
+So that I can use advanced features.
+
+**Acceptance Criteria:**
+
+**Given** I am on the Free tier
+**When** I choose to upgrade
+**Then** a Stripe checkout session is created
+**And** upon payment success webhook, my access is instantly updated
+
+### Story 1.4: Role-Based Access Setup
+
+As a company admin,
+I want to assign roles to my team members,
+So that access is appropriately gated.
+
+**Acceptance Criteria:**
+
+**Given** I am a company admin
+**When** I invite a user and assign a role
+**Then** the user receives an invite
+**And** their access is restricted by the TierGate injection
+
+## Epic 2: Opportunity Intelligence & Discovery
+
+Users can ingest public tender data, receive smart matches based on their profiles, and get configurable email digests.
+
+### Story 2.1: Data Ingestion Pipeline
+
+As a platform admin,
+I want the system to ingest public tender data (AOP, TED),
+So that users have opportunities to search.
+
+**Acceptance Criteria:**
+
+**Given** active data sources
+**When** the Celery crawler job runs
+**Then** it ingests tender data into the pipeline schema
+**And** uses SELECT FOR UPDATE SKIP LOCKED to prevent race conditions
+
+### Story 2.2: Opportunity Smart Matching
+
+As a Professional user,
+I want AI to score opportunities against my profile,
+So that I see the most relevant tenders first.
+
+**Acceptance Criteria:**
+
+**Given** my user profile is complete
+**When** I view the dashboard
+**Then** opportunities are sorted by an AI relevance score
+**And** displayed in high-density data tables
+
+### Story 2.3: Email Digest Configuration
+
+As a Bid Manager,
+I want to configure daily email alerts,
+So that I never miss a relevant opportunity.
+
+**Acceptance Criteria:**
+
+**Given** I have set criteria (CPV, regions)
+**When** the daily digest worker runs
+**Then** I receive a formatted email with matching opportunities
+**And** I can click through directly to the platform
+
+## Epic 3: Document Analysis & Insights
+
+Users can upload large tender packages and receive AI-generated executive summaries, compliance checklists, and risk analyses.
+
+### Story 3.1: Tender Package Upload
+
+As a user,
+I want to upload a tender package (up to 500MB total),
+So that the system can analyze it.
+
+**Acceptance Criteria:**
+
+**Given** I have PDF/DOCX files
+**When** I upload them
+**Then** the system accepts files up to 100MB each
+**And** saves them to the data store with an audit log entry
+
+### Story 3.2: Executive Summary Generation
+
+As a user,
+I want an AI-generated executive summary of the tender,
+So that I can quickly decide if it's worth pursuing.
+
+**Acceptance Criteria:**
+
+**Given** an uploaded tender package
+**When** I request a summary
+**Then** the AI Gateway generates a one-page summary
+**And** the text is presented clearly with citations
+
+### Story 3.3: Compliance Checklist Extraction
+
+As a Bid Manager,
+I want the system to extract mandatory requirements,
+So that I have a clear checklist for compliance.
+
+**Acceptance Criteria:**
+
+**Given** an analyzed tender
+**When** I view the requirements tab
+**Then** a checklist of mandatory items is displayed
+**And** I can mark them as complete
+
+### Story 3.4: Risk Clause Flagging
+
+As a Reviewer,
+I want the system to flag high-risk clauses,
+So that I can mitigate contractual risks early.
+
+**Acceptance Criteria:**
+
+**Given** the analyzed tender
+**When** the risk analysis runs
+**Then** unusual/high-risk clauses are highlighted in the UI
+**And** the UI uses persistent inline Warning banners for critical risks
+
+## Epic 4: AI Proposal Generation
+
+Users can stream real-time AI-drafted proposals based on tender requirements, user profiles, and predict evaluator scores.
+
+### Story 4.1: Proposal Draft Initialization
+
+As a Contributor,
+I want to start a new proposal draft using a template,
+So that I don't have to start from scratch.
+
+**Acceptance Criteria:**
+
+**Given** I am in a Project Workspace
+**When** I click "Start Proposal"
+**Then** a Split-Pane Proposal Editor is opened
+**And** it includes a left sidebar, center Tiptap canvas, and right context panel
+
+### Story 4.2: SSE Streamed Proposal Drafting
+
+As a Contributor,
+I want the AI to stream the draft proposal text into the editor,
+So that I can see the content as it's generated.
+
+**Acceptance Criteria:**
+
+**Given** I request AI drafting for a section
+**When** the backend processes it
+**Then** the text is streamed via SSE using ReadableStream
+**And** AI Diff Review Block allows me to accept/reject changes
+
+### Story 4.3: Evaluator Score Prediction
+
+As a Bid Manager,
+I want to see a predicted evaluator score for my draft,
+So that I can improve weak sections.
+
+**Acceptance Criteria:**
+
+**Given** a drafted proposal
+**When** I run the scoring simulator
+**Then** it returns a predicted score
+**And** provides specific improvement suggestions in the right inspector panel
+
+## Epic 5: Compliance & Regulatory Validation
+
+Users can automatically validate their drafted proposals against regulatory frameworks to ensure full compliance.
+
+### Story 5.1: Automated Compliance Check
+
+As a Bid Manager,
+I want the system to automatically validate my proposal against the ZOP framework,
+So that I don't miss any legal requirements.
+
+**Acceptance Criteria:**
+
+**Given** a completed draft
+**When** I run the compliance check
+**Then** the Compliance Metric Card shows fractional compliance
+**And** expands to detail any missing mandatory items
+
+## Epic 6: Workflow, Collaboration & Approvals
+
+Admin users can make bid/no-bid decisions, sync calendars, and the system securely logs all actions for auditability.
+
+### Story 6.1: Bid/No-Bid Decision
+
+As an Admin,
+I want to record the bid or no-bid decision with a manual override,
+So that the team knows whether to proceed.
+
+**Acceptance Criteria:**
+
+**Given** the AI recommendation
+**When** I select a decision
+**Then** it is recorded independently of the AI recommendation
+**And** written to audit logs asynchronously
+
+### Story 6.2: Calendar Synchronization
+
+As a Pro user,
+I want my proposal deadlines synced to Google/Outlook,
+So that I don't miss submission dates.
+
+**Acceptance Criteria:**
+
+**Given** I connect my calendar
+**When** a deadline is set in the workspace
+**Then** it is automatically synced to my external calendar
+**And** it triggers Transient Success Toasts upon successful sync

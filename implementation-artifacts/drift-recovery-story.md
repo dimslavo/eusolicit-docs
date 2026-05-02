@@ -196,7 +196,7 @@ result = await stripe_call()
 
 This story moves to `done` **only when all of the following are GREEN**:
 
-- [ ] AC1: `.github/dependabot.yml` merged; first PR cycle observed within 7 days.
+- [ ] AC1: `.github/dependabot.yml` merged; first weekly PR cycle observed within 7 days.
 - [ ] AC2: `load-test-results.md` populated with real numbers; `test_artifacts/k6-*.html` committed; thresholds met or documented exceptions raised.
 - [ ] AC3: ≥ 3 TEA-scored reviews per E08 + E09 with score ≥ 80/100 in `sprint-status.yaml` (or `tea_status` block).
 - [ ] AC4: Both `billing_service.py` and `vies_service.py` use `circuit_breaker(retry(...))`; OBS-001 bug fixed in the shared implementation; ≥ 4 unit tests + 1 integration test GREEN.

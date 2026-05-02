@@ -1,51 +1,43 @@
 # Epic 4: AI Proposal Generation
 
-**Goal:** Users can collaboratively draft proposals with real-time AI assistance, predictive scoring, and streamed text generation.
+Users can stream real-time AI-drafted proposals based on tender requirements, user profiles, and predict evaluator scores.
 **FRs covered:** FR8, FR9
 
-## Stories
+## Story 4.1: Proposal Draft Initialization
 
-### Story 4.1: Split-Pane Proposal Editor Interface
-As a contributor,
-I want a specialized editor with my document structure and AI tools side-by-side,
-So that I can draft efficiently without switching contexts.
-
-**Acceptance Criteria:**
-**Given** I open a proposal draft
-**When** the editor loads
-**Then** I must see a left sidebar with the outline, a center Tiptap rich-text editor, and a right context panel for AI assistants
-**And** the layout must be responsive
-
-### Story 4.2: Streamed Proposal Text Generation
-As a contributor,
-I want the AI to draft sections of the proposal in real-time,
-So that I can see the content as it is generated without waiting.
+As a Contributor,
+I want to start a new proposal draft using a template,
+So that I don't have to start from scratch.
 
 **Acceptance Criteria:**
-**Given** I select a section and click "Generate Draft"
-**When** the AI Gateway begins generation using KraftData RAG
-**Then** the backend must stream responses using SSE (`run-stream`)
-**And** the frontend must render the text immediately using native `fetch` + `ReadableStream`
-**And** idle timeouts (120s) and total timeouts (600s) must be respected
 
-### Story 4.3: AI Diff Review Block
-As a contributor,
-I want to see exactly what the AI has changed or suggested,
-So that I can accept or reject its edits safely.
+**Given** I am in a Project Workspace
+**When** I click "Start Proposal"
+**Then** a Split-Pane Proposal Editor is opened
+**And** it includes a left sidebar, center Tiptap canvas, and right context panel
 
-**Acceptance Criteria:**
-**Given** the AI modifies existing text
-**When** the generation completes
-**Then** the UI must present an "AI Diff Review Block" showing deletions in red strike-through and additions in green highlight
-**And** I must explicitly click "Accept" or "Reject" before changes are saved
+## Story 4.2: SSE Streamed Proposal Drafting
 
-### Story 4.4: Predictive Evaluator Scoring
-As a bid manager,
-I want the system to predict how evaluators will score my proposal,
-So that I can make improvements before submission.
+As a Contributor,
+I want the AI to stream the draft proposal text into the editor,
+So that I can see the content as it's generated.
 
 **Acceptance Criteria:**
+
+**Given** I request AI drafting for a section
+**When** the backend processes it
+**Then** the text is streamed via SSE using ReadableStream
+**And** AI Diff Review Block allows me to accept/reject changes
+
+## Story 4.3: Evaluator Score Prediction
+
+As a Bid Manager,
+I want to see a predicted evaluator score for my draft,
+So that I can improve weak sections.
+
+**Acceptance Criteria:**
+
 **Given** a drafted proposal
-**When** I run the predictive scorer
-**Then** the system must predict a score based on the tender's evaluation criteria
-**And** provide specific improvement suggestions
+**When** I run the scoring simulator
+**Then** it returns a predicted score
+**And** provides specific improvement suggestions in the right inspector panel

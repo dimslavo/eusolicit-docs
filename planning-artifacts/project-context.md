@@ -631,3 +631,139 @@
 ## Anti-Patterns
 
 - Discovered in Epic 13: **[ANTI-PATTERN] `asyncio.get_event_loop()` in Celery tasks (deprecated Python 3.12)** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — DW-02 documents `asyncio.get_event_loop()` deprecated in Python 3.12; Celery sync→async bridge must use `asyncio.new_event_loop()` in `try/finally loop.close()`. Never `asyncio.run()` (fails with running loop). Add to Celery task template. Reference: DW-02 Dev Notes.
+
+## Patterns
+
+- Discovered in Epic 14: **Carry-forward codification in Dev Notes** — A story's Dev Notes should explicitly list anti-patterns from earlier stories in the same epic by story number (e.g. "Epic 14.2 BLOCKING #3 — do not rebuild bespoke test fixtures"). This reduces repeat violations within an epic. Reference: S14.04 Dev Notes §Previous Story Learnings.
+
+## Patterns
+
+- Discovered in Epic 14: **Partial-unique WHERE predicate for soft-delete–aware uniqueness** — `UNIQUE (col1, col2) WHERE archived_at IS NULL` (or `WHERE accepted_at IS NULL`) is the correct pattern for logical-delete tables. `IntegrityError → 409` translation in the service layer prevents 500s on duplicate active records. Reference: migration 046 `ix_client_workspaces_company_name_active`, migration 048 `ix_external_collaborators_active_email`.
+
+## Patterns
+
+- Discovered in Epic 14: **External JWT claim-shape isolation** — External collaborator tokens must omit `company_id` and `subscription_tier` claims so that `get_current_user` rejects them with a `KeyError → 401` before any auth logic runs. Define `ExternalCollaboratorPrincipal` as a separate dataclass (non-subclass of `CurrentUser`) so the type system enforces non-substitutability. Endpoints that accept both use `Union[CurrentUser, ExternalCollaboratorPrincipal]` explicitly. Reference: S14.04 `core/security.py`.
+
+## Patterns
+
+- Discovered in Epic 14: **Single-use semantics via `accepted_at` DB stamp (extends E08 webhook dedup pattern)** — `accepted_at IS NOT NULL → 410 Gone` on subsequent magic-link accept calls. 410 is semantically correct (resource "gone" after consumption) vs 401 (unauthenticated) or 409 (conflict). Pattern mirrors `webhook_events.event_id` unique-constraint idempotency from E08. Reference: S14.04 AC 4, `external_collaborator_service.accept()`.
+
+## Patterns
+
+- Discovered in Epic 14: **Stripe seat isolation contract enforced at table level** — `count_active_seats()` MUST only query `company_memberships`, never `external_collaborators`. The two tables are separate by design (FR8.5: external collaborators do not consume paid seats). A dedicated integration test + Stripe-mock test create a regression guard. This "table-as-contract" pattern prevents billing drift from future schema changes. Reference: S14.04 AC 9, `billing_service.count_active_seats()`.
+
+## Patterns
+
+- Discovered in Epic 14: **Workspace re-validation on every external read** — A helper (e.g. `_verify_external_proposal_match`) re-checks `proposal.workspace_id == principal.workspace_id` on each request with an external token. If a proposal is administratively re-assigned, the old token immediately returns 404 (existence-leakage protection) rather than granting stale access. Reference: S14.04 `core/rbac.py`.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Bespoke test fixtures rebuilt despite canonical helpers existing** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — EVERY story in Epic 14 was flagged for rebuilding `_register_and_verify_with_role`, `ASGITransport(app=fastapi_app)`, or `db_session` (no rollback) instead of using root `conftest.py` helpers. Fix: dev-story template MUST embed the canonical fixture import block (`from eusolicit_test_utils import register_and_verify_with_role, create_company_pair`); non-use = BLOCKING code review finding. Reference: S14.01 review, S14.02 BLOCKING #3, S14.04 Dev Notes anti-pattern #1.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Story file `Status: review` while sprint-status says `done` (4/5 stories, 3rd consecutive epic)** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — The orchestrator story-close workflow MUST assert `grep "^Status: done" {story_file}` returns true before writing `done` to sprint-status.yaml. A story with `Status: review` in its file cannot be `done` in the pipeline. Reference: E14 retro 2026-04-27, also E12 and E13 retrospectives.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Documentation-vs-code mismatch — claimed fix or test not in code on disk** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — S14.00 Round 3 claimed CTE tie-breaking fix applied but SQL was unchanged. S14.02 claimed 60-case `test_rbac_permission_matrix` but traceability scan found only 2 tests on disk. Fix: (1) code review MUST `grep` for every file in Dev Agent Record File List; (2) completion notes claiming a test exists MUST include verbatim `pytest -k <name> -v` output for that specific test. Reference: S14.00 Round 3–4, traceability-matrix.md E14 CONCERNS.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Breaking API change on shared schema without full-suite validation** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — S14.02 made `ProposalCreateRequest.workspace_id` required without updating existing callers; the in-story 5-test suite did not surface the regression. Fix: dev-story template gate: "If you modified any file in `schemas/`, paste the full `make test-service SVC=<svc>` output before requesting review." Reference: S14.02 BLOCKING #1.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] RBAC permission matrix claimed but absent from disk — critical security gap** — `[ACTION]` IMPACT: `story_injection` SEVERITY: `critical` — S14.02's 60-case parametrized RBAC matrix was reverted or overwritten during S14.03 scope-creep revert; only 2 tests remain in `test_workspace_rbac.py`. Multi-tenant workspace isolation is under-tested. Inject a P0 story to restore the full matrix before E15 ships workspace-dependent features. Reference: traceability-matrix.md Epic 14 CONCERNS, E14 retro 2026-04-27.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Review-fix pass introduces new BLOCKING by deleting out-of-scope files** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — S14.03 review-fix deleted `workspace_service.py` and `test_workspace_rbac.py` as "scope creep revert", breaking `client-api` startup with import errors. Fix: review-fix passes MUST run import smoke test (`python -c "from <service>.main import app"`) before claiming complete. Add to dev-story template as a mandatory gate on fix passes. Reference: S14.03 Round 2 BLOCKING findings.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] Playwright E2E marked done without execution due to missing system library** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `medium` — S14.03 E2E spec is "structurally correct and TypeScript-clean" but never ran (missing `libnspr4` in autopilot environment). Done gate for E2E ACs requires EITHER a quoted `N passed` Playwright summary OR an explicit "deferred to CI" deviation note citing the environment constraint. Reference: S14.03 Round 3 completion notes.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] TEA review absent for 10th consecutive epic (E04–E14)** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — `inj-03-tea-review-backlog` has been `ready-for-dev` for 10 consecutive epics and is never executed as a standalone story. Fix: TEA review is a story AC (not a separate story): dev agent runs `bmad-tea` before senior code review; score ≥ 80/100 required. Remove `inj-03` from backlog; embed TEA as a step in the dev-story prompt template. Reference: E14 retro 2026-04-27, E13/E11 action items.
+
+## Anti-Patterns
+
+- Discovered in Epic 14: **[ANTI-PATTERN] No NFR assessment for Epic 14; E13 HALT conditions (k6, Dependabot, billing CB) still unresolved** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — No `bmad-testarch-nfr` was run for E14. The 4 NFR HALT conditions from E13 (k6 absent, OWASP/Dependabot absent, billing circuit-breaker absent, 7-17 completion integrity) remain open. Epics 15+ cannot proceed to production gate without resolving these. Epic 16 kickoff gated on: Dependabot merged + k6 written + billing CB implemented. Reference: test_artifacts/nfr-report.md (E13 FAIL), E14 retro 2026-04-27.
+
+## Patterns
+
+- Discovered in Epic 14: ` + 9 new `[ANTI-PATTERN]` entries
+
+## Anti-Patterns
+
+- Discovered in Epic 14: ` entries
+
+## Patterns
+
+- Discovered in Epic 15: **Lua atomicity proof via `asyncio.gather(10_000)`** — `test_concurrent_check_and_increment_enterprise` drives 10,000 concurrent `check_and_increment` calls and asserts `len(set(results)) == 10_000`. This is a sharper assertion than `max == 10_000` — it proves every counter value from 1 to 10,000 was assigned exactly once. Reference pattern for all Redis counter atomicity proofs. Reference: `test_usage_metering_bypass.py`.
+
+## Patterns
+
+- Discovered in Epic 15: **Workspace-scoped Redis key dual-lookup (scoped_id = workspace_id or company_id)** — Any Redis key that must be scoped to either workspace or company must: (a) check the workspace-scoped key first (`{workspace_id}:{resource_id}`), fall back to company-scoped (`{company_id}:{resource_id}`). This pattern is now consistent across: webhook write (`webhook_service.py:699-700`), usage gate bypass check (`usage_gate.py:196-219`), and per-bid status read. Asymmetric keys are the source of silent bypass failures.
+
+## Patterns
+
+- Discovered in Epic 15: **Explicit tier branch over implicit fall-through** — When a new tier is inserted between existing tiers in an `if/elif` or `match` chain, every existing fall-through default that implicitly assigns behaviour MUST get an explicit branch with a comment. Silent fall-through (`pro_plus` getting `enterprise`-equivalent scope by accident) is a latent bug. Reference: `opportunity_tier_gate.is_in_scope` lines 155–161 explicit Pro+ branch.
+
+## Patterns
+
+- Discovered in Epic 15: **`_*_TIERS_LIST` as explicit literal, not `list(frozenset)`** — Lists derived from frozensets for use in WHERE clauses, display, or ordering MUST be explicit literals (`["pro_plus", "enterprise"]`). `list(frozenset)` produces non-deterministic order across Python versions and runs, causing intermittent test failures and non-deterministic SQL IN() ordering. Reference: `tier_gate.py::_PRO_PLUS_TIERS_LIST`.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] Story marked `done` in sprint-status without code review Approve — worst instance to date** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — S15.1 is `done` in sprint-status with "Changes Requested" verdict unresolved and 8 BLOCKING findings. The orchestrator story-close workflow MUST verify: (1) story file `Status: done`, AND (2) Senior Developer Review section contains `REVIEW: Approve`. Both conditions required before sprint-status update. Reference: E15 retro 2026-04-27, sprint-status 15-1.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] FE↔BE request/response contract untested at integration level** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `critical` — S15.1 `PerBidCheckoutRequest.tier_id` vs AC/frontend `pricing_tier_id` was only caught by human code review. Backend integration tests locked in the wrong field name. Any story introducing a new POST body or response schema shared between FE and BE MUST include a contract test that sends the AC-specified field names and asserts the AC-specified response shape. AC field names are the contract, not the implementation.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] Migration seed rows not validated against AC spec table** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `critical` — S15.1 migration 050 seeded wrong BG labels, empty `feature_stack`, and non-null fake `stripe_price_id` despite the AC specifying exact column values. The migration idempotency test (AC 15 pattern) must assert each seeded column value against the AC spec, not just row count. A row count of 3 with wrong column values is a production bug.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] Locale and workspace_id hardcoded in Stripe success/cancel URLs** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — `billing_service.create_per_bid_checkout_session()` used `/bg/workspace/default/` in success_url. Any service function building a frontend URL MUST accept `locale: str` and `workspace_id: UUID | str` as parameters. Template: `f"{settings.frontend_url}/{locale}/workspace/{workspace_id}/..."`. Hardcoded locale/workspace routes fail for all non-BG users and non-default workspaces. Reference: S15.1 B8.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] Frontend wired to non-existent backend endpoint** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — S15.1 AC 10 frontend called `GET /api/v1/billing/per-bid/status` which has no backend implementation. Frontend stories must explicitly list each API endpoint they call, with a corresponding backend story or AC that creates it. If the endpoint is out of scope, use a local cache signal (query param from Stripe redirect) rather than a polling endpoint. Reference: S15.1 B7.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] FastAPI route handler opens own Redis connection instead of `get_redis_client` dep** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — `admin_api/api/v1/pricing_tiers.py::_invalidate_pricing_tier_cache` used `aioredis.from_url(os.getenv(...))` bypassing the registered `get_redis_client` dependency. All Redis access in FastAPI handlers MUST go through `Depends(get_redis_client)` — for testability via override and connection pool sharing. Direct connection creation in route handlers is a BLOCKING code review finding. Reference: S15.1 M4.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: **[ANTI-PATTERN] Two sources of truth for tier feature limits (M5 deferred from S15.0 review)** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — `usage_gate.FEATURE_TIER_LIMITS["ai_summary"]["professional"] = 50` vs `tier_access_policies.ai_summaries_limit = 100`. Two code paths compute the same limit from different values. Resolution: `usage_gate.FEATURE_TIER_LIMITS` should read from `tier_access_policies` at startup, OR a CI test must assert all limit values are identical across both sources. "Deferred to retrospective" is no longer an acceptable path for source-of-truth divergence — inject as a P1 carry-forward story immediately.
+
+## Patterns
+
+- Discovered in Epic 15: ` entries + 8 new `[ANTI-PATTERN]` entries appended
+
+## Anti-Patterns
+
+- Discovered in Epic 15: ` entries appended
+
+## Anti-Patterns
+
+- Discovered in Epic 15: ` `IMPACT: config_tuning` `SEVERITY: critical` — **Story marked done without code review approval.** S15.1 had "Changes Requested" with 8 BLOCKING findings; sprint-status was written to `done` anyway. Orchestrator story-close must verify *both* `Status: done` in story file AND `REVIEW: Approve` in review section.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: ` `IMPACT: prompt_adjustment` `SEVERITY: critical` — **FE↔BE contract untested.** `tier_id` vs `pricing_tier_id` field name mismatch locked in by integration tests; every per-bid purchase would return 422 in production.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: ` `IMPACT: prompt_adjustment` `SEVERITY: critical` — **Migration seed not validated against AC.** Wrong BG labels, empty `feature_stack`, fake non-null `stripe_price_id` seeded.
+
+## Anti-Patterns
+
+- Discovered in Epic 15: ` `IMPACT: standards_update` `SEVERITY: critical` — **Bespoke fixtures at 4th consecutive epic** despite explicit prohibition in the story's own Dev Notes.

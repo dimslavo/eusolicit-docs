@@ -1,7 +1,11 @@
 ---
 project_name: 'EU Solicit'
-date: '2026-04-25'
-last_updated_by: 'retrospective-epic-12-2026-04-25'
+date: '2026-04-26'
+last_updated_by: 'retrospective-epic-16-2026-04-27'
+last_updates:
+  - '2026-04-27: Epic 16 retrospective — 5 new anti-patterns (AP16-01..AP16-07) and 5 new patterns added. New service skeleton delivery failure, port collision cascade, story file status stale after Approve (5th recurrence), circuit-breaker absent from resilience_pattern, epic-spec vs story-spec AC gap, stale traceability matrix, sync_logs schema gap. Patterns: AST structural security tests, shared FernetCrypto, consumer group naming, --fail-on-skipped conftest hook, idempotency per-delivery-target constraint. CLAUDE.md updated with integrations-api port 8007. S16.0 story file Status corrected to done. epic-16-retrospective marked done.'
+  - '2026-04-26: Epic 13 retrospective — 7 new patterns (P13-01..P13-07) and 8 new anti-patterns (AP13-01..AP13-08) added. asyncio.CancelledError handler, structlog stdlib routing, fire-and-forget audit canonical form, coordinator story pattern, hot-fix context in Dev Notes, dev-session regression guard, review approval without test execution, sprint-status/story-file discrepancy, AC text update requirement, inj-* priority enforcement, Pydantic Literal for enum fields, asyncio.get_event_loop() deprecation.'
+  - '2026-04-25: Epic 12 retrospective supplementary — streaming CSV, TRACE_GATE carry-forward verification, non-functional story entry criteria.'
 ---
 
 # Project Context for AI Agents
@@ -315,6 +319,26 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 
 - **`asyncio.to_thread()` is mandatory for all synchronous I/O SDK calls inside `async def` FastAPI handlers.** Stripe Python SDK, VIES SOAP clients, and any synchronous HTTP/DB library MUST be wrapped with `await asyncio.to_thread(sync_fn, *args)`. This extends the E07 ThreadPoolExecutor rule (CPU-bound) to I/O-bound synchronous SDKs.
 
+### From Epic 13 Retrospective
+
+- **`asyncio.CancelledError` requires an explicit handler in Python 3.8+.** `CancelledError` inherits from `BaseException` — a bare `except Exception:` silently drops cancellation signals, leaving `async with` / `finally` blocks in partially-committed state. Always add `except asyncio.CancelledError: raise` (or explicit cleanup) before the generic `except Exception` branch in any coroutine with a `finally` block. Add to ATDD checklist for stories introducing `async` endpoints with cancellation-sensitive paths. (Source: S07.17 Task 4 bug fix.)
+
+- **`structlog` stdlib routing is required for `pytest caplog` to capture log records.** `structlog.PrintLoggerFactory()` (the dev default) bypasses stdlib `logging.Logger`; `pytest`'s `caplog` fixture only captures stdlib records. Add a session-scoped autouse fixture to every service's `tests/conftest.py`:
+  ```python
+  @pytest.fixture(scope="session", autouse=True)
+  def configure_structlog_stdlib():
+      structlog.configure(logger_factory=structlog.stdlib.LoggerFactory())
+  ```
+  Without this fixture, log-capture assertions pass vacuously (nothing captured). (Source: S07.17 Task 5.9.)
+
+- **Fire-and-forget audit write canonical form (E13-authoritative extension of E04 Rule 45).** The background task creates its own `async with session.begin()`, catches all exceptions, logs `audit_write_failed` at ERROR without propagating, and is scheduled from the endpoint's `finally` block so cancellation paths are also audited. The `after` field is populated from the terminal outcome known at `finally` time. Prior forms using `await write_audit_entry()` + `await session.commit()` inline are prohibited on the TTFB path. (Source: S07.17 F4/F2 resolution.)
+
+- **Coordinator story pattern for multi-concern hardening epics.** When a hardening epic has ≥3 independent work streams, introduce a coordinator story that: (1) delegates narrow technical slices to sub-stories each with their own AC set, (2) owns cross-cutting gate criteria verifiable only after sub-stories close, (3) explicitly maps which sub-story satisfies which coordinator AC. Prevents single mega-stories with 10+ ACs and long review cycles. (Source: E13 drift-recovery-story.)
+
+- **Hot-fix context section in story Dev Notes.** Any story hardening an already-merged emergency inline fix must include a "Hot-Fix Context" section specifying: commit SHA + message, exact files and line numbers changed, and what the story must add beyond the fix. Without this section, dev agents re-implement already-merged changes. (Source: S07.17 "Hot-Fix Context" with commit `2d41fcf`.)
+
+- **Migration spec contradiction ("no migration needed") is predictable and preventable.** Before writing "no migration needed" in any story, grep the target ORM models and alembic versions to confirm the schema matches spec assumptions. Add to story template: "Migration required? [YES/NO — confirmed by grepping target schema]". (Source: S07.17 migration 025 — `shared.audit_log` missing two required columns despite spec claim.)
+
 ---
 
 ## Anti-Patterns (Don't Do This)
@@ -462,6 +486,24 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 - **Previous epic TRACE_GATE failures must be verified as resolved before the subsequent epic retrospective gate.** When an epic closes with TRACE_GATE FAIL (e.g., E11 at 75% P1 coverage due to missing S11.07 backend endpoints), the next epic must include an explicit entry criterion confirming the failed ACs are now covered. Carrying P1 AC gaps forward without acknowledgment invalidates the traceability of all downstream stories that build on the missing features.
 
 - **Pre-story entry criteria for non-functional stories (load test, security audit) must confirm staging environment and tooling availability before the story begins.** Required checks at story kickoff: (1) staging confirmed running with production-representative data volume (≥500k rows for analytics load tests), (2) tooling (k6/Locust, ZAP, LocalStack) confirmed installed and configured, (3) output artifact templates exist marked "pending results". Story cannot close `done` with placeholder content in output files — actual results are required.
+
+### From Epic 13 Retrospective
+
+- **Don't let a new dev session overwrite code approved in a prior review pass.** Before editing any file that has prior review findings, re-read the current file state and list all resolved deviations that must be preserved. E13: a new session modified `proposals.py` for unrelated AC18 work, overwrote the fire-and-forget audit write (F4 resolved in 2nd review pass) with a synchronous dual-write, violated AC3, and caused 3 integration tests to fail. Add to dev-story template: "Before editing a file with prior review findings, re-read and list all resolved deviations to preserve." (AP13-01, SEVERITY: critical)
+
+- **Don't approve a review that claims "tests pass" without quoting the actual test execution output line.** Any review that approves a previously-failing test criterion MUST include the real pytest summary line (e.g., `3 failed, 16 passed in 12.4s`). A review without a quoted execution result is invalid — it may trust the agent's summary over actual HEAD state. E13: the 2nd-pass review approved "test_audit_log_row_has_correct_shape — PASS"; the 3rd pass re-executed and found 3 failures. (AP13-02, SEVERITY: critical)
+
+- **Don't write `done` in sprint-status.yaml when the story file status is still `review` with blocking findings.** The orchestrator's story-close workflow must cross-check the story file `Status:` field before writing `done` to sprint-status.yaml. A sprint-status `done` + story file `review` discrepancy propagates a false completion signal to all downstream tools (retro, NFR assessment, traceability). (AP13-03, SEVERITY: high)
+
+- **Don't leave AC text showing the original spec when the implementation chose a different schema.** Any implementation-time schema deviation from an AC must update the AC text in the story file before the review approves. The AC text is the contract; divergence causes future reviewers to rediscover the same "spec violation" repeatedly. E13: AC1 specified `{"error":"ai_gateway_error","correlation_id":"..."}` but implementation chose `{"error":"<prose>","code":"gateway_error","correlation_id":"..."}` — neither AC text nor tests were updated. (AP13-04, SEVERITY: medium)
+
+- **Don't append injected `inj-*` carry-forward stories to the backlog behind feature work.** Critical injected stories (Dependabot, k6, TEA reviews) must be the FIRST items executed in the next epic's queue, not the last. In E13, all 7 injected stories sat at `ready-for-dev` while Epic 14 advanced 3 stories. This is the same failure mode documented in E08 retro: "retro-to-action feedback loop is broken." The orchestrator must enforce `inj-*` execution order as p0. (AP13-05, SEVERITY: critical)
+
+- **Don't leave a story's `Epic:` header field misaligned with its sprint-status assignment.** When a story is injected or reassigned to an epic, update its `Epic:` header field immediately. Misaligned headers (e.g., `Epic: Post-E07 cleanup` for a story tracked under E13) confuse traceability tools, cause incorrect AC scope dating, and mislead agents reading the story context. (AP13-06, SEVERITY: medium)
+
+- **Don't use bare `str` for Pydantic response schema fields with known value sets.** Use `Literal["draft", "active", "archived"]` or a `StrEnum` subclass. Bare `str` prevents OpenAPI enum schema generation, allows unknown values to reach the frontend without validation errors, and loses machine-readable contract value. Add to backend story template and ATDD checklist. (AP13-07, SEVERITY: medium)
+
+- **Don't use `asyncio.get_event_loop()` in Celery tasks bridging sync→async.** It is deprecated in Python 3.12 and raises `RuntimeError` in 3.14+. Correct pattern: `loop = asyncio.new_event_loop(); try: result = loop.run_until_complete(async_fn()) finally: loop.close()`. Never `asyncio.run()` (fails when a loop is already running). Add to Celery task template and ATDD checklist. (AP13-08, SEVERITY: medium)
 
 ---
 
@@ -909,6 +951,34 @@ _Critical rules and patterns that AI agents must follow when implementing code i
 - **Don't deploy Stripe or any outbound payment SDK calls without circuit-breaker protection.** The E04 two-layer resilience pattern (`circuit_breaker(retry(http_factory))`) is the standard for ALL outbound HTTP. Simple `try/except` logging does not prevent cascading failures on a degraded external endpoint. All outbound payment API calls must adopt this pattern.
 
 - **Don't deploy revenue-critical paths without Prometheus metrics.** Billing webhook processing latency, usage sync drift, Stripe API error rate, per-tier subscription counts, and trial-to-paid conversion rate are required operational metrics. A billing failure invisible until a user complains is a platform reliability failure.
+
+### From Epic 16 Retrospective
+
+- **Don't deliver a new service's first dev pass without verifying the service starts.** (AP16-01, SEVERITY: critical) The first dev pass on a new FastAPI service must pass a minimal "service actually starts" check before being labelled review-ready: `uvicorn <service>.main:app --workers 1` exits cleanly under test settings, at least one real (non-skipped) test passes, and the Dev Agent Record contains a real pytest summary line. A skeleton with `@pytest.mark.skip` on all tests and placeholder handler dicts is NEVER review-ready. Apply the PB-ZEROOUT-007 self-check to every new service story before emitting HALT.
+
+- **Don't assign a port to a new service without reading all existing host-port mappings in `docker-compose.yml`.** (AP16-02, SEVERITY: high) Port collisions require additional remediation passes with no business value. Before assigning a port number, read `docker-compose.yml` and list every `ports: "<host>:<container>"` entry, then cross-reference CLAUDE.md's service port table. The story AC for any new service must include the specific port number. `integrations-api` correctly settled on port 8007 after two incorrect assignments (8002, 8006).
+
+- **Don't leave a story file `Status:` header at `review` after the final code review Approve. (5th recurrence: E09, E12, E13, E15, E16).** (AP16-03, SEVERITY: high) The story file header is the source of truth for NFR assessment, traceability, and retro tools. A stale `review` status causes downstream tools to report false blocking findings. The `2b-dev-story-verify` orchestrator phase must verify story file `Status: done` matches sprint-status `done` value before closing any story.
+
+- **Don't treat `@resilience_pattern` as the two-layer pattern until it includes a circuit-breaker outer layer.** (AP16-04, SEVERITY: high) `eusolicit_common.resilience.resilience_pattern` provides retry-only. AC-4 #6 / Rule 47 require `circuit_breaker(outer) → retry(inner)`. Any story using `@resilience_pattern` for outbound HTTP to an external service (Slack, Teams, CRM, Stripe) is not compliant with Rule 47 until the circuit-breaker layer is implemented. The structural test must validate circuit-breaker semantics, not just decorator presence. Target: implement in `eusolicit_common.resilience` before E17 Story 17-0.
+
+- **Don't create a story for a single-story epic without explicitly verifying all epic-spec ACs are covered.** (AP16-05, SEVERITY: high) E16's S16.0 was intended to be the only story in the epic but its ACs cover only the backend. The epic spec required throttling (Redis SETNX), i18n (BG/EN notification content), and frontend configuration UI — none were in story ACs. When story ACs don't cover all epic ACs, the missing ACs must be explicitly deferred to a named follow-up story in the story spec (not left silent). A story that omits epic-spec ACs without documentation will produce incomplete implementation.
+
+- **Don't accept a traceability matrix generated at RED phase as the definitive quality gate for an epic.** (AP16-06, SEVERITY: medium) When the traceability matrix is generated during ATDD checklist creation (before implementation), it shows 0% coverage and GATE: FAIL by design. This stale artifact misleads retro readers and does not capture the actual test state after implementation. The traceability matrix must be regenerated after the last remediation pass reaches Approve status. Stale matrices create false urgency and hide real scope gaps.
+
+- **Don't start E17 without resolving the `sync_logs` vs `processed_alerts` table schema conflict.** (AP16-07, SEVERITY: medium) The E16 epic spec designed `integrations.sync_logs` as the shared delivery tracking table for both E16 (Slack/Teams) and E17 (CRM). S16.0 created `integrations.processed_alerts` instead (different columns). E17's CRM sync engine needs `provider`, `direction`, `entity_type`, `entity_id`, `status`, `error`, `occurred_at` columns. Either extend `processed_alerts` or create `sync_logs` — decide before S17-0 is created.
+
+### From Epic 16 Retrospective — Patterns
+
+- **AST-level structural tests are the standard for security property verification.** (Source: S16.0 `test_static_security.py`) The pattern: (1) walk the service AST to confirm `@resilience_pattern` is applied to outbound HTTP functions, (2) confirm `hmac.compare_digest` is absent from outbound webhook dispatch (correct — no inbound validation needed for outbound-only services), (3) walk all `logger.*` call sites and assert no sensitive values (`webhook_url`, `decrypted_url`, `token`) appear as named kwargs. These tests are refactor-resistant and run in milliseconds. All new integration services must include an equivalent `test_static_security.py`.
+
+- **Shared crypto helper is the only Fernet implementation.** `eusolicit_common.crypto.FernetCrypto` is the authoritative Fernet module. Any service storing secrets at rest (webhook URLs, OAuth tokens, API keys) imports this helper. Decrypt immediately before use; never store in a variable beyond the outbound call scope. The legacy `notification/core/token_crypto.py` should be migrated onto the shared helper in a future story.
+
+- **Consumer group naming `cg:{service-name}:{stream-name}` is the canonical pattern for multi-consumer streams.** When two or more services subscribe to the same Redis Stream (e.g., `alerts`), each service must use its own consumer group. The naming convention `cg:integrations-api:alerts` (distinct from `cg:notification:alerts`) ensures both services receive every event independently. Always include the consumer group name as a named constant in the story Dev Notes.
+
+- **`--fail-on-skipped` CI gate backed by a `pytest_sessionfinish` hook is mandatory for new services.** The flag alone may not be available in all pytest versions. The service `conftest.py` must implement a `pytest_addoption` + `pytest_sessionfinish` plugin that counts skipped tests and fails the session if any are detected. This ensures the CI gate fails hard on leftover RED-phase `@pytest.mark.skip` decorators.
+
+- **Idempotency unique constraint for fan-out consumers must include the delivery-target identifier.** When a consumer dispatches one event to N recipients, the idempotency table unique constraint must include the per-recipient key (e.g., `webhook_id`), not just the event identifier + category. `(workspace_id, alert_id, integration_type)` incorrectly merges all webhooks of the same type — use `(workspace_id, alert_id, webhook_id)`. This ensures each delivery destination tracks independently and no webhooks are silently dropped on the second+ dispatch for the same event.
 
 ---
 
