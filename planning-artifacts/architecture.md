@@ -2,6 +2,7 @@
 title: "EU Solicit — Architecture Document"
 status: "complete"
 date: "2026-04-27"
+lastValidated: "2026-05-04"
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 workflowType: 'architecture'
 lastStep: 8
@@ -14,6 +15,12 @@ inputDocuments:
   - "/home/debian/Projects/eusolicit/eusolicit-docs/project-context.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/architecture-evaluation-2026-04-25.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/prd-amendment-2026-04-25.md"
+revalidationInputs:
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-04-30.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-03.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-04.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/implementation-readiness-report-2026-05-03.md"
+revalidationOutcome: "no-op — no architectural drift; all post-2026-04-27 sprint changes (v17/v18/v19) and IR-v3 explicitly confirm 'no PRD/architecture/epics/ux-spec edits required'. Epic 18 implementation (18-0, 18-1) consumes ADR-011 + existing public-route ingress + S3 artefact pipeline without introducing new ADRs, services, schemas, or topology changes."
 ---
 
 # EU Solicit — Architecture Document
@@ -754,6 +761,8 @@ Slack/Teams (incoming-webhook templates) ships **before** CRM (bi-directional sy
 **Rationale:** Patroni-on-K8s is operational debt for a small team. Managed databases with documented Multi-AZ failover semantics are auditable and predictable.
 **Consequences:** ~+€250–600/mo run rate. k6 baseline closure (PE.01) is the **first** Epic 21 story — has been deferred 6 epics; cannot publish any SLO without it. KraftData incidents excluded from SLA scope (isolated by AI Gateway circuit breaker).
 
+**Implementation status (2026-05-04):** Story 21-2 closed. Production RDS Multi-AZ provisioned (eu-central-1, db.r6g.large, 35d backup retention, Performance Insights enabled). Migration `M_PE02_opportunities_tsv_gin_index` shipped (data-pipeline rev 003). FTS plan flipped from `Seq Scan` to `Bitmap Index Scan on ix_opportunities_tsv` — see `implementation-artifacts/load-test-results.md` §EXPLAIN ANALYZE Results — Post-PE.02 Migration for verbatim evidence. Multi-AZ failover drill (staging) documented in `implementation-artifacts/pe-02-cutover-runbook.md` §Failover Drill Results; production drill pending operator-on-call execution per D-1 pre-recorded deviation.
+
 ### ADR-011 — Trust Center as static-rendered Next.js, not a CMS
 
 **Status:** Accepted (Epic 18)
@@ -1009,6 +1018,7 @@ Patterns and anti-patterns are codified in `eusolicit-docs/planning-artifacts/pr
 - **Coherence:** Decisions, technology stack, schema layout, and patterns are mutually consistent. Epics 1–15 have shipped on this architecture without redesign — five extensions of existing patterns; no foundational rewrites.
 - **Requirements coverage:** Every PRD FR maps to a service or ADR (FR-1..14 → `client-api` + Stripe; FR-15..20 → `data-pipeline` + `client-api`; FR-21..25 → `ai-gateway`; FR-26..33 → `client-api` + `ai-gateway`; FR-34..39 → `client-api` + `admin-api`; FR-40..44 → `notification` + `admin-api`). NFRs are addressed via specific ADRs (NFR-1/2 → ADR-005, ADR-014; NFR-7 → ADR-001/002/007; NFR-14 → ADR-010; NFR-15/17 → §6.5; NFR-21..23 → §6.3, §10).
 - **Implementation readiness:** Mature project context, canonical fixtures, established CI gates. Ready.
+- **2026-05-04 re-validation pass (autopilot):** Re-checked v2.0 against four post-2026-04-27 sprint-change proposals (v17 of 04-30; v18 of 05-03; v19 of 05-04) and IR-v3 (05-03). All four documents explicitly state "no PRD/architecture/epics/ux-spec edits required" — pure sequencing/process interventions. Epic 18 (Trust Center) implementation introduces `eusolicit_common.document_generation.weasyprint_renderer`, `infra/trust/artefacts.yaml`, `eusolicit_common.aws.s3_client`, and the public route `GET /api/v1/trust/artefacts/{slug}` (302 → signed S3) — all conform to ADR-011 (static-rendered Trust Center) and the existing public-route ingress + S3 artefact pipeline already documented in §5.1 / §6.5; no new ADR required. Sole architecture-adjacent risk note: WeasyPrint, markdown-it-py, python-frontmatter shipped unscanned because `inj-01` (Dependabot configuration) remains a deferred carry-forward — already tracked in §11.2 item 2 and §11.3 item N/A; remains a process/tooling gate, not an architecture change. **No content changes to §1–§10 required.**
 
 ### 11.2 Open carry-forwards (highest priority)
 

@@ -55,8 +55,25 @@ Scope:
 - Per-service DB roles preserved (no role-permission churn)
 - Backup retention: 35 days point-in-time
 - Failover tested in staging post-cutover
+- **REQUIRED migration `M_PE02_opportunities_tsv_gin_index`** — add a stored
+  generated `tsv TSVECTOR` column on `pipeline.opportunities` plus a GIN
+  index, and rewrite `client_api.services.opportunity_service._build_fts_condition`
+  to query the stored column rather than building `to_tsvector()` at query
+  time. **This is a hard prerequisite, not an optional optimization** —
+  PE.01 (Story 21.1) captured `EXPLAIN ANALYZE` against the local 10K-row
+  dataset and confirmed `Seq Scan on opportunities` with execution time
+  289 ms; linear-scan extrapolation to 1M rows gives ~28 s p50 which would
+  fail NFR-13 (`<20% degradation at 10K active companies / 1M opportunities`).
+  See `eusolicit-docs/implementation-artifacts/load-test-results.md`
+  §EXPLAIN ANALYZE Results (verbatim PostgreSQL 16.13 plan) and §Sizing
+  Recommendations for PE.02 for the supporting evidence. Expected
+  post-migration p95 at 1M rows: 30–80 ms (Bitmap Index Scan on the GIN
+  index, top-N heapsort over matching ~0.5–2% of rows). Without this
+  migration the 99.9% SLA cannot be published per AC-2.4 of Story 21.1.
 
-**Tests:** Failover test in staging — verify all services reconnect within 30s; no data loss; transaction-rollback fixtures still work. SLI: PG availability target 99.95% (gives headroom for the platform 99.9% SLA).
+**Tests:** Failover test in staging — verify all services reconnect within 30s; no data loss; transaction-rollback fixtures still work. SLI: PG availability target 99.95% (gives headroom for the platform 99.9% SLA). The migration's `EXPLAIN ANALYZE` evidence file MUST show `Bitmap Index Scan` (not `Seq Scan`) — this is the regression-test for the PE.01 deviation tracked here.
+
+**Implementation:** Story 21-2 (`21-2-postgresql-ha-migration-managed-rds-multi-az-or-equivalent`) — done 2026-05-04. See `implementation-artifacts/pe-02-cutover-runbook.md` for cutover evidence and `implementation-artifacts/load-test-results.md` §EXPLAIN ANALYZE Results — Post-PE.02 Migration for the FTS plan flip (Seq Scan → Bitmap Index Scan on ix_opportunities_tsv). Terraform module `infra/terraform/modules/database/` fully implemented (aws_db_instance Multi-AZ + 35d PITR + Performance Insights + CloudWatch logs + KMS encryption + parameter group with pg_stat_statements). Migration M_PE02_opportunities_tsv_gin_index shipped as data-pipeline rev 003. ESO ExternalSecret CRDs added to Helm chart. Staged failover drill and production cutover pending operator execution (D-1 pre-recorded deviation).
 
 ---
 
@@ -125,3 +142,34 @@ Scope:
 - First chaos-test exercise (drain a node, watch alerts/runbooks/response) executed and post-mortemed
 
 **Acceptance:** First simulated incident post-mortemed. Runbooks verified by being followed during the chaos drill. On-call schedule active for ≥2 weeks before public SLA announcement.
+
+---
+
+## Amendments
+
+### Amendment 2026-05-04 — Story 21.1 Pass-7 review-fix B10 (PE.02 Seq Scan dependency tracker)
+
+PE.01 (Story 21.1) AC-2.4 demanded the FTS `EXPLAIN ANALYZE` plan show
+`Bitmap Index Scan on ix_opportunities_tsv`. The captured plan against the
+local 10K-row dataset (PostgreSQL 16.13) shows `Seq Scan on opportunities`
+— the GIN index does not exist because the current implementation builds
+`to_tsvector()` at query time from a runtime expression rather than from
+a stored generated column. AC-2.4 explicitly states: *"if it shows Seq
+Scan, the index is missing or the planner cost model is mis-tuned; HALT
+and file an issue under PE.02 (sizing decision) before proceeding."*
+
+This amendment is the formal tracker for that PE.02 dependency. The PE.02
+scope above has been extended with a new bullet ("REQUIRED migration
+`M_PE02_opportunities_tsv_gin_index`") plus a new test requirement that
+PE.02's `EXPLAIN ANALYZE` evidence file MUST show `Bitmap Index Scan` —
+this is the regression test that closes the PE.01 deviation.
+
+**Evidence reference**: `eusolicit-docs/implementation-artifacts/load-test-results.md`
+§EXPLAIN ANALYZE Results (verbatim PostgreSQL 16.13 plan, 10K rows local
+docker-compose, 2026-05-04) and §Sizing Recommendations for PE.02–PE.04.
+
+**Sprint-status reconciliation**: PE.02's row in `sprint-status.yaml`
+should pick up the migration name once the story is created — no
+sprint-status edit required as part of this amendment (the requirement
+is now in the epic file which PE.02's `bmad-create-story` workflow reads
+as the source of truth).
