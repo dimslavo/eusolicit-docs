@@ -92,6 +92,8 @@ Scope:
 
 **Tests:** Sentinel failover test — verify all services reconnect within 10s; event-stream consumer groups resume correctly; usage metering Lua scripts continue to function under failover.
 
+**Implementation:** Story 21-3 (`21-3-redis-ha-migration-sentinel-or-managed-cluster`) — dev pass 2026-05-04; pending bmad-code-review Approve verdict (AP17-C1). Terraform `modules/redis/` fully activated: `aws_elasticache_replication_group` (cluster-mode-disabled, 1 primary + 2 replicas for prod, eu-central-1, cache.r6g.large, Multi-AZ + automatic failover, 7d snapshot retention, at-rest + transit encryption). Per-service Redis connection strings via ESO ExternalSecret (Shape A — extending `externalsecret.yaml`; `CELERY_BROKER_URL` + `CELERY_RESULT_BACKEND` exposed for data-pipeline + notification per AP-GUARD-6). All 15 `redis-py` `from_url` call sites hardened with `health_check_interval=30` + `socket_keepalive=True` + `retry=Retry(ExponentialBackoff(cap=10, base=1), 3)` + `retry_on_error=[ConnectionError, TimeoutError]`. Both Celery apps updated with `broker_connection_retry_on_startup=True` + `broker_transport_options` resilience keys. See `implementation-artifacts/pe-03-cutover-runbook.md` for cutover evidence + §Connection Audit + §ESO Wiring Decision. Failover drill results and staging rehearsal timing to be populated by operator (D-1/D-2 deviations pre-recorded).
+
 ---
 
 ### PE.04: PodDisruptionBudgets + Min-Replica Enforcement Across All Services

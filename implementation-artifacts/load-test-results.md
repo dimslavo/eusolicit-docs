@@ -787,6 +787,19 @@ PE.04 HPA min-replica sizing decision and queue-depth scale trigger
   loses count (it didn't lose at 50 VUs; the Lua atomic INCR is by
   design lossless under single-shard load).
 
+  **Implementation closed (2026-05-04):** Story 21-3 shipped Multi-AZ
+  AWS ElastiCache Replication Group (cluster-mode-disabled, 1 primary +
+  2 replicas in eu-central-1 — the boring-tech managed equivalent of the
+  Redis Sentinel topology per ADR-010). The choice of Replication Group
+  over Cluster Mode honours this Pass-7 sizing recommendation exactly:
+  "Sentinel sufficient, Cluster not needed." Post-failover Redis-10K-INCR
+  k6 re-run results to be populated by operator in
+  `pe-03-cutover-runbook.md` §Failover Drill Results — Lua-Script Re-Run
+  after the D-1 operator-gated failover drill executes. Cluster Mode
+  remains a future-considered hardening only if mass-INCR loss is
+  observed at higher VU counts, which it has not been at 50 VUs /
+  10K iter / 0% incr_errors.
+
 - **PE.04 (PodDisruptionBudget + min-replica for AI-Gateway):** the observed
   SSE rejection rate at 12 VUs vs concurrency_limit=10 determines the PDB
   `minAvailable` and HPA min-replica decision.
@@ -1033,6 +1046,25 @@ SELECT id, title, deadline FROM pipeline.opportunities
 making the index ix_opportunity_status more expensive than a sequential scan for this dataset. In production with
 a mix of statuses, the existing `ix_opportunity_status` index will be chosen. Execution time: **4.452 ms** (acceptable
 for 10K rows; adds negligible cost post-migration vs. pre-PE.02 ~3.864 ms — consistent with plan shape unchanged).
+
+**Known Deviation (Story 21-2 review fixpass M3 — AC-5.1.b)**
+
+> AC-5.1.b literally requires the captured plan to use Index Scan, not Seq Scan. The captured plan
+> here is `Seq Scan` because the staging seed `staging-seed-perf-baseline.py` produces a single-status
+> corpus (`status='open'` for ~100% of rows), which makes Seq Scan cost-optimal regardless of index
+> presence — the planner is functioning correctly. The `ix_opportunity_status` index is still
+> present and will be chosen in production where a realistic status mix exists.
+>
+> ```
+> DEVIATION: AC-5.1.b — browse-query plan shows Seq Scan because the seed corpus is 100% status='open'
+> DEVIATION_TYPE: ACCEPTANCE_GAP
+> DEVIATION_SEVERITY: cosmetic
+> ```
+>
+> Tracked as a follow-up to extend `staging-seed-perf-baseline.py` with a status-mix flag
+> (`--status-mix=open:0.6,closed:0.3,withdrawn:0.1`) so the planner exercises the index path; this
+> belongs to PE.05 (SLO dashboards / status mix) scope, not PE.02. The PE.02 closure scope is the
+> FTS plan flip in §(a), which verifiably went from Seq Scan to Bitmap Index Scan.
 
 ---
 
