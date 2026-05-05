@@ -20,6 +20,8 @@
 Complete **all** items before beginning any cutover step:
 
 - [ ] Terraform plan reviewed and approved (`terraform plan -var-file=environments/staging/terraform.tfvars` or prod)
+- [ ] **LIVE Terraform plan executed against the target AWS account** (NOT the documented dry-run output in §Terraform Plan Evidence — that is the pre-execution preview only). Capture the live `terraform plan` output and confirm: (i) exactly one `aws_db_instance.main` create; (ii) one `aws_db_subnet_group.main` create; (iii) one `aws_db_parameter_group.main` create; (iv) one `aws_security_group.db` create; (v) seven `random_password.service[*]` creates; (vi) seven `aws_secretsmanager_secret.db_service[*]` + `_version` creates; (vii) one `null_resource.db_bootstrap` create; (viii) one `random_id.final_snapshot_suffix`. **No** destroys of stable infra. Story 21-2 review-fix L2.
+- [ ] **Helm `externalsecret.yaml` smoke-test rendered** for at least one service: `helm template eusolicit-service -f infra/helm/values/client-api.yaml --show-only templates/externalsecret.yaml` MUST emit a valid `ExternalSecret` with `secretKey: CLIENT_API_DATABASE_URL` (review-fix L3 / B2 verification). The same command for each of the other 5 services should render the matching `<SERVICE>_DATABASE_URL` key. Save the rendered output alongside the cutover ticket as evidence.
 - [ ] Staging dry-run signed-off (§Staging Rehearsal Timing populated)
 - [ ] Change ticket filed in incident management system (24h advance notice minimum per project-context customer-comm pattern)
 - [ ] On-call engineer paged and available for the full maintenance window + 60 min post-cutover
@@ -189,6 +191,23 @@ the fallback budget).
 Run these immediately after the maintenance page is lifted:
 
 ```bash
+# 0. Helm template smoke test (Review Follow-up L3)
+# Verifies the ExternalSecret renders the service-prefixed DATABASE_URL key.
+# Run BEFORE the deployment is rolled out so a misrendered template is caught
+# at apply-time, not at pod-startup time.
+for svc in client-api admin-api data-pipeline ai-gateway notification integrations-api; do
+  echo "=== $svc ==="
+  helm template eusolicit-service infra/helm/eusolicit-service \
+    -f infra/helm/values/${svc}.yaml \
+    --show-only templates/externalsecret.yaml \
+  | grep -E "secretKey:|key: eusolicit/" || {
+    echo "FAIL: ExternalSecret did not render for $svc"
+    exit 1
+  }
+done
+# Each service must produce its `<SERVICE>_DATABASE_URL` key (B2) plus the
+# bare DATABASE_URL key for the migration_role Alembic CLI job.
+
 # 1. Integration test subset (schema-isolation + FTS regression)
 make test-integration
 

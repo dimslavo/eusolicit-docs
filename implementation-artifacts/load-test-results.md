@@ -792,8 +792,13 @@ PE.04 HPA min-replica sizing decision and queue-depth scale trigger
   2 replicas in eu-central-1 — the boring-tech managed equivalent of the
   Redis Sentinel topology per ADR-010). The choice of Replication Group
   over Cluster Mode honours this Pass-7 sizing recommendation exactly:
-  "Sentinel sufficient, Cluster not needed." Post-failover Redis-10K-INCR
-  k6 re-run results to be populated by operator in
+  "Sentinel sufficient, Cluster not needed." The post-failover
+  Redis-10K-INCR k6 re-run is the canonical regression-test that closes
+  NFR 8.8-PERF-001 + AC-6.3 from Story 21-1 under HA failover conditions:
+  expected `final_count == 10000` with `incr_errors.rate = 0%` after the
+  Multi-AZ DNS swap, proving the `_USAGE_LUA` atomic Lua script (Story
+  21-1, ADR-006) survives ElastiCache primary-replica failover. Operator
+  populates the live `final_count` measurement in
   `pe-03-cutover-runbook.md` §Failover Drill Results — Lua-Script Re-Run
   after the D-1 operator-gated failover drill executes. Cluster Mode
   remains a future-considered hardening only if mass-INCR loss is
@@ -820,6 +825,8 @@ PE.04 HPA min-replica sizing decision and queue-depth scale trigger
   weren't provisioned). Peak queue depth not measured. Staging required.
   **Recommendation:** queue-depth-driven HPA scale decision deferred to
   staging measurement.
+
+**PE.04 closure (Story 21-4 — 2026-05-05):** PDB `minAvailable: 1` enforced across all 6 services; HPA `minReplicas` floors per epic line 105 met (admin-api 1→2, notification 1→2; integrations-api new at 2; client-api/ai-gateway/data-pipeline already at floors). Chaos drill DEFERRED — see `pe-04-chaos-drill-runbook.md` §Chaos-Drill Results (D-1 pre-recorded deviation: autopilot cannot execute kubectl drain against live AWS staging cluster; operator-on-call ticket post-merge). queue-depth-driven `maxReplicas` adjustments deferred to future operator measurement (D-3). CI lint gate `scripts/check_helm_pdb_and_minreplicas.py` prevents regression.
 
 ## Dev Agent Record
 

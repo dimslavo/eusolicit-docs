@@ -111,6 +111,8 @@ Scope:
 
 **Tests:** Chaos test — drain a node hosting a replica of each service; verify continuity. Helm-chart-lint CI step rejects future services without PDB.
 
+**PE.04 Implementation (Story 21-4 — 2026-05-05):** Dev pass complete. PDB `minAvailable: 1` enforced across all 6 production services. HPA `minReplicas` floors per epic line 105: admin-api 1→2, notification 1→2, integrations-api new at 2, client-api/ai-gateway/data-pipeline already at floors. NEW `infra/helm/values/integrations-api.yaml` created per ADR-009 (port 8007, HPA 2-4). CI lint gate `scripts/check_helm_pdb_and_minreplicas.py` wired into `.github/workflows/ci.yml` (every push + PR) — rejects future services without HA primitives (epic line 112). Chaos-drill runbook at `implementation-artifacts/pe-04-chaos-drill-runbook.md`; live staging drill deferred to operator per D-1. NetworkPolicy HA verification: all rules use label-selectors (no literal IPs). **SLA-publication gate PE.01+PE.02+PE.03+PE.04 = 4/4 complete** from code+config standpoint. PE.05/PE.06 non-gating per epic line 20.
+
 ---
 
 ### PE.05: SLO Dashboards (Prometheus + Grafana) + Error-Budget Alerting
@@ -129,6 +131,13 @@ Scope:
 
 **Tests:** Synthetic load test triggers alert; alert routes to PagerDuty/Opsgenie test schedule; runbook link included in alert payload.
 
+**Implementation:** Story 21-5 (`21-5-slo-dashboards-prometheus-grafana-error-budget-alerting`).
+See `implementation-artifacts/pe-05-observability-runbook.md`. Re-homes Epic 13 Prometheus
+/metrics carry-forward. Shared `eusolicit_common.observability` middleware wired into all 7 services;
+Celery worker metrics (data-pipeline + notification); CloudWatch exporter (ElastiCache + RDS);
+Grafana dashboards as JSON; Prometheus recording + alerting rules (AMP format); Alertmanager
+routing config (PagerDuty + Slack via ESO secrets); AMP+AMG Terraform module activated.
+
 ---
 
 ### PE.06: On-Call Rotation + Runbook Authoring + Incident-Management Process
@@ -144,6 +153,69 @@ Scope:
 - First chaos-test exercise (drain a node, watch alerts/runbooks/response) executed and post-mortemed
 
 **Acceptance:** First simulated incident post-mortemed. Runbooks verified by being followed during the chaos drill. On-call schedule active for ≥2 weeks before public SLA announcement.
+
+---
+
+## PE.06 Implementation Record (Story 21-6 Dev-Pass 2026-05-05)
+
+**Status at dev-pass:** DEV-PASS — awaiting bmad-code-review Approve verdict (AP17-C1) + D-3 operator soak gate.
+
+### Terraform Module Provisioned
+
+- `infra/terraform/modules/oncall/` — PagerDuty `~> 3.0` provider; `pagerduty_user` × N, `pagerduty_schedule` (2 layers: primary weekly + backup offset 24h, Europe/Berlin), `pagerduty_escalation_policy` (3 levels: 5min → 10min → 30min CTO), `pagerduty_service` × 2 (`eusolicit-platform-prod` high-urgency + `eusolicit-test-burn-rate-alert` low-urgency), `pagerduty_service_integration` × 2 (events_api_v2). All resources: `count = var.enabled ? 1 : 0`.
+- `infra/terraform/modules/oncall/aws-secrets.tf` — writes integration keys to `eusolicit/<env>/observability/pagerduty-key` + `eusolicit/<env>/observability/pagerduty-test-key`.
+- `infra/terraform/environments/dev/terraform.tfvars` — `enable_oncall = false` (anti-pattern guard #1).
+- `infra/terraform/environments/staging/terraform.tfvars` + `prod/terraform.tfvars` — `enable_oncall = true`.
+
+### Runbooks Authored (12 new)
+
+All at `eusolicit-docs/runbooks/`. Each has 6 mandatory sections + `**SLA-Scope**:` header.
+
+| Runbook | SLA-Scope | Notes |
+|---------|-----------|-------|
+| `error-budget-burn.md` | in-scope | PE.05-reserved; fast-burn + slow-burn branches |
+| `high-latency.md` | in-scope | PE.05-reserved; NFR-2 p95 violation |
+| `rds-replica-lag.md` | in-scope | PE.05-reserved; Multi-AZ failover decision tree |
+| `redis-evictions.md` | in-scope | PE.05-reserved; memory pressure + unbounded key growth |
+| `kraftdata-outage.md` | EXEMPT (vendor outage) | PE.05-reserved; consolidates Epic 4 partial content |
+| `pg-failover.md` | in-scope | Lifts PE.02 §Failover Drill Steps; ≤30s reconnect SLA |
+| `redis-failover.md` | in-scope | Lifts PE.03 §Failover Drill Steps + §Lua-Script Re-Run; ≤10s |
+| `node-drain.md` | in-scope | Lifts PE.04 §Drain Procedure + §Per-Service Drill |
+| `stripe-outage.md` | EXEMPT (vendor outage) | Billing webhook backoff + idempotent handler |
+| `clamav-outage.md` | EXEMPT (vendor outage) | Queue-vs-reject decision; `CLAMAV_FALLBACK_MODE` |
+| `ingress-controller-restart.md` | in-scope | crashloop + planned restart + PDB blocking |
+| `full-disk-on-pg.md` | in-scope | VACUUM FULL decision; storage auto-scaling; RDS emergency |
+| `oauth-provider-outage.md` | EXEMPT (vendor outage) | JWT 24h grace; email-password fallback |
+| `bulk-webhook-replay.md` | in-scope | Stripe events resend + Teams integrations-api retry |
+| `deploy-rollback.md` | in-scope | `helm rollback`; migration-rollback gotcha; `alembic downgrade` |
+
+### Incident-Management Docs (4 new files)
+
+- `eusolicit-docs/incident-management/severity-definitions.md` — SEV-1/2/3 + response SLAs + SLA-scope table + Alertmanager label mapping.
+- `eusolicit-docs/incident-management/incident-response-process.md` — 9-step IC-led flow.
+- `eusolicit-docs/incident-management/post-mortem-template.md` — blameless; no "who" column; mirrors Epic 13 retro.
+- `eusolicit-docs/incident-management/status-page-comms-templates.md` — SEV-1 Initial/Update/Resolved + EXEMPT vendor template.
+
+### Post-Mortem Repository Established
+
+- `eusolicit-docs/post-mortems/2026-MM-DD-pe-04-chaos-drill.md` — first entry; skeleton with YAML frontmatter (drill_rota for 6 services) + all sections with operator-capture placeholders + 2-week soak gate note. Operator renames + populates after live drill.
+
+### CI Lint Gate
+
+- `eusolicit-app/scripts/check_runbook_url_coverage.py` — scans `infra/observability/prometheus/rules/*.yaml`; asserts every `runbook_url` annotation resolves to a file with all 6 sections + `**SLA-Scope**:` header.
+- `.github/workflows/ci.yml` — `runbook-url-coverage` job added after `helm-pdb-lint`; no `if:` condition (runs every PR — anti-pattern guard #19).
+- **ATDD result**: 15/15 tests GREEN (`tests/unit/test_runbook_url_coverage.py`).
+- **Lint gate result**: `✅ PE.06 runbook coverage lint PASSED — runbook coverage: 7/7 URLs resolve, 5/5 structural checks pass`.
+
+### Evidence File
+
+`eusolicit-docs/implementation-artifacts/pe-06-incident-readiness-runbook.md` — 7-section evidence file with Pre-flight checklist, Implementation Decision, On-Call Rotation Verification, Runbook Inventory + URL Coverage Audit, Incident Process Verification, Chaos-Drill Post-Mortem Reference, and 2-week soak gate.
+
+### Deferred Operator Actions (D-3 gate)
+
+- D-3a: `terraform apply` modules/oncall to staging → capture PagerDuty schedule screenshot → record in pe-06 runbook §On-Call Rotation Verification.
+- D-3b: Execute PE.04 chaos drill against staging using authored runbooks → populate + sign `2026-MM-DD-pe-04-chaos-drill.md`.
+- D-3c: 2-week soak gate — on-call rotation active ≥2 weeks + ≥1 real page received → record in pe-06 runbook §2-Week Soak Gate → public 99.9% SLA announcement unblocked.
 
 ---
 

@@ -310,6 +310,26 @@ so that **(a) the 99.9% SLA promised in PRD v1.1 §7 NFR-14 has the database rel
   - [x] 9.4 Append closure paragraph to Story 21-1 §Known Deviation (AC-2.4) — DO NOT modify original
   - [ ] 9.5 Atomic patch: `Status: review → done` in this file + `21-2-...: review → done` in `sprint-status.yaml` in the SAME commit (AP18-C2) — PENDING bmad-code-review Approve verdict (AP17-C1)
 
+### Review Follow-ups (AI)
+
+> Inserted by bmad-dev-story review-fixpass on 2026-05-04 in response to the
+> Senior Developer Review (AI) verdict **REVIEW: Changes Requested**. Each
+> item below mirrors an Action Item in the §Senior Developer Review section
+> below; checking it here also flips the matching review item.
+
+- [x] **[AI-Review][High] B1** — Bind ESO-synced K8s Secret into the deployment via `envFrom: secretRef` (file `infra/helm/eusolicit-service/templates/deployment.yaml`)
+- [x] **[AI-Review][High] B2** — Rename ExternalSecret key to service-prefixed env var (`<SERVICE>_DATABASE_URL`) so pydantic-settings picks it up (file `infra/helm/eusolicit-service/templates/externalsecret.yaml`)
+- [x] **[AI-Review][High] B3** — Add `random_password.service[*]` resources, embed result in Secrets Manager URL, and apply via ALTER ROLE in bootstrap null_resource (file `infra/terraform/modules/database/main.tf`)
+- [x] **[AI-Review][High] B4** — Bootstrap `null_resource` now targets `-d ${var.db_name}` (eusolicit) so PHASE 2/4 schema+grant DDL lands correctly; `\c eusolicit_test` directive inside the SQL handles the test-DB switch (file `infra/terraform/modules/database/main.tf`)
+- [x] **[AI-Review][Med] M1** — Stabilise `final_snapshot_identifier` via `random_id.final_snapshot_suffix.hex` + `lifecycle.ignore_changes` so plan no longer shows perpetual drift (file `infra/terraform/modules/database/main.tf`)
+- [x] **[AI-Review][Med] M2** — Migration revision 003 now uses `op.get_context().autocommit_block()` (the canonical Alembic helper) instead of raw `COMMIT`/`BEGIN` text execs (file `services/data-pipeline/alembic/versions/003_opportunities_tsv_gin_index.py`)
+- [x] **[AI-Review][Med] M3** — AC-5.1.b browse-query Seq-Scan plan is documented as a `cosmetic` deviation in `load-test-results.md`; the planner is correct given the 100% `status='open'` seed corpus, and follow-up tracking lives in PE.05 (file `eusolicit-docs/implementation-artifacts/load-test-results.md`)
+- [x] **[AI-Review][Low] L1** — Dropped `default=None` on the `tsv` Mapped column; comment explicitly states the DB owns the column (file `services/data-pipeline/src/data_pipeline/models/opportunity.py`)
+- [x] **[AI-Review][Low] L2** — Added a "live `terraform plan` executed against the target AWS account" item to the cutover runbook §Pre-flight Checklist (file `eusolicit-docs/implementation-artifacts/pe-02-cutover-runbook.md`)
+- [x] **[AI-Review][Low] L3** — Added a `helm template ... --show-only templates/externalsecret.yaml` smoke test step (and per-service loop) to the cutover runbook §Validation Steps (file `eusolicit-docs/implementation-artifacts/pe-02-cutover-runbook.md`)
+- [x] **[AI-Review][Med] Bonus — pool_pre_ping audit gap** — `services/admin-api/src/admin_api/client_db.py` was the only engine factory missing `pool_pre_ping=True` from the AC-3.5 audit; added it plus `pool_recycle=300` (file `services/admin-api/src/admin_api/client_db.py`)
+- [x] **[AI-Review][Med] Bonus — ATDD red→green flip** — 14 PE.02 ATDD tests in `tests/unit/test_pe02_terraform_module.py`, 7 in `tests/unit/test_pe02_eso_and_pool.py`, and 7 in `tests/unit/test_pe02_documentation_gates.py` were left at `@pytest.mark.skip(reason="RED PHASE: …")` in the prior dev pass; this fixpass un-skips them and fixes the test bodies (false-positive comment matching, hard-coded `database.py` filename, non-greedy regex truncation on nested-paren engine calls) so all 28 PE.02 tests now pass (files: `tests/unit/test_pe02_*.py`)
+
 ## Dev Notes
 
 ### Source-of-truth references (verbatim — paste into review threads)
@@ -508,3 +528,214 @@ RATIONALE: No live staging AWS cluster is accessible from the dev environment. T
 - `eusolicit-docs/planning-artifacts/architecture.md` (appended ADR-010 implementation footnote)
 - `eusolicit-docs/planning-artifacts/epics/E21-platform-reliability-99-9-sla.md` (appended PE.02 implementation block)
 - `eusolicit-docs/implementation-artifacts/sprint-status.yaml` (story status: in-progress → review; atomic patch)
+
+**File List — Review Fixpass additions (2026-05-04):**
+
+- `eusolicit-app/infra/helm/eusolicit-service/templates/deployment.yaml` (Modified — B1: bind `<release>-db-secret` via conditional `envFrom: secretRef`)
+- `eusolicit-app/infra/helm/eusolicit-service/templates/externalsecret.yaml` (Modified — B2: secretKey now `<UPPER_SERVICENAME>_DATABASE_URL`)
+- `eusolicit-app/infra/helm/eusolicit-service/values.yaml` (Modified — defaults `externalSecret.enabled: false`, `serviceName: ""`, `environment: dev`)
+- `eusolicit-app/infra/terraform/modules/database/main.tf` (Modified — B3+B4+M1: random_password.service[*], ALTER ROLE bootstrap against `${var.db_name}`, stable random_id-suffixed final_snapshot_identifier with lifecycle.ignore_changes)
+- `eusolicit-app/services/data-pipeline/alembic/versions/003_opportunities_tsv_gin_index.py` (Modified — M2: switched to `op.get_context().autocommit_block()`)
+- `eusolicit-app/services/data-pipeline/src/data_pipeline/models/opportunity.py` (Modified — L1: dropped misleading `default=None` on tsv generated column)
+- `eusolicit-app/services/admin-api/src/admin_api/client_db.py` (Modified — Bonus: added `pool_pre_ping=True, pool_recycle=300` to engine factory)
+- `eusolicit-docs/implementation-artifacts/load-test-results.md` (Modified — M3: documented AC-5.1.b browse-query Seq-Scan deviation as `cosmetic`)
+- `eusolicit-docs/implementation-artifacts/pe-02-cutover-runbook.md` (Modified — L2+L3: live terraform plan gate, helm-template smoke test in §Pre-flight + §Validation Steps)
+- `eusolicit-app/tests/unit/test_pe02_terraform_module.py` (Modified — un-skipped 14 RED-phase tests; fixed comment-matching false positives, parameterised engine_version search across files)
+- `eusolicit-app/tests/unit/test_pe02_eso_and_pool.py` (Modified — un-skipped 7 RED-phase tests; replaced hard-coded `database.py` lookup with rglob+balanced-paren engine-call extractor)
+- `eusolicit-app/tests/unit/test_pe02_documentation_gates.py` (Modified — un-skipped 7 RED-phase tests)
+
+### Review Fixpass — 2026-05-04 (Implemented by claude-sonnet-4-5, autopilot)
+
+**Goal:** address the 4 BLOCKING (B1–B4), 3 MEDIUM patch (M1–M3), and 3 LOW patch (L1–L3) findings in the `## Senior Developer Review (AI) — 2026-05-04` block below; flip the previously-skipped PE.02 ATDD test scaffolds (`@pytest.mark.skip(reason="RED PHASE: ...")`) to green.
+
+**Resolutions (every action item above checked):**
+
+- **B1** Bind ESO-synced `<release>-db-secret` into the deployment via a conditional `envFrom: secretRef` block (file `infra/helm/eusolicit-service/templates/deployment.yaml`).
+- **B2** ExternalSecret now writes the K8s Secret with key `<UPPER_SERVICENAME>_DATABASE_URL` (e.g. `CLIENT_API_DATABASE_URL`) so pydantic-settings env_prefix matches at runtime; bare `DATABASE_URL` retained for the Alembic CLI job (file `infra/helm/eusolicit-service/templates/externalsecret.yaml`).
+- **B3** Added `random_password.service[<role>]` resources for all 7 service roles; password is embedded in both `aws_secretsmanager_secret_version.db_service.secret_string` (`url`/`password` fields) and applied to the running RDS instance via `ALTER ROLE … WITH PASSWORD :'role_pwd'` from the bootstrap `null_resource` (file `infra/terraform/modules/database/main.tf`).
+- **B4** Bootstrap `null_resource` now runs `psql -d ${var.db_name}` (i.e. `eusolicit`) so PHASE 2 schema+grant DDL lands in the right database; the init SQL's `\c eusolicit_test` directive handles the test-DB switch internally (file `infra/terraform/modules/database/main.tf`).
+- **M1** Replaced `formatdate("YYYYMMDDhhmm", timestamp())` with `random_id.final_snapshot_suffix.hex` (state-stable) plus `lifecycle.ignore_changes = [final_snapshot_identifier]` belt-and-suspenders so plans no longer show perpetual drift (file `infra/terraform/modules/database/main.tf`).
+- **M2** Migration revision 003 now uses `with op.get_context().autocommit_block(): op.execute(...)` for both upgrade (`CREATE INDEX CONCURRENTLY`) and downgrade (`DROP INDEX CONCURRENTLY`); the prior raw `text("COMMIT")`/`text("BEGIN")` dance is gone (file `services/data-pipeline/alembic/versions/003_opportunities_tsv_gin_index.py`).
+- **M3** Documented AC-5.1.b browse-query plan as `cosmetic` deviation in `load-test-results.md`; the Seq Scan is the planner's correct choice given the seed corpus is 100% `status='open'`. Follow-up to extend `staging-seed-perf-baseline.py` with a `--status-mix` flag belongs to PE.05.
+- **L1** Removed the misleading `default=None` from the `tsv` Mapped column; comment explicitly states the DB owns the column (file `services/data-pipeline/src/data_pipeline/models/opportunity.py`).
+- **L2** Added a "**LIVE Terraform plan executed against the target AWS account**" gate to the cutover runbook §Pre-flight Checklist (file `eusolicit-docs/implementation-artifacts/pe-02-cutover-runbook.md`).
+- **L3** Added a per-service `helm template … --show-only templates/externalsecret.yaml` smoke test to §Validation Steps; also added a §Pre-flight Checklist gate to render at least one ExternalSecret (file `eusolicit-docs/implementation-artifacts/pe-02-cutover-runbook.md`).
+- **Bonus pool_pre_ping** Added `pool_pre_ping=True, pool_recycle=300` to `services/admin-api/src/admin_api/client_db.py` (the only engine factory missing it from the AC-3.5 audit).
+- **Bonus ATDD red→green** Un-skipped the 28 PE.02 ATDD tests across `tests/unit/test_pe02_terraform_module.py` (14), `tests/unit/test_pe02_eso_and_pool.py` (7), `tests/unit/test_pe02_documentation_gates.py` (7); fixed three real test bugs (false-positive comment matching, hard-coded `database.py` filename assumption, non-greedy regex truncation on nested-paren engine calls). All 28 now pass.
+
+**Test Results (Review Fixpass):**
+
+```
+431 passed, 1126 deselected in 10.90s   # tests/unit -k "pe02 or terraform or helm or eso"
+28 passed                                # tests/unit/test_pe02_terraform_module.py + test_pe02_eso_and_pool.py + test_pe02_documentation_gates.py (the formerly-skipped ATDD scaffolds)
+156 passed                               # all terraform-related unit tests
+269 passed, 14 skipped, 1274 deselected  # helm + ESO scope (skipped are unrelated)
+```
+
+`terraform fmt -check -recursive` clean; `terraform validate` (database module) clean; `ruff check` clean on touched files; `helm template … --show-only templates/externalsecret.yaml` renders the expected `secretKey: "CLIENT_API_DATABASE_URL"` key for client-api and the matching deployment binding (`secretRef: eusolicit-service-client-api-db-secret`).
+
+**Pre-existing test failures NOT in scope of this fixpass** (verified by `git diff --name-only` shows zero overlap with my changes):
+- `tests/unit/test_eusolicit_kraftdata_requests.py` — kraftdata DTO drift, predates Story 21-2.
+- `tests/unit/test_eusolicit_models_enums.py::TestSubscriptionTier` — enum churn, predates.
+- `tests/unit/test_init_script_validation.py::TestSchemaCompleteness::test_no_extra_schemas_created` — init SQL has `integrations` schema not declared in the test's expected set; predates.
+- `tests/unit/test_scaffold_configs.py::*` — frontend/scaffold config drift, predates.
+- `tests/unit/test_alembic_scaffold_validation.py::TestEnvPyDRYConsistency` — env.py target_metadata=None expectation, predates.
+
+**Change Log entry:** addressed code review findings — 11 items resolved (4 BLOCKING B1–B4 + 3 MEDIUM M1–M3 + 3 LOW L1–L3 + 1 BONUS pool_pre_ping audit gap + ATDD red→green flip across 3 PE.02 test files) (Date: 2026-05-04).
+
+**Status remains `review`** — per AP17-C1 two-gate-close, this dev-pass alone does not promote to `done`. The next bmad-code-review pass must issue the **Approve** verdict to enable the atomic AP18-C2 patch (`Status: review → done` in this file + sprint-status entry SAME commit).
+
+## Senior Developer Review (AI) — 2026-05-04
+
+**Reviewer:** Claude Sonnet (bmad-code-review autopilot, BMAD-stream Operator workflow guidance loaded)
+**Verdict:** **REVIEW: Changes Requested**
+**Streak impact:** AP17-C1 two-gate-close — Approve verdict NOT issued; story remains in `review`. Successful-closure streak (S19-0/19-1/19-2/20-0/21-1) untouched (this review does not regress nor advance it).
+
+### Summary
+
+The headline deliverables — Terraform module activation, migration `M_PE02_opportunities_tsv_gin_index`, FTS service rewrite, and EXPLAIN ANALYZE evidence — are well executed. The `Bitmap Index Scan on ix_opportunities_tsv` plan (0.890 ms at 10K rows; 325× improvement over the pre-PE.02 Seq Scan) verifiably closes Story 21-1 AC-2.4. The migration correctly handles the `CREATE INDEX CONCURRENTLY` constraint and preserves the canonical FTS expression verbatim.
+
+However, **AC-3 (per-service connection strings) has four blocking implementation gaps** that, if applied as-is to production, would prevent every service from authenticating against the new RDS instance. These are not deviations to acknowledge — they are wiring bugs that break the cutover. Given the AP17-C1 two-gate-close pattern and the extensive deviation framework in the story spec, B1–B4 must be remediated before the **Approve** verdict.
+
+The two pre-recorded deviations (D-1 production cutover, D-2 staging rehearsal as documented dry-run) are acceptable per the Story 21-1 precedent.
+
+### Findings
+
+#### BLOCKING
+
+- [x] **[Review][Patch] B1 — ExternalSecret K8s Secret is NOT mounted into service deployments** [`infra/helm/eusolicit-service/templates/deployment.yaml:32-40`, `infra/helm/eusolicit-service/templates/externalsecret.yaml:46-53`]
+  - **AC violated:** AC-3.3 ("The deployment's env block then references `secretKeyRef: { name: <serviceName>-db-secret, key: DATABASE_URL }`").
+  - **Evidence:** `externalsecret.yaml` creates a K8s Secret named `{include "eusolicit-service.fullname" .}-db-secret` containing key `DATABASE_URL`. The `deployment.yaml` template at lines 32–40 only references `{{ .Values.secrets.name }}` (the legacy `<service>-secrets` Secret), not the newly-created `<release>-db-secret`. Net effect: the ESO-synced Secret is created but never bound to any container env.
+  - **Required fix:** Extend `deployment.yaml` `envFrom` block with a conditional `secretRef` for `{{ include "eusolicit-service.fullname" . }}-db-secret` when `.Values.externalSecret.enabled`.
+
+- [x] **[Review][Patch] B2 — DATABASE_URL key does not match pydantic-settings env_prefix pattern** [`infra/helm/eusolicit-service/templates/externalsecret.yaml:50`]
+  - **AC violated:** AC-3.3 ("The env-var name MUST match each service's pydantic-settings `env_prefix`-namespaced URL: `CLIENT_API_DATABASE_URL`, `ADMIN_API_DATABASE_URL`, ...").
+  - **Evidence:** ExternalSecret writes a single key `DATABASE_URL`. Each service's `BaseServiceSettings` subclass uses `env_prefix="<SERVICE>_"` (e.g., `CLIENT_API_DATABASE_URL`). With `envFrom: secretRef`, K8s mounts the Secret keys verbatim — the resulting env var would be `DATABASE_URL`, which the service's pydantic config does NOT pick up (it only reads `CLIENT_API_DATABASE_URL`).
+  - **Required fix:** Either (a) parametrise `secretKey` in the ExternalSecret to render `{{ upper .Values.serviceName | replace "-" "_" }}_DATABASE_URL` per service, or (b) use individual env-var declarations (`env: - name: CLIENT_API_DATABASE_URL valueFrom: secretKeyRef: ...`) instead of `envFrom`. Note the spec's exception: bare `DATABASE_URL` only applies to the `migration_role` Alembic job (Makefile line 182), not the running services.
+
+- [x] **[Review][Patch] B3 — Per-service role passwords are not generated, set, or stored** [`infra/terraform/modules/database/main.tf:212-253, 265-294`]
+  - **AC violated:** AC-3.1 ("Passwords are generated by `random_password` resources (Terraform-managed) AND set on the new instance via `psql -c "ALTER ROLE <role> WITH PASSWORD '<password>'"` from a one-shot bootstrap step").
+  - **Evidence:** `aws_secretsmanager_secret_version.db_service` writes `{"username": "<role>", "host": ..., "url": "postgresql+asyncpg://<role>@<host>:5432/eusolicit"}` — the URL contains no password. The bootstrap `null_resource` only sources the canonical init SQL (which creates roles but does not set passwords). There is no `random_password` resource and no `ALTER ROLE` command. Services connecting via this URL will authenticate with no password and will be rejected (`FATAL: password authentication failed`).
+  - **Required fix:** Add `resource "random_password" "service" { for_each = local.service_roles; length = 32; special = false }`, embed the password in both the secret JSON (`url = "postgresql+asyncpg://${role}:${random_password.service[k].result}@..."`) AND issue `ALTER ROLE <role> WITH PASSWORD '...'` against the new instance from a bootstrap `null_resource` (or via a Lambda invoked by `aws_lambda_invocation`). Mark `random_password` resources with `lifecycle { ignore_changes = [length, special] }` to avoid post-deploy churn.
+
+- [x] **[Review][Patch] B4 — Bootstrap null_resource targets the wrong database (`postgres` vs `eusolicit`)** [`infra/terraform/modules/database/main.tf:281, 290`]
+  - **AC violated:** AC-3.2 ("the bootstrap step MUST run the canonical role-creation block from `infra/postgres/init/01-init-schemas-and-roles.sql` PHASE 1 (lines 11–47) verbatim").
+  - **Evidence:** The `local-exec` runs `psql -h ... -U eusolicit_admin -d postgres -f .../01-init-schemas-and-roles.sql`. The init SQL creates schemas in `eusolicit` and `eusolicit_test` databases (PHASE 2 lines 60–266 grants on `eusolicit`; PHASE 4 lines 281–469 grants on `eusolicit_test`). Running the entire script against `-d postgres` will leave `eusolicit` without schemas and grants. PHASE 1 role creation works (roles are cluster-global) but PHASE 2/4 do not.
+  - **Required fix:** Either split the bootstrap into multiple `psql -d <db>` invocations (matching the `\c eusolicit` directives inside the init SQL) or invoke it via `psql -d eusolicit` after first issuing `CREATE DATABASE eusolicit;`. Also consider that `local-exec` from a CI runner requires (a) `psql` binary on the runner, (b) network reachability into the private RDS subnet — neither is documented; this likely needs a bastion or VPC-attached runner. Add a `README` note covering these prerequisites or migrate to a Lambda-based bootstrap pattern.
+
+#### MEDIUM
+
+- [x] **[Review][Patch] M1 — `final_snapshot_identifier` uses `timestamp()` causing perpetual plan drift** [`infra/terraform/modules/database/main.tf:56`]
+  - `formatdate("YYYYMMDDhhmm", timestamp())` is re-evaluated on every `terraform plan`, so the field always shows a diff and may force in-place updates or plan-time noise. Either pin via `lifecycle { ignore_changes = [final_snapshot_identifier] }` or use a stable identifier built from `var.environment`/`var.db_name` + a stable suffix.
+
+- [x] **[Review][Patch] M2 — Migration COMMIT/BEGIN dance is fragile vs `op.get_context().autocommit_block()`** [`services/data-pipeline/alembic/versions/003_opportunities_tsv_gin_index.py:80-86, 93-98`]
+  - The implementation uses raw `conn.execute(text("COMMIT"))` / `text("BEGIN")` to escape the Alembic transaction for `CREATE INDEX CONCURRENTLY`. The Alembic-canonical approach is `with op.get_context().autocommit_block(): op.execute(...)` which handles transaction lifecycle correctly across Alembic versions and avoids leaving the connection in an unexpected state if the CONCURRENTLY statement fails. The Dev Notes acknowledge the `transactional_ddl = False` pattern was tried and "didn't work as expected" — the autocommit_block helper is the modern replacement. Suggest refactor for resilience.
+
+- [x] **[Review][Patch] M3 — Browse-query EXPLAIN evidence shows `Seq Scan`, not `Index Scan` as AC-5.1.b mandates** [`load-test-results.md:1015-1029`]
+  - AC-5.1.b: "Required confirmation: plan uses an Index Scan (not Seq Scan)." The captured plan shows `Seq Scan on opportunities` because at 10K rows with `status='open'` selecting all rows, Seq Scan is cost-optimal. The rationalization is correct, but the AC is technically unsatisfied. Either (a) re-seed with a status mix that exercises the `ix_opportunity_status` index path, or (b) annotate the deviation explicitly in the §Pre-recorded Known Deviations block (DEVIATION_TYPE: ACCEPTANCE_GAP, DEVIATION_SEVERITY: cosmetic).
+
+- [x] **[Review][Defer] M4 — `pool_recycle=300` not yet applied to engine factories** [`pe-02-cutover-runbook.md:306-323`] — deferred, AC-3.5 wording makes pool_recycle "recommended" not "MUST"; runbook explicitly tracks as follow-up. Acceptable.
+
+- [x] **[Review][Defer] M5 — Failover drill (AC-6) not executed against live AWS** [`pe-02-cutover-runbook.md:400-417`] — deferred, matches pre-recorded deviation D-1 (DEVIATION_TYPE: ACCEPTANCE_GAP, DEVIATION_SEVERITY: deferrable). §Failover Drill Steps documented as operator-executable template.
+
+- [x] **[Review][Defer] M6 — Staging rehearsal (AC-4.2) was dry-run, not live** [`pe-02-cutover-runbook.md:377-398`] — deferred, matches pre-recorded deviation D-2.
+
+#### LOW
+
+- [x] **[Review][Patch] L1 — `tsv` Mapped column has `default=None` on generated column** [`services/data-pipeline/src/data_pipeline/models/opportunity.py:66`]
+  - `default=None` is operationally equivalent to no default in SQLAlchemy 2.0, but it is misleading next to a column the spec explicitly lists in Anti-pattern guard #2 ("NEVER write a `Column("tsv", TSVECTOR, server_default=...)` with a runtime default"). Recommend dropping `default=None` and adding a comment, or use `init=False` on the dataclass-style annotation to prevent accidental kwargs in `Opportunity(..., tsv=...)` calls.
+
+- [x] **[Review][Patch] L2 — Terraform Plan Evidence is the *expected* output, not a real `terraform plan` run** [`pe-02-cutover-runbook.md:327-374`]
+  - AC-1.7 requires "capture the staging plan summary into the §Terraform Plan Evidence section". The current section explicitly states "A live `terraform plan` against the staging AWS account was not executed in this session" and provides expected/anticipated content. This is acknowledged via D-2; the on-call engineer must run the actual plan before applying. Consider adding a checklist row in §Pre-flight Checklist that explicitly gates on "live `terraform plan` reviewed".
+
+- [x] **[Review][Patch] L3 — Helm `externalsecret.yaml` has no helm-template smoke test** [`infra/helm/eusolicit-service/templates/externalsecret.yaml`]
+  - No evidence of `helm template -f values/client-api.yaml` output captured to validate the rendered ExternalSecret CRD shape. Adding a one-line `helm template` invocation to the runbook §Validation Steps reduces deploy-time surprises.
+
+### Action items written to story
+
+- 4 BLOCKING patch items (B1–B4) — must be remediated before re-review.
+- 3 MEDIUM patch items (M1–M3) — should be remediated; M3 may alternatively be downgraded to a documented deviation.
+- 3 MEDIUM defer items (M4–M6) — accepted as deferrable per pre-recorded D-1/D-2 framework.
+- 3 LOW patch items (L1–L3) — recommended polish.
+
+### Sprint-status sync
+
+`development_status[21-2-postgresql-ha-migration-managed-rds-multi-az-or-equivalent]` remains `review` (NOT promoted to `done` per AP17-C1 two-gate-close). The story file `Status:` field stays at `review`. Story file edited in this review (this section appended); orchestrator AP18-C2 atomic-patch rule requires the next dev-pass commit to land Status + sprint-status changes together.
+
+### What I checked
+
+- ✅ Terraform module: `aws_db_instance`, subnet group, parameter group, security group, secrets, bootstrap null_resource, outputs.
+- ✅ Alembic migration: revision/down_revision chain, CONCURRENTLY semantics, generation-expression match with runtime expression, downgrade reversibility.
+- ✅ FTS service rewrite: `_build_fts_condition` queries `opp_t.c.tsv`, `_build_rank_expr` uses stored column, module docstring updated.
+- ✅ ORM mirrors: `data_pipeline/models/opportunity.py` and `client_api/models/pipeline_opportunity.py` both declare `tsv` column.
+- ✅ EXPLAIN ANALYZE evidence: verbatim `Bitmap Index Scan on ix_opportunities_tsv`, 0.890 ms at 10K rows, Pre-vs-Post comparison table, planner output is greppable.
+- ✅ Cutover runbook: all 9 required sections present.
+- ✅ Documentation: ADR-010 footnote, E21 PE.02 block, load-test-results §Sizing Recommendations §PE.02 closure, Story 21-1 AC-2.4 closure paragraph.
+- ❌ ESO → Deployment env wiring (B1, B2).
+- ❌ Per-service role password generation + storage + ALTER ROLE (B3).
+- ❌ Bootstrap targets correct DB (B4).
+- 🔶 Failover drill, staging rehearsal — accepted via pre-recorded deviations.
+
+DEVIATION: AC-3 ESO/secret wiring is incomplete — Helm deployment doesn't bind the ESO-synced secret, env-var key doesn't match pydantic env_prefix, no service role passwords generated, bootstrap targets `postgres` not `eusolicit`.
+DEVIATION_TYPE: MISSING_REQUIREMENT
+DEVIATION_SEVERITY: blocking
+
+DEVIATION: AC-5.1.b browse-query plan shows Seq Scan instead of Index Scan.
+DEVIATION_TYPE: ACCEPTANCE_GAP
+DEVIATION_SEVERITY: deferrable
+
+## Senior Developer Review (AI) — Pass 2 (2026-05-04 — Approve)
+
+**Reviewer:** Claude Sonnet (bmad-code-review autopilot, BMAD-stream Operator workflow guidance loaded)
+**Verdict:** **REVIEW: Approve**
+**Streak impact:** AP17-C1 two-gate-close — **Approve verdict ISSUED**. Successful-closure streak advances to 6-in-a-row (S19-0 / S19-1 / S19-2 / S20-0 / S21-1 / **S21-2**). Sprint-status promotion to `done` is now unblocked pending the AP18-C2 atomic patch (this story file `Status: review → done` + `sprint-status.yaml` entry SAME commit).
+
+### Summary
+
+The Pass-1 review-fixpass thoroughly addresses every Pass-1 finding. All 4 BLOCKING (B1–B4), 3 MEDIUM patch (M1–M3), 3 LOW patch (L1–L3), 1 BONUS (admin-api `pool_pre_ping`), and the ATDD red→green flip have landed. Pre-recorded deviations D-1 (live failover drill) and D-2 (staging rehearsal as documented dry-run) remain accepted per the Story 21-1 precedent.
+
+### Verifications performed (Pass 2)
+
+- **B1 (envFrom binding):** `infra/helm/eusolicit-service/templates/deployment.yaml:41-58` adds conditional `secretRef` to `<release>-db-secret` when `.Values.externalSecret.enabled`. ✅
+- **B2 (env-prefix key):** `infra/helm/eusolicit-service/templates/externalsecret.yaml:36` derives `$envVarKey` as `{{ .Values.serviceName | upper | replace "-" "_" }}_DATABASE_URL`; both prefixed key + bare `DATABASE_URL` are written (latter for the Alembic CLI job). ✅
+- **B3 (per-service passwords):** `infra/terraform/modules/database/main.tf` adds `random_password.service` (`for_each = local.service_roles`, length 32, special false, lifecycle.ignore_changes = [length, special]); password embedded in `secret_string.url` AND applied via `ALTER ROLE … WITH PASSWORD :'role_pwd'` inside the bootstrap `null_resource` (using PGPASSWORD env-var + psql `--set` for `:'var'` substitution). ✅
+- **B4 (correct DB target):** Bootstrap `null_resource` now invokes `psql -d ${var.db_name}` (i.e. `eusolicit`) for both the init-SQL run and the per-role ALTER ROLE pass. The init script's `\c eusolicit_test` directive handles the test-DB switch internally. ✅
+- **M1 (stable final-snapshot id):** `random_id.final_snapshot_suffix` replaces `formatdate(..., timestamp())`; `lifecycle.ignore_changes = [final_snapshot_identifier]` is belt-and-suspenders. ✅
+- **M2 (autocommit_block):** Migration revision 003 uses `with op.get_context().autocommit_block(): op.execute(...)` for both upgrade (`CREATE INDEX CONCURRENTLY`) and downgrade (`DROP INDEX CONCURRENTLY`). Raw `COMMIT`/`BEGIN` text execs are gone. ✅
+- **M3 (browse-query Seq Scan):** Documented in `load-test-results.md` lines 1037-1054 as `DEVIATION_TYPE: ACCEPTANCE_GAP / DEVIATION_SEVERITY: cosmetic`; rationale (100% `status='open'` seed corpus making Seq Scan cost-optimal) is sound, follow-up tracked to PE.05. ✅
+- **L1 (`tsv` column default):** `default=None` removed from `services/data-pipeline/src/data_pipeline/models/opportunity.py`; comment now explicit about DB ownership. ✅
+- **L2 (live terraform plan gate):** Cutover runbook §Pre-flight Checklist line 23 adds explicit "LIVE Terraform plan executed against the target AWS account" item enumerating the 8 expected create-resource buckets. ✅
+- **L3 (helm template smoke test):** Cutover runbook §Pre-flight line 24 + §Validation Steps section 0 (lines 194-200) add `helm template … --show-only templates/externalsecret.yaml` smoke test per service, with expected `secretKey: <SERVICE>_DATABASE_URL`. ✅
+- **Bonus (admin-api pool_pre_ping):** `services/admin-api/src/admin_api/client_db.py:36-37` adds `pool_pre_ping=True, pool_recycle=300` with rationale comment referencing AC-3.5 anti-pattern guard #2. ✅
+- **ATDD red→green:** Ran `pytest tests/unit/test_pe02_terraform_module.py tests/unit/test_pe02_eso_and_pool.py tests/unit/test_pe02_documentation_gates.py` → **28 passed in 0.11s**. All previously-skipped RED-phase scaffolds are now active and green. ✅
+
+### Observations (non-blocking)
+
+- **Bootstrap psql password on argv:** the `--set=role_pwd="${random_password.service[k].result}"` invocation places each role password on the `psql` argv momentarily — visible to `ps` on the runner. Acceptable for a controlled CodeBuild/bastion runner where the operator owns the host, but a hardening follow-up could pipe the SQL via stdin (`psql ... <<SQL` heredoc) or migrate to a Lambda-based bootstrap. **Not a blocker; not a deviation; recommend tracking as a PE.06 hardening item.**
+- **Bootstrap re-run on password rotation:** the `service_password_hash` trigger correctly re-runs the bootstrap when any service password changes. The init-SQL idempotency (IF NOT EXISTS / DO blocks) protects PHASE 2/4; PHASE 5 ALTER ROLE is naturally idempotent. ✅
+
+### Sprint-status sync
+
+Story may now be promoted: `development_status[21-2-postgresql-ha-migration-managed-rds-multi-az-or-equivalent]: review → done` atomic with `Status: review → done` in this story file (AP18-C2 atomic-patch rule). Successful-closure streak advances to 6-in-a-row.
+
+### Closure scope confirmed
+
+- ✅ AC-1 Terraform module activation (full `aws_db_instance` + subnet/parameter/security groups + outputs + secrets + bootstrap)
+- ✅ AC-2 Migration `M_PE02_opportunities_tsv_gin_index` (revision 003, autocommit_block CONCURRENTLY)
+- ✅ AC-3 ESO + per-service ExternalSecrets (Helm template, all 6 service values, deployment binding, env-prefix matching, password generation+storage+ALTER ROLE)
+- ✅ AC-4 Cutover runbook (all 9 sections; Method A primary; live-plan + helm-template gates added)
+- ✅ AC-5 EXPLAIN ANALYZE evidence (Bitmap Index Scan verbatim, 0.890 ms at 10K rows; M3 cosmetic deviation documented)
+- ✅ AC-7 Documentation (ADR-010, E21 PE.02 block, Sizing Recommendations §PE.02 closure, Story 21-1 AC-2.4 closure paragraph)
+- 🔶 AC-6 Failover drill (D-1 deferred — operator-action follow-up; matches pre-recorded deviation, runbook §Failover Drill Steps documents executable procedure)
+- 🔶 Task 8 production cutover (D-1 deferred — operator-on-call ticket; matches pre-recorded deviation)
+
+The 6-epic carry-forward closure on PE.01 + the AC-2.4 closure on PE.02 jointly satisfy the NFR-13 prerequisite for publishing the 99.9% SLA. PE.03 (Redis HA), PE.04 (PDB + min-replicas), PE.05 (SLO dashboards), and PE.06 (runbooks) can now read from this story's stable HA primitives.
+
+## Known Deviations
+
+### Detected by `3-code-review` at 2026-05-04T19:13:40Z (session 38593712-1f42-4bf1-a966-2585a899b58a)
+
+- AC-3 ESO/secret wiring is incomplete — Helm deployment doesn't bind the ESO-synced secret; env-var key doesn't match pydantic env_prefix; no service role passwords generated/set; bootstrap script targets `postgres` not `eusolicit`. _(type: `MISSING_REQUIREMENT`; severity: `blocking`)_
+- AC-5.1.b browse-query plan shows Seq Scan instead of Index Scan. _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
+- AC-3 ESO/secret wiring is incomplete — Helm deployment doesn't bind the ESO-synced secret; env-var key doesn't match pydantic env_prefix; no service role passwords generated/set; bootstrap script targets `postgres` not `eusolicit`. _(type: `MISSING_REQUIREMENT`; severity: `blocking`)_
+- AC-5.1.b browse-query plan shows Seq Scan instead of Index Scan. _(type: `MISSING_REQUIREMENT`; severity: `blocking`)_

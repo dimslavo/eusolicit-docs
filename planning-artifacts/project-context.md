@@ -767,3 +767,199 @@
 ## Anti-Patterns
 
 - Discovered in Epic 15: ` `IMPACT: standards_update` `SEVERITY: critical` — **Bespoke fixtures at 4th consecutive epic** despite explicit prohibition in the story's own Dev Notes.
+
+## Patterns
+
+- Discovered in Epic 17: **CRM Adapter Registry with `@register_adapter` decorator — stub-first extensibility.** `CRMAdapter` ABC in 17.0; `StubAdapter` registered per-provider; real adapters in 17.1/17.2/17.3 replace stubs via decorator without changing the dispatcher (`forward.py`). Structural test asserts every `ADAPTERS` entry declares `provider` + `rate_limit_config` and inherits `CRMAdapter`. Reference pattern for any new CRM/integration provider. Reference: 17.0 AC-3, 17.1 AC-1.
+
+## Patterns
+
+- Discovered in Epic 17: **Three-tier circuit-breaker hierarchy for CRM.** (1) `crm:{workspace_id}:{provider}` — per-workspace per-provider transient-failure breaker; (2) `crm:auth:{provider}` — provider-global OAuth client outage; (3) `crm:quota:{workspace_id}:salesforce` — Salesforce daily-quota exhaustion (independent from transient failures). Each breaker opens independently — W1 HubSpot outage does NOT affect W2. This is the reference for per-provider breaker scoping. Reference: 17.0 §4.2, 17.3 AC-1 §5.
+
+## Patterns
+
+- Discovered in Epic 17: **Tier-paused fail-CLOSED webhook contract.** Downgraded workspace returns `200 {"status": "tier_paused"}` (NOT 402) from inbound webhook handler; `sync_logs` row written with `auth_failed`/`tier_downgraded`; tier resolver defaults `None → 'starter'` on schema-availability outage (fail-CLOSED). Interactive connect endpoint uses 402; provider-facing webhook uses 200+tier_paused. Reference: 17.1 §8.12, 17.2 AC-6 §5.
+
+## Patterns
+
+- Discovered in Epic 17: **Runtime default-stage seed at OAuth callback inside SAVEPOINT — never in migration.** Default CRM stage mappings seeded per-workspace at OAuth callback time via `INSERT ... ON CONFLICT (workspace_id, provider, eu_solicit_status) DO NOTHING` inside `session.begin_nested()`. Migration creates table structure only. Re-connection is idempotent. Admin-api `reset-to-default` uses per-provider default-mapping registry dict. Reference: 17.1 AC-5, 17.2 AC-5, 17.3 AC-6.
+
+## Patterns
+
+- Discovered in Epic 17: **Cross-portal forged webhook detection must log at WARNING — silent drop hides hostile activity.** When a webhook's `portalId`/`company_id` matches W1's connection but the `deal_id` internal mapping belongs to W2, respond `200 "ignored"` AND emit structured `crm.webhook.cross_portal_attempt` WARNING log with `{attempted_portal, attempted_deal_id, owning_workspace}`. Pure `200 "ignored"` without the log masks cross-tenant probing. Reference: 17.1 AC-10 §1, 17.2 AC-10 §1.
+
+## Patterns
+
+- Discovered in Epic 17: **Salesforce daily-quota state machine with Redis-Lua midnight-UTC rollover.** `_SALESFORCE_QUOTA_LUA` is atomic: GET → threshold check → INCR+EXPIRE on `ok`/`warning`; NO INCR on `exhausted`. Key TTL = `seconds_until_next_midnight_UTC`. `crm:quota:{workspace_id}:salesforce` breaker `reset_timeout` matches same value. `Sforce-Limit-Info` header is observational only (org-wide); Redis counter is authoritative for our per-workspace usage. Reference: 17.3 AC-4.
+
+## Patterns
+
+- Discovered in Epic 17: **Provider OAuth credential styles differ — document with cross-references in adapter docstring.** HubSpot: form-encoded body credentials (NOT JSON, NOT Basic). Pipedrive: `Authorization: Basic base64(client_id:client_secret)` + form body (NOT body-credentials). Salesforce: form-encoded body with `client_id`+`client_secret` in body (NOT Basic, NOT JSON). Each adapter's `authenticate()` docstring must cross-reference the other providers' styles. Reference: 17.1 AC-2, 17.2 AC-2, 17.3 AC-2.
+
+## Patterns
+
+- Discovered in Epic 17: **Vendor-specific cursor datetime formats must be documented with cross-references.** HubSpot: epoch milliseconds (`hs_lastmodifieddate`). Pipedrive: UTC string `YYYY-MM-DD HH:MM:SS` (`update_time`). Salesforce ISO-8601+millis+TZ `2026-05-01T14:23:45.000Z` for SOQL (`LastModifiedDate`; normalize `+0000` → `+00:00` for Python `fromisoformat`). Future providers must document and cross-reference. Reference: 17.1 B-15, 17.2 §4.10, 17.3 AC-7.
+
+## Patterns
+
+- Discovered in Epic 17: **Webhook subscription lifecycle for subscription-model providers (Pipedrive pattern).** Provision `POST {api}/v1/webhooks` on OAuth callback; persist `provider_webhook_id`. Fire-and-forget `DELETE {api}/v1/webhooks/{id}` on `status → revoked`; log WARNING on failure (provider may already revoke server-side). Provision failure is graceful-degradation — connection committed, real-time updates unavailable until re-register. Reference: 17.2 AC-7.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] Story marked `done` in sprint-status with `Status: review` in story file — 12th occurrence** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — All 4 Epic 17 stories exhibit this. Orchestrator `2b-dev-story-verify` MUST verify both (1) `grep "^Status: done" {story_file}` is true AND (2) story file contains `REVIEW: Approve` before writing `done` to sprint-status.yaml. Reference: AP17-01, E15/E14/E13/E12 same action.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] 257 ATDD RED-phase tests shipped as `done` with 0 GREEN** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — Stories 17.1 (101), 17.2 (77), 17.3 (79) have all ATDD tests still `@pytest.mark.skip`. Dev agent implemented ACs and quoted passing pytest summaries but never returned to un-skip ATDD scaffolds. Fix: dev-story completion MUST quote ATDD un-skip count alongside pytest summary. A story with ATDD skip count > 0 cannot be marked `done`. Reference: AP17-02.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] k6 performance baseline absent — 11th consecutive epic; E16 hard gate ignored** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — E16 retro declared k6 baseline a hard gate for E17 kickoff. E17 proceeded anyway. Orchestrator `epic-kickoff` phase must verify `load-test-results.md` contains non-dash values before allowing first story `in-progress`. Reference: AP17-03, inj-02 (ready-for-dev since E13).
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] TEA reviews absent for 12th consecutive epic** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — `inj-03-tea-review-backlog` has been `ready-for-dev` for 12 consecutive epics. Standalone story approach always fails. Fix: TEA score ≥ 80/100 is a required gate in `2b-dev-story-verify` — dev agent runs `bmad-tea` before senior code review. Remove `inj-03` from backlog. Reference: AP17-04, E14/E11 retro.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] Three consecutive BLOCKED verdicts without escalation** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `critical` — Story 17.0 received three consecutive `ARCHITECTURAL_DRIFT: blocking` verdicts before first resolve. Each false-positive HALT costs 4-6h. Fix: orchestrator must surface Telegram alert after 2 consecutive BLOCKED verdicts on same story; 3rd pass requires operator confirmation. Reference: AP17-05, E13 retro.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] Testcontainers Redis Lua atomicity deferred across three stories** — `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — 17.1 AC-8, 17.2 AC-8, 17.3 AC-4 all have `@pytest.mark.skip(reason='testcontainers infra deferred')` on Lua atomicity tests. The E15 `asyncio.gather(N)` proof pattern exists but was not applied to CRM rate-limit tests. Fix: add shared `testcontainers_redis` session-scoped fixture to integrations-api conftest; un-skip all Lua atomicity tests in E18.0. Reference: AP17-07, E15 `test_usage_metering_bypass.py`.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] Epic-level test design `test-design-epic-17.md` never created** — `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — All four ATDD checklists noted "No epic-level test design found". IR report (2026-04-28) flagged this gap. Fix: `test-design-epic-N.md` is a required deliverable in the `1-create-story` phase for the first story of each epic. Reference: AP17-08.
+
+## Anti-Patterns
+
+- Discovered in Epic 17: **[ANTI-PATTERN] Retro gate conditions serially ignored — gate enforcement is advisory not blocking** — `[ACTION]` IMPACT: `config_tuning` SEVERITY: `medium` — E16 retro identified 4 "Cannot proceed to E17 without" conditions; E17 proceeded without verifying any. Orchestrator `epic-kickoff` phase must parse the previous retro's critical actions and verify each before allowing first story `in-progress`. Reference: AP17-09.
+
+## Patterns
+
+- Discovered in Epic 18: **Trust Center multi-story chain (18-0→18-1→18-2) delivered without broken interfaces.** `compute_diff()` + `yaml_content_hash()` introduced in 18-0; reused without reimplementation in 18-1 (CI step) and 18-2 (publisher + SETNX idempotency key). `dpa_download_url` from 18-1 consumed by 18-2 email body with documented null-safe fallback (D-6). Anti-pattern fence rows #37 (no-reimplement-compute_diff) + #38 (no-cross-import-_PAID_TIERS) enforced the boundary. This is the reference design for multi-story epic chains. Reference: 18-0 AC-9 CR-6, 18-2 AC-1 §1, 18-2 D-6.
+
+## Patterns
+
+- Discovered in Epic 18: **`yaml_content_hash()` is more robust than git SHA as an idempotency key for CI-generated artifacts.** 8-char `sha256(yaml_bytes)[:8]` is deterministic across: run-locally → commit → push → CI re-run → whitespace edit. Git short-SHA is commit-cycle unstable. Any CI script that needs to avoid double-processing a re-run should key on content hash, not commit SHA. Downstream consumers: changelog prepend guard, SETNX `notification:dispatched:subprocessor:{changelog_sha}:{admin_user_id}`. Regression tests: `test_yaml_content_hash_is_stable_for_identical_bytes`, `test_idempotency_survives_commit_cycle_simulation`. Reference: 18-0 CR-6, 18-2 AC-10.
+
+## Patterns
+
+- Discovered in Epic 18: **`trust_render_allow_company_admin_fallback` defaulting False — privilege-adjacent features must opt-in, not opt-out.** When authority model is ambiguous (staff-admin allow-list vs. `is_company_admin`), the security-correct default is deny. Transition fallback is an explicit opt-in setting. This applies to any endpoint where the authorization model is being introduced or refined. Reference: 18-1 B1 Round 3.
+
+## Patterns
+
+- Discovered in Epic 18: **ACK-after-fanout + SETNX idempotency is the required pattern for all notification Redis Stream consumers.** Per-recipient `SETNX notification:dispatched:{event_type}:{content_hash}:{user_id}` TTL 86400; ACK only after all fan-out completes (claim-on-success spirit from S16 M6). Never ACK before fan-out — partial delivery creates silent data loss. Test: `test_ack_called_only_after_fanout_complete`. Reference: 18-2 AC-3, fence #40.
+
+## Patterns
+
+- Discovered in Epic 18: **locale defaults to `bg`, NOT `en`, for all SendGrid email deliveries in this platform.** `User.locale_preference` routed to SendGrid template selection; fallback = `bg`. `en` fallback would silently English-spam Bulgarian admin users. Anti-pattern fence #42. Any future notification story must honor this locale-router default. Reference: 18-2 AC-6, fence #42.
+
+## Patterns
+
+- Discovered in Epic 18: **Anti-pattern fence at 42 items — carry-forward and zero violations in E18.** All 42 fence rows were explicitly referenced and held across 18-0, 18-1, and 18-2 code reviews. No fence violations detected. The fence is growing correctly; each new story must import the full fence before adding net-new rows. Reference: 18-0 §4.6 (#1–#24), 18-1 §4.6 (#25–#36), 18-2 fence (#37–#42).
+
+## Patterns
+
+- Discovered in Epic 18: **Review pass efficiency: 2.3 passes/story average (E18) vs 4.5 passes/story (E17).** First-pass quality is improving. Contributing factors: (1) active anti-pattern fence reference, (2) explicit §4.7 inline test design with P0/P1 gating, (3) pre-review checklist completeness. The target is ≤2 passes/story. Continued improvement requires ATDD checklist artifacts in `test_artifacts/` for reviewer confidence.
+
+## Anti-Patterns
+
+- Discovered in Epic 18: **[ANTI-PATTERN] Story file `Status: review` when sprint-status is `done` — 13th occurrence (AP18-01).** `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — 18-0 and 18-1 still show `Status: review` in their story file headers despite sprint-status `done`. Only 18-2 reconciled correctly. Fix: the orchestrator `2b-dev-story-verify` phase must atomically patch `Status: done` in the story file at the same time it writes `done` to sprint-status. No additional manual step. Reference: AP17-C5 (13th occurrence).
+
+## Anti-Patterns
+
+- Discovered in Epic 18: **[ANTI-PATTERN] k6 performance baseline absent — 13th consecutive epic (AP18-02).** `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — `/trust` is public-facing and crawl-traffic exposed. `/api/v1/trust/artefacts/{slug}` triggers S3 head_object + presign on every request. Neither validated against PRD NFRs (p95 ≤ 200ms). E19 kickoff MUST be gated on non-dash values in `load-test-results.md`. Reference: `inj-02-k6-performance-baseline` (ready-for-dev since E13, 13th carry-forward).
+
+## Anti-Patterns
+
+- Discovered in Epic 18: **[ANTI-PATTERN] ATDD checklist artifacts missing for 18-1 and 18-2 — only 18-0 has a standalone `test_artifacts/` file (AP18-05).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — Stories with backend code (18-1 WeasyPrint/S3, 18-2 notification consumer) must produce `test_artifacts/atdd-checklist-{story-key}.md`. Inline §4.7 is a draft, not a substitute. Without standalone files, traceability matrix and TEA gate cannot reference them. Fix: promote §4.7 content to standalone files before story enters review. Reference: AP17-C2.
+
+## Anti-Patterns
+
+- Discovered in Epic 18: **[ANTI-PATTERN] WeasyPrint native library dependencies (Pango/Cairo) not in local test environment — 12 env-skipped tests (AP18-07).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `medium` — Env skips look like failures and erode test suite confidence. Fix: `eusolicit-app/Makefile` `make install-native-test-deps` target + `packages/eusolicit-common/README.md` local setup instructions for `libpango-1.0-0`, `libcairo2`, `libgdk-pixbuf2.0-0`. Reference: 18-1 test suite, AP18-07.
+
+## Anti-Patterns
+
+- Discovered in Epic 18: **[ANTI-PATTERN] 18-1 Known Deviations D6–D11 (DoS surface + thread leak) deferred — hardening sprint never materialises (AP18-08).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — D6 (DoS on GET artefact, no rate-limit/timeout) and D7 (run_in_executor thread leak on POST timeout) are security/reliability concerns. E19-2 depends on `weasyprint_renderer`. Building the Outcome Brief PDF generator on a leaking foundation compounds risk. Fix: inject `18-3-trust-center-hardening` story with D6+D7 as P0 ACs before E19-2 dispatch. Reference: 18-1 Known Deviations D6/D7.
+
+## Patterns
+
+- Discovered in Epic 18: :**
+
+## Patterns
+
+- Discovered in Epic 20: **NEXT_PUBLIC_ as vendor public site-key — intentional browser exposure with documented threat model.** For third-party SDK site-keys that vendors designate as public (analogous to Google Analytics tracking ID), expose via `NEXT_PUBLIC_` prefix. Required documentation: (1) §6 Known Deviation with vendor threat model citation, (2) source-inspection test forbidding `eval(...)` in SDK init, (3) structlog scrub-keys filter for the setting name. Delighted `NEXT_PUBLIC_NPS_DELIGHTED_API_KEY` is the canonical reference. Reference: S20-0 AC-9.2 D-12, AC-15 source-inspection.
+
+## Patterns
+
+- Discovered in Epic 20: **Lazy `await import(...)` is mandatory for all vendor SDK imports in Next.js.** Vendor SDKs loaded via dynamic `import('@vendor/sdk')` inside the init function (not top-level static import) — saves the full vendor bundle for non-eligible tier users. Wrap in `try/catch` that LOGS but does NOT throw — vendor-SDK crash MUST NOT break the workspace-page render. The call must occur inside an effect that depends on `user.id` (never before authentication). Reference: S20-0 AC-15.1, fence rows #9/#10; `lib/nps/init.ts`.
+
+## Patterns
+
+- Discovered in Epic 20: **DEFERRABLE INITIALLY DEFERRED constraint pre-check is required for webhook dedup idempotency.** When a UNIQUE constraint is `DEFERRABLE INITIALLY DEFERRED`, `IntegrityError` fires at COMMIT, not at flush — the route handler has already returned. Correct pattern: pre-INSERT `SELECT` short-circuit (`select(Model).where(unique_col == value)`); if found, return 200 with existing row before INSERT. `INSERT ... ON CONFLICT DO NOTHING` doesn't work because it doesn't return the existing row. The DEFERRABLE constraint remains in schema as defence-in-depth. Reference: S20-0 D-17, `nps_feedback.py:315–326`.
+
+## Patterns
+
+- Discovered in Epic 20: **Workspace-scope BEFORE tier-gate in Depends order prevents 402 tier-information leak on cross-tenant attacks.** `require_workspace_role(...)` must be the FIRST dependency, `require_pro_plus_tier` SECOND. A cross-tenant attacker must receive 404 (workspace not visible), NOT 402 (which reveals the feature exists behind Pro+). Fence row #14. Reference: S20-0 AC-5.3, fence #14.
+
+## Patterns
+
+- Discovered in Epic 20: **Module-level dispatch patch targets must be declared in module docstring as testability contract.** All route handler modules that make Celery/Redis calls declare explicit patch targets in the module docstring (e.g., `client_api.api.v1.nps_feedback.send_email`, `client_api.api.v1.nps_feedback.redis_client`). Module-level import with `try/except ImportError` guard ensures patchability in split-package installs. Reference: S20-0 `nps_feedback.py` module docstring; Pass-2 B-1 fix.
+
+## Patterns
+
+- Discovered in Epic 20: **`_set_no_store_headers(response)` called as FIRST line of endpoint — ensures cache-control even on error paths.** Both POST and PATCH handlers call this helper before any business logic. Sets `Cache-Control: no-store` + `Vary: Authorization`. Protects user-specific data (bucket, routed_to) from shared caches even on 4xx/5xx paths. S19-1 H12 carry-forward now a project-wide pattern. Reference: S20-0 `nps_feedback.py:267–276`; Pass-2 C-2 fix.
+
+## Anti-Patterns
+
+- Discovered in Epic 20: **[ANTI-PATTERN] Story file `Status:` not patched to `done` — 18th consecutive epic (E03–E20).** `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — Story 20-0 at `Status: review` in file header despite sprint-status `done` and `REVIEW: Approve` confirmed. The orchestrator `2b-dev-story-verify` phase MUST atomically patch `Status: review → Status: done` in the story file at the same commit as the sprint-status transition. Reference: AP18-C2, AP17-C5, AP19-C1 — all identical action items, all unresolved.
+
+## Anti-Patterns
+
+- Discovered in Epic 20: **[ANTI-PATTERN] DEFERRABLE INITIALLY DEFERRED constraint IntegrityError is unreachable from route handler.** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — The route handler's `except IntegrityError` clause cannot catch a deferred-constraint violation because the error fires at COMMIT (after ASGI framework returns the response). Dev-story template must state: "For DEFERRABLE INITIALLY DEFERRED unique constraints, use a pre-INSERT SELECT to short-circuit. Never rely on IntegrityError catch from the route handler." Reference: S20-0 D-17, `nps_feedback.py:315–326`.
+
+## Anti-Patterns
+
+- Discovered in Epic 20: **[ANTI-PATTERN] Frontend `User` store type not extended when backend model is extended — disclosure modal silently re-renders forever.** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `high` — Adding `nps_disclosure_seen_at` to `client.users` without extending the `User` interface in `auth-store.ts` caused the field to be `undefined` (not null), making the disclosure modal never dismiss. Dev-story template gate: "If this story extends a column on `client.users`, verify whether the frontend `User` type in `auth-store.ts` must also be extended; source-inspection test must assert the new field." Reference: S20-0 Pass-1 B-2, `auth-store.ts:21` fix.
+
+## Anti-Patterns
+
+- Discovered in Epic 20: **[ANTI-PATTERN] Spec endpoint path diverged from implementation path — path prefix not included in AC text.** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `medium` — AC specified `POST /api/v1/users/me/nps-disclosure-seen`; implementation mounts at `/api/v1/auth/me/nps-disclosure-seen` (auth router prefix). Divergence only caught at Approve review. Fix: story ACs for new endpoints must include the FULL path with router prefix. "Mount at `auth.py` with prefix `/auth`" = path `/api/v1/auth/me/...`. Reference: S20-0 D-19, Pass-2 Approve N-2 residual.
+
+## Anti-Patterns
+
+- Discovered in Epic 20: **[ANTI-PATTERN] E2E Playwright suite shipped as `test.skip()` at Approve — P0 ACs covered by skipped E2E.** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — All 6 Playwright scenarios in `e2e/specs/nps-prompt.spec.ts` remain `test.skip()` at story close (AC-13 is a P0 criterion). E2E green-phase must be a story AC sub-task, not a post-close operational activity. A story with P0 ACs covered only by `test.skip()` E2E must NOT receive Approve — or must explicitly document an environment constraint blocking execution and carry the N-1 residual to [PR] Post-Review. Reference: S20-0 AC-13, N-1 residual, Pass-2 Approve.
+
+## Patterns
+
+- Discovered in Epic 20: entries (→ project-context.md)
+
+## Patterns
+
+- Discovered in Epic 20: | `NEXT_PUBLIC_` as vendor public site-key — documented threat model | high |
+
+## Patterns
+
+- Discovered in Epic 20: | Lazy `await import(...)` mandatory for vendor SDKs in Next.js | high |
+
+## Patterns
+
+- Discovered in Epic 20: | DEFERRABLE INITIALLY DEFERRED constraint → pre-INSERT SELECT required | high |
+
+## Patterns
+
+- Discovered in Epic 20: | Workspace-scope BEFORE tier-gate in Depends order (AP14-04 refinement) | high |
+
+## Patterns
+
+- Discovered in Epic 20: | Module-level patch targets declared in module docstring | medium |
+
+## Patterns
+
+- Discovered in Epic 20: | `_set_no_store_headers` as first line of endpoints | medium |
+
+## Anti-Patterns
+
+- Discovered in Epic 20: + [ACTION] entries (→ project-context.md)

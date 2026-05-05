@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories"]
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation"]
 inputDocuments: ["eusolicit-docs/planning-artifacts/PRD.md", "eusolicit-docs/planning-artifacts/architecture.md", "eusolicit-docs/planning-artifacts/ux-spec.md"]
 ---
 

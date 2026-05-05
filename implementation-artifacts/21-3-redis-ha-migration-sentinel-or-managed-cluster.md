@@ -281,6 +281,16 @@ so that **(a) the 99.9% SLA promised in PRD v1.1 §7 NFR-14 has the cache+stream
   - [x] 7.3 Closure block appended to `load-test-results.md` §Sizing Recommendations §PE.03 (after line 788)
   - [x] 7.4 Atomic patch: `Status: review` in this file + `21-3-...: review` in `sprint-status.yaml` in same commit (AP18-C2) — bmad-code-review Approve verdict still pending (AP17-C1; `done` requires Pass-2)
 
+### Review Follow-ups (AI)
+
+> bmad-code-review (autopilot, 2026-05-05) verdict: **Changes Requested**. Findings F1–F4 below addressed in this fix-pass.
+
+- [x] **[AI-Review][High] F1 — Add bare `REDIS_URL` to ai-gateway ExternalSecret** (review finding F1; ARCHITECTURAL_DRIFT/blocking) — `AIGatewaySettings` has no `env_prefix`, so it reads `redis_url` from bare `REDIS_URL` (not `AI_GATEWAY_REDIS_URL`). Lowest-friction fix per F1: emit a bare `REDIS_URL` secretKey from the redis ExternalSecret block, gated on a new `.Values.externalSecret.redis.bareKey` flag. Enable for ai-gateway only. Mirrors PE.02's bare `DATABASE_URL` pattern (lines 65–70 of `externalsecret.yaml`). Files changed: `infra/helm/eusolicit-service/templates/externalsecret.yaml`, `infra/helm/eusolicit-service/values.yaml`, `infra/helm/values/ai-gateway.yaml`. Verified via `helm template ./infra/helm/eusolicit-service --values ./infra/helm/values/ai-gateway.yaml --show-only templates/externalsecret.yaml` — output now contains both `AI_GATEWAY_REDIS_URL` and bare `REDIS_URL` keys mapped to the same `eusolicit/prod/cache/ai-gateway/url` property.
+- [x] **[AI-Review][Med] F2 — Remove 7 `@pytest.mark.skip` markers from `test_pe03_documentation_gates.py`** (review finding F2; ACCEPTANCE_GAP/deferrable) — the four target documents (`pe-03-cutover-runbook.md`, `architecture.md` ADR-010 footnote, `E21-platform-reliability-99-9-sla.md` PE.03 block, `load-test-results.md` PE.03 closure block) are all in place; the file's own docstring at line 12 said "Remove `@pytest.mark.skip` once the corresponding artifact is authored and committed." All 7 skip markers removed; the docstring updated from "🔴 TDD RED PHASE" to "🟢 TDD GREEN PHASE". Verified: `pytest tests/unit/test_pe03_documentation_gates.py` — 7 passed (was 7 skipped). One assertion required a small text tweak in `load-test-results.md` to include the verbatim `final_count` substring (the closure block now states "expected `final_count == 10000` ... after the Multi-AZ DNS swap"). File changed: `tests/unit/test_pe03_documentation_gates.py`, `eusolicit-docs/implementation-artifacts/load-test-results.md`.
+- [x] **[AI-Review][Low] F3 — Add `url_db1` property to per-service Secrets Manager entries; map `CELERY_RESULT_BACKEND` to `url_db1`** (review finding F3; ACCEPTANCE_GAP/deferrable) — AC-3.6 specifies DB index 1 for the Celery result backend; the prior dev pass mapped `CELERY_RESULT_BACKEND` to the same `url` property as `CELERY_BROKER_URL` (DB 0). Fixed: `secrets.tf` `secret_string` now writes both `url` (DB 0) and `url_db1` (DB 1) properties; the redis ExternalSecret in `externalsecret.yaml` references `url_db1` for `CELERY_RESULT_BACKEND`. Verified via `helm template … --values ./infra/helm/values/data-pipeline.yaml`: `CELERY_BROKER_URL` → `property: url`; `CELERY_RESULT_BACKEND` → `property: url_db1`. Aligns with the `data_pipeline.workers.celery_app` line 27 historical default of `redis://redis:6379/1`. Files changed: `infra/terraform/modules/redis/secrets.tf`, `infra/helm/eusolicit-service/templates/externalsecret.yaml`.
+- [x] **[AI-Review][Low] F4 — Rewrite `redis_credentials_arn` output description** (review finding F4; ACCEPTANCE_GAP/cosmetic) — the prior description said "Redis connection credentials" but the value exports only the auth-token-only secret ARN; the per-service connection-blob secrets (created in `secrets.tf`) are accessed by name path, not ARN, and are intentionally not output. Description rewritten to clarify scope and reference the AC-1.5 anti-pattern guard #11 rationale for the rename. File changed: `infra/terraform/modules/redis/outputs.tf`.
+- [x] **[AI-Review][Validation] Re-run PE.03 ATDD suite + Terraform validate + Helm template smoke** — `pytest tests/unit/test_pe03_documentation_gates.py tests/unit/test_pe03_eso_and_resilience.py tests/unit/test_pe03_terraform_module.py tests/unit/test_terraform_module_contracts.py` → **104 passed in 0.38s** (up from 97 passed + 7 skipped on the dev pass; the 7 documentation-gate tests are now active and green). `terraform init -backend=false && terraform validate` in `infra/terraform/modules/redis/` → "Success! The configuration is valid." `helm template` smoke per service confirms ai-gateway emits both `AI_GATEWAY_REDIS_URL` + bare `REDIS_URL`; data-pipeline + notification emit `CELERY_BROKER_URL` (DB 0) and `CELERY_RESULT_BACKEND` (DB 1).
+
 ## Dev Notes
 
 ### Source-of-truth references (verbatim — paste into review threads)
@@ -453,6 +463,23 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 - **15 from_url sites hardened** (10 beyond the 5 known in AC-4.2): all sites across 6 services have `health_check_interval=30` + `socket_keepalive=True` + `retry=Retry(ExponentialBackoff(cap=10, base=1), 3)` + `retry_on_error=[RedisConnectionError, RedisTimeoutError]` + `socket_connect_timeout=5` + `socket_timeout=10`.
 - **34/34 PE.03 ATDD tests passing** (23 in `test_pe03_terraform_module.py`, 11 in `test_pe03_eso_and_resilience.py`). `make test-unit` runs clean on PE.03-related tests; pre-existing 35 failures in unrelated test files (Alembic DRY, CI matrix, kraftdata models, scaffold configs) were present before this story and are not regressions.
 
+**Review-fix pass (2026-05-05) — addresses bmad-code-review findings F1–F4:**
+
+- ✅ **F1 (BLOCKING)** — ai-gateway REDIS_URL env-var key mismatch resolved. New `.Values.externalSecret.redis.bareKey` flag in the eusolicit-service Helm chart emits a bare `REDIS_URL` secretKey alongside the prefixed `<SERVICENAME>_REDIS_URL`. Enabled for ai-gateway only (matches AIGatewaySettings, which has no `env_prefix`). Mirrors the PE.02 bare `DATABASE_URL` pattern at `externalsecret.yaml` lines 65–70. Verified by `helm template … --values infra/helm/values/ai-gateway.yaml` — output now contains both `AI_GATEWAY_REDIS_URL` and bare `REDIS_URL` mapped to `eusolicit/prod/cache/ai-gateway/url`.
+- ✅ **F2** — 7 `@pytest.mark.skip` markers removed from `tests/unit/test_pe03_documentation_gates.py`; docstring promoted from "🔴 TDD RED PHASE" to "🟢 TDD GREEN PHASE". All 7 tests pass against the live artefacts. One assertion (`test_load_test_results_has_pe03_closure_block`) required adding the verbatim substring `final_count` to the existing PE.03 closure block in `load-test-results.md` (the prior block referred to the regression-test only via "Redis-10K-INCR k6 re-run results"; the new wording explicitly says "expected `final_count == 10000`").
+- ✅ **F3** — `url_db1` property added in `infra/terraform/modules/redis/secrets.tf` (`secret_string` JSON now contains both `url` (DB 0) and `url_db1` (DB 1) properties). The redis ExternalSecret in `externalsecret.yaml` updated to map `CELERY_RESULT_BACKEND` to `url_db1` (was `url` / DB 0). Aligns with the historical `data_pipeline.workers.celery_app` line 27 default of `redis://redis:6379/1` and AC-3.6.
+- ✅ **F4** — `redis_credentials_arn` output description rewritten to accurately scope it to the auth-token-only secret. Description now clarifies that per-service connection-config secrets are accessed by name path (not ARN) and explains the AC-1.5 anti-pattern guard #11 rename rationale.
+
+**Review-fix file list (additive):**
+
+- `eusolicit-app/infra/helm/eusolicit-service/templates/externalsecret.yaml` — bare REDIS_URL secretKey block (F1); CELERY_RESULT_BACKEND → `url_db1` (F3)
+- `eusolicit-app/infra/helm/eusolicit-service/values.yaml` — `externalSecret.redis.bareKey` default = false (F1)
+- `eusolicit-app/infra/helm/values/ai-gateway.yaml` — `externalSecret.redis.bareKey: true` + comment overhaul (F1)
+- `eusolicit-app/infra/terraform/modules/redis/secrets.tf` — `url_db1` property in `secret_string` (F3)
+- `eusolicit-app/infra/terraform/modules/redis/outputs.tf` — `redis_credentials_arn` description rewrite (F4)
+- `eusolicit-app/tests/unit/test_pe03_documentation_gates.py` — 7 skip markers removed; docstring updated (F2)
+- `eusolicit-docs/implementation-artifacts/load-test-results.md` — closure block now includes the verbatim `final_count == 10000` assertion target (F2 ancillary)
+
 ### File List
 
 **Terraform — Redis module:**
@@ -511,6 +538,8 @@ Claude Sonnet 4.6 (claude-sonnet-4-6)
 
 ### Test Results
 
+**Dev pass (2026-05-04):**
+
 ```
 tests/unit/test_pe03_terraform_module.py: 23 passed
 tests/unit/test_pe03_eso_and_resilience.py: 11 passed
@@ -521,9 +550,183 @@ make test-unit (full suite): 1556 passed, 35 failed (pre-existing, unrelated), 7
 PE.03-related tests: 0 failures, 0 regressions introduced
 ```
 
+**Review-fix pass (2026-05-05):**
+
+```
+tests/unit/test_pe03_documentation_gates.py: 7 passed (was 7 skipped — review-fix F2)
+tests/unit/test_pe03_terraform_module.py: 23 passed
+tests/unit/test_pe03_eso_and_resilience.py: 11 passed
+tests/unit/test_terraform_module_contracts.py: 63 passed
+Total PE.03 + contract tests: 104 passed in 0.38s
+
+pytest tests/unit/ (full suite): 1563 passed, 35 failed (pre-existing, unrelated, 0 added)
+PE.03 documentation-gate tests promoted from skip → green: 7
+PE.03-related tests: 0 failures, 0 new regressions
+
+terraform init -backend=false && terraform validate (modules/redis): Success! The configuration is valid.
+helm template eusolicit-service --values infra/helm/values/ai-gateway.yaml: emits AI_GATEWAY_REDIS_URL + bare REDIS_URL ✓
+helm template eusolicit-service --values infra/helm/values/data-pipeline.yaml: CELERY_RESULT_BACKEND → property: url_db1 ✓
+```
+
+Final summary line: **104 passed in 0.38s** (PE.03 ATDD suite + Terraform contract suite).
+
 ### Known Deviations
 
 - D-1: Production cutover + failover drill deferred to operator-action (no live AWS ElastiCache). ACCEPTANCE_GAP / deferrable. Procedure documented in §Failover Drill Steps.
 - D-2: Staging rehearsal as documented dry-run (no live staging cluster). ACCEPTANCE_GAP / deferrable. §Staging Rehearsal Timing pre-populated; operator updates with live measurements.
 - D-3: Method B (stop-the-world) chosen over Method A (dual-write). ACCEPTANCE_GAP / deferrable. Epic line 87 explicitly accepts 5-minute window.
 - D-4: Post-failover k6 re-run will use 1K-iter subset per AC-6.4 operator note. ACCEPTANCE_GAP / cosmetic.
+
+### Detected by `3-code-review` at 2026-05-04T21:34:43Z (session 4825885d-1e32-4260-a161-c3991949477f)
+
+- ai-gateway REDIS_URL env-var key mismatch between Helm template and AIGatewaySettings _(type: `ARCHITECTURAL_DRIFT`; severity: `blocking`)_
+- PE.03 documentation-gate tests left in TDD red phase after artefacts authored _(type: `ACCEPTANCE_GAP`; severity: `deferrable`)_
+- ai-gateway REDIS_URL env-var key mismatch between Helm template and AIGatewaySettings _(type: `ARCHITECTURAL_DRIFT`; severity: `blocking`)_
+- PE.03 documentation-gate tests left in TDD red phase after artefacts authored _(type: `ARCHITECTURAL_DRIFT`; severity: `blocking`)_
+
+## Senior Developer Review
+
+**Reviewer:** bmad-code-review (autopilot, 2026-05-05)
+**Verdict:** Changes Requested
+**Scope:** Adversarial review of Story 21-3 implementation against AC-1 through AC-7. Reviewed by reading source artefacts directly (no git diff — workspace is not a git repository). 34/34 PE.03 ATDD unit tests pass; 7 documentation-gate tests skipped. Implementation of Terraform module (AC-1, AC-2), redis-py resilience hardening (AC-4), Celery broker resilience (AC-4.3), ESO Redis ExternalSecret template (AC-3, Shape A), cutover runbook structure (AC-5), and documentation appends (AC-7) are all in place and structurally correct.
+
+### Findings
+
+#### F1 — `ai-gateway` REDIS_URL env-var mismatch will break production cutover (BLOCKING for prod, deferrable in spirit per D-1)
+
+**Severity:** Significant — would fail closed at first production deploy of the new ESO secret to ai-gateway.
+
+`infra/helm/eusolicit-service/templates/externalsecret.yaml` line 122 derives the env-var key as `{{ .Values.serviceName | upper | replace "-" "_" }}_REDIS_URL`. For `serviceName: ai-gateway` this expands to `AI_GATEWAY_REDIS_URL`.
+
+However, `services/ai-gateway/src/ai_gateway/config.py` defines `AIGatewaySettings(BaseServiceSettings)` with NO `env_prefix` in its `model_config` (lines 36–40). pydantic-settings therefore reads the `redis_url` field from the bare `REDIS_URL` env var, NOT `AI_GATEWAY_REDIS_URL` and NOT `GATEWAY_REDIS_URL` (the value AC-3.3 prescribes).
+
+`services/ai-gateway/src/ai_gateway/services/redis_client.py` line 55 reads `settings.redis_url or "redis://localhost:6379/0"`. Result: in production, `settings.redis_url` is `None`, the client falls back to `redis://localhost:6379/0`, and ai-gateway's circuit-breaker / rate-limit / agent-state Redis calls fail at module init. The all-services failover-reconnect-≤10s evidence in AC-6 would be unattainable.
+
+Notably, `infra/helm/values/ai-gateway.yaml` lines 96–99 already flag this concern in a `# Note:` comment ("ai-gateway uses GATEWAY_REDIS_URL per AIGatewaySettings env_prefix — verify ... If env_prefix differs, this env var key should be GATEWAY_REDIS_URL") — the dev-agent saw the uncertainty but did not resolve it.
+
+**Required fix (one of):**
+- (a) Add bare `REDIS_URL` as a second `secretKey` in the Redis ExternalSecret block (mirrors how PE.02's externalsecret.yaml lines 65–70 emit bare `DATABASE_URL` for migration_role compat). Gate it on a new `.Values.externalSecret.redis.bareKey` flag and enable it for ai-gateway. This is the lowest-friction fix and aligns with the PE.02 precedent.
+- (b) Add `env_prefix="GATEWAY_"` (or equivalent) to `AIGatewaySettings.model_config` and update the comment in ai-gateway.yaml — but this risks breaking other env vars that AIGatewaySettings reads bare today.
+
+Cross-checked the other 5 services and the only mismatch is ai-gateway. `admin-api` (`Field(alias="ADMIN_API_REDIS_URL")`), `client-api` (`env_prefix="CLIENT_API_"`), `integrations-api` (`env_prefix="INTEGRATIONS_API_"`), `notification` (`env_prefix="NOTIFICATION_"`), and `data-pipeline` (uses bare `CELERY_BROKER_URL` via `os.environ.get` in `celery_app.py` line 26 — already provided when `celeryEnabled: true`) all match the Helm-generated keys.
+
+**DEVIATION:** ai-gateway's `settings.redis_url` will be unset because the Helm-generated env var key (`AI_GATEWAY_REDIS_URL`) does not match what `AIGatewaySettings` (no env_prefix) reads (`REDIS_URL`).
+**DEVIATION_TYPE:** ARCHITECTURAL_DRIFT
+**DEVIATION_SEVERITY:** blocking
+
+#### F2 — `test_pe03_documentation_gates.py` left in TDD red phase despite all 4 artefacts being authored
+
+**Severity:** Test-coverage gap.
+
+`tests/unit/test_pe03_documentation_gates.py` lines 38, 54, 90, 118, 172, 193, 218 carry `@pytest.mark.skip(reason="RED PHASE: ... not yet exist")` markers. The artefacts these tests guard are all in place:
+- `pe-03-cutover-runbook.md` exists (499 lines, all 11 required sections present)
+- `architecture.md` line 766 contains the PE.03 footnote
+- `epics/E21-platform-reliability-99-9-sla.md` line 95 contains the PE.03 implementation block
+- `load-test-results.md` contains the PE.03 closure block
+
+The file's own docstring at line 12 says "Remove `@pytest.mark.skip` once the corresponding artifact is authored and committed." Removing the skips is the explicit Green-phase contract. As-is, future regressions to any of the four documents (e.g. accidental deletion of the §Rollback Plan decision tree, or rewriting the §PE.03 closure block in load-test-results.md) would not be caught by the regression suite.
+
+**Required fix:** Remove the 7 `@pytest.mark.skip` markers; verify all 7 tests now pass. (Spot-checked the assertions against the live artefact content — they all appear satisfied.)
+
+**DEVIATION:** ATDD documentation-gate tests not promoted out of red phase after artefacts landed.
+**DEVIATION_TYPE:** ACCEPTANCE_GAP
+**DEVIATION_SEVERITY:** deferrable
+
+#### F3 — `CELERY_RESULT_BACKEND` points to DB 0 instead of DB 1 (AC-3.6 deviation, partially documented)
+
+**Severity:** Minor — known-deferred in inline comment.
+
+`infra/helm/eusolicit-service/templates/externalsecret.yaml` lines 169–172 maps `CELERY_RESULT_BACKEND` to the same `url` property as `CELERY_BROKER_URL`. The secret's `url` is `rediss://default:<token>@<host>:6379/0` (DB 0). AC-3.6 (and the inline comment in `secrets.tf` line 21 + the existing `data_pipeline.workers.celery_app.py` line 27 default `redis://redis:6379/1`) all specify DB 1 for the result backend.
+
+The template comment at lines 162–168 acknowledges this and explicitly punts the operator-side fix ("operators must store a second `url_db1` property in the Secrets Manager JSON, or reuse DB 0 if separate result-backend isolation is not required"). However, the `secrets.tf` block does not write a `url_db1` property, so an operator following the runbook will land on the unintended-DB-0 result-backend path with no visible error.
+
+**Required fix (one of):**
+- (a) Add a second `url_db1 = "rediss://default:<token>@<host>:6379/1"` property to `secrets.tf` `secret_string` and reference it in the `CELERY_RESULT_BACKEND` `remoteRef.property` field.
+- (b) Document the choice in §ESO Wiring Decision of the cutover runbook explicitly (current note is in template comments only) and lift the inline TODO.
+
+**DEVIATION:** Result-backend DB index reverts from documented DB 1 to DB 0 because no `url_db1` property is written in Secrets Manager.
+**DEVIATION_TYPE:** ACCEPTANCE_GAP
+**DEVIATION_SEVERITY:** deferrable (Celery still functions — just shares a logical DB with the broker; no functional break, but increases risk of result-backend cleanup affecting broker keys).
+
+#### F4 — `redis_credentials_arn` output description is misleading
+
+**Severity:** Cosmetic.
+
+`infra/terraform/modules/redis/outputs.tf` lines 40–44 names the output `redis_credentials_arn` and describes it as "ARN of the AWS Secrets Manager secret holding the Redis connection credentials." The `value` is `aws_secretsmanager_secret.redis_auth.arn` — i.e. the auth-token-only secret, NOT the per-service connection-blob secrets. The per-service connection-blob secrets created by `secrets.tf` `aws_secretsmanager_secret.redis_service` (six entries) are not exported.
+
+This is benign at runtime (ESO references the per-service secrets by name path, not ARN), but the description is factually wrong and will mislead a future operator querying `terraform output`.
+
+**Suggested fix:** Rename description to "ARN of the AWS Secrets Manager secret holding the Redis AUTH token (used internally by ESO; per-service connection-config secrets are accessed by name path `eusolicit/{env}/cache/{service}` and are not output)."
+
+**DEVIATION:** Output description does not match the value it exports.
+**DEVIATION_TYPE:** ACCEPTANCE_GAP
+**DEVIATION_SEVERITY:** cosmetic
+
+### Items confirmed correct
+
+- AC-1.1 ~ AC-1.11 — `aws_elasticache_replication_group` with all 11 required properties; `automatic_failover_enabled`, `multi_az_enabled`, `transit_encryption_enabled`, `at_rest_encryption_enabled`, `auth_token`, KMS, parameter group (maxmemory-policy=allkeys-lru, notify-keyspace-events=Ex, timeout=300, tcp-keepalive=60), subnet group, security group with EKS-SG-only ingress, snapshot retention 7d, log delivery to CloudWatch slow-log + engine-log, anti-pattern guards 1–4 honoured. `random_password` (length=32, special=false) + Secrets Manager pair for auth_token.
+- AC-2 — All 6 Story 1.10 variables preserved verbatim; 7 new variables added; `num_cache_nodes` aliased inside `main.tf` per the backwards-compat contract.
+- AC-3.1, AC-3.2 (Shape A), AC-3.4 (CELERY_BROKER_URL bare key) — implemented correctly. Per-service Secrets Manager entries created via `for_each = local.services` for the 6 canonical services.
+- AC-4.1 ~ AC-4.3 — All 16 production `from_url` sites (15 in the 6 canonical services + 1 in `enterprise-api/dependencies.py:85`) carry `socket_keepalive=True` + `health_check_interval=30` + `Retry(ExponentialBackoff(cap=10, base=1), 3)` + `retry_on_error=[ConnectionError, TimeoutError]` + `socket_connect_timeout=5` + `socket_timeout=10`. Both Celery apps (`data-pipeline` and `notification`) carry `broker_connection_retry_on_startup=True` + the broker_transport_options + result_backend_transport_options blocks per AC-4.3 verbatim.
+- AC-5 — Cutover runbook (499 lines) has all 11 required sections including §Pre-flight, §Cutover Method, §Method B Steps (Phase 1/2/3), §Validation, §Rollback Plan with 3-branch decision tree, §Failover Drill Steps, §Connection Audit, §ESO Wiring Decision, §Terraform Plan Evidence, §Staging Rehearsal Timing, §Failover Drill Results.
+- AC-7.1, AC-7.2, AC-7.3 — Architecture ADR-010 PE.03 footnote, E21 epic PE.03 implementation block, and load-test-results.md PE.03 closure block all appended (verified by grep).
+- D-1, D-2, D-3 — All three pre-recorded deviations are honest and operator-actionable; they do not by themselves block the review verdict (failover drill is structurally documented, just not executed against live AWS).
+
+### Recommendation
+
+**REVIEW: Changes Requested**
+
+F1 must be resolved before production cutover (lowest-friction path: emit bare `REDIS_URL` from the Redis ExternalSecret, mirroring PE.02's bare `DATABASE_URL` pattern). F2 should be resolved in the same fix-pass (mechanical: remove 7 skip markers and verify). F3 and F4 are deferrable but should be tracked for the operator-action follow-up that already covers D-1/D-2.
+
+The architecture, Terraform, resilience hardening, and runbook structure are sound. The two non-cosmetic findings (F1, F2) are the gating items for an Approve verdict.
+
+### Action Items
+
+- [x] F1 — Emit bare `REDIS_URL` from the Redis ExternalSecret for ai-gateway (path (a) — lowest friction, mirrors PE.02 bare DATABASE_URL). Resolved in review-fix pass 2026-05-05.
+- [x] F2 — Remove 7 `@pytest.mark.skip` markers from `tests/unit/test_pe03_documentation_gates.py` and verify all 7 tests pass. Resolved in review-fix pass 2026-05-05.
+- [x] F3 — Add `url_db1` property in `secrets.tf` `secret_string` and reference it for `CELERY_RESULT_BACKEND` in the ExternalSecret. Resolved in review-fix pass 2026-05-05.
+- [x] F4 — Rewrite `redis_credentials_arn` description in `outputs.tf` to accurately scope it to the auth-token-only secret. Resolved in review-fix pass 2026-05-05.
+
+### Review-Fix Pass (2026-05-05)
+
+**Resolver:** bmad-dev-story (autopilot, Claude Sonnet 4.6)
+**Outcome:** All 4 findings (F1–F4) resolved. PE.03 ATDD suite: 104 passed in 0.38s (was 97 passed + 7 skipped). 7 previously-skipped documentation-gate tests now active and green. `terraform validate` clean. `helm template` smoke confirms ai-gateway emits both prefixed and bare `REDIS_URL`; data-pipeline + notification map `CELERY_RESULT_BACKEND` → `url_db1` (DB 1).
+
+#### Resolved review findings (audit log per Operational Playbook §4)
+
+- ✅ Resolved review finding [High] F1 — ai-gateway REDIS_URL env-var key mismatch (ARCHITECTURAL_DRIFT/blocking). Fix path (a): bare `REDIS_URL` emitted alongside `AI_GATEWAY_REDIS_URL` via new `.Values.externalSecret.redis.bareKey` flag. Verified via `helm template`.
+- ✅ Resolved review finding [Med] F2 — 7 `@pytest.mark.skip` markers removed from `test_pe03_documentation_gates.py` (ACCEPTANCE_GAP/deferrable). All 7 tests now active; required a 2-line text tweak in `load-test-results.md` to satisfy the "final_count" substring assertion (no semantic change to the closure block).
+- ✅ Resolved review finding [Low] F3 — `url_db1` property added in `secrets.tf` for DB-1 isolation; `CELERY_RESULT_BACKEND` in `externalsecret.yaml` now references `url_db1` (ACCEPTANCE_GAP/deferrable). Aligns with the historical celery_app DB-1 default.
+- ✅ Resolved review finding [Low] F4 — `redis_credentials_arn` description rewritten to scope it to the auth-token-only secret (ACCEPTANCE_GAP/cosmetic).
+
+### Senior Developer Review — Pass-2 (2026-05-05)
+
+**Reviewer:** bmad-code-review (autopilot Pass-2, 2026-05-05)
+**Verdict:** Approve
+
+**Scope:** Adversarial verification of the four review-fix items (F1–F4) plus regression spot-check on redis-py hardening sites and Helm defaults. All four findings are resolved as documented in the Review-Fix Pass section above.
+
+**Verification:**
+
+- **F1 (BLOCKING/ARCHITECTURAL_DRIFT):** ✅ `infra/helm/eusolicit-service/templates/externalsecret.yaml` lines 153–166 conditionally emit a bare `REDIS_URL` `secretKey` (mapped to the same Secrets Manager `url` property) when `.Values.externalSecret.redis.bareKey` is true. The default in `eusolicit-service/values.yaml` line 79 is `bareKey: false`. `infra/helm/values/ai-gateway.yaml` line 111 sets `bareKey: true`. AIGatewaySettings (no env_prefix) will now correctly read its `redis_url` field from the bare `REDIS_URL` env var at production startup. Mirrors the PE.02 bare DATABASE_URL pattern at lines 65–70 of the same template. Lowest-friction path (a) was chosen as recommended in F1.
+- **F2 (ACCEPTANCE_GAP):** ✅ `tests/unit/test_pe03_documentation_gates.py` — grep for `@pytest.mark.skip` returns 0 matches in the file. Docstring promoted from "🔴 TDD RED PHASE" to "🟢 TDD GREEN PHASE" (line 11). All 7 documentation-gate tests are now active and green. Required `final_count` substring tweak in `load-test-results.md` is in place.
+- **F3 (ACCEPTANCE_GAP):** ✅ `infra/terraform/modules/redis/secrets.tf` lines 71–72 now write both `url` (DB 0) and `url_db1` (DB 1) properties to each per-service Secrets Manager entry. `externalsecret.yaml` lines 183–186 map `CELERY_RESULT_BACKEND` → `property: url_db1`. Aligns with AC-3.6 and the historical `data_pipeline.workers.celery_app` line 27 default of `redis://redis:6379/1`. Broker (DB 0) and result backend (DB 1) are now correctly isolated.
+- **F4 (ACCEPTANCE_GAP/cosmetic):** ✅ `infra/terraform/modules/redis/outputs.tf` lines 40–44 — description rewritten to accurately describe the auth-token-only secret ARN, explicitly notes that per-service connection-config secrets are accessed by name path (not ARN), and references the AC-1.5 anti-pattern guard #11 rename rationale.
+
+**Regression checks:**
+
+- PE.03 ATDD suite: `pytest tests/unit/test_pe03_documentation_gates.py tests/unit/test_pe03_terraform_module.py tests/unit/test_pe03_eso_and_resilience.py tests/unit/test_terraform_module_contracts.py` → **104 passed in 0.35s**. Up from 97 passed + 7 skipped pre-fix. No new failures, no regressions.
+- redis-py hardening spot-check on `services/ai-gateway/src/ai_gateway/services/redis_client.py` line 54 confirms all 6 resilience kwargs (`socket_keepalive`, `health_check_interval=30`, `retry=Retry(ExponentialBackoff(cap=10, base=1), 3)`, `retry_on_error=[RedisConnectionError, RedisTimeoutError]`, `socket_connect_timeout=5`, `socket_timeout=10`) remain in place after the fix-pass — no accidental rollback.
+- Helm chart defaults verified safe: `eusolicit-service/values.yaml` line 79 has `bareKey: false` (opt-in only); the bare-key block in the template is gated behind `{{- if .Values.externalSecret.redis.bareKey }}`, so non-ai-gateway services do not receive an unnecessary bare REDIS_URL secretKey.
+
+**Items previously confirmed correct (Pass-1) and re-spot-checked:** AC-1 Terraform module (replication group, parameter group, subnet group, security group, log delivery), AC-2 variables preservation + extension, AC-3 ESO Shape A + per-service Secrets Manager entries via `for_each = local.services`, AC-4 redis-py + Celery resilience across 16 from_url sites + 2 Celery configs, AC-5 cutover runbook with all 11 sections + rollback decision tree, AC-7 documentation appends to ADR-010 / E21 epic / load-test-results. All preserved.
+
+**Pre-recorded deviations (D-1, D-2, D-3, D-4) remain operator-actionable and do not block the verdict** — production cutover and live failover drill are correctly deferred to operator-on-call follow-up tickets, with the structural runbook + procedure pre-populated.
+
+### Recommendation
+
+**REVIEW: Approve**
+
+The two non-cosmetic findings from Pass-1 (F1, F2) are fully resolved with the lowest-friction fixes recommended. F3 and F4 (deferrable / cosmetic) are also closed. PE.03 ATDD suite is fully green (104/104). Architecture, Terraform, resilience hardening, ESO wiring, and runbook are sound. AP17-C1 two-gate-close is now satisfied; sprint-status may transition `21-3-…: review → done` atomically with `Status: review → done` per AP18-C2.
+
+
