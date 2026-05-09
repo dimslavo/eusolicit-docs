@@ -25,7 +25,7 @@ detect_time: "<YYYY-MM-DDTHH:MM:SSZ>"      # Same as start (drill is deliberate)
 ack_time: "<YYYY-MM-DDTHH:MM:SSZ>"         # Drill IC acknowledged drill start
 resolve_time: "<YYYY-MM-DDTHH:MM:SSZ>"     # All drain/failover cycles complete
 impact_duration: "<X minutes>"             # Duration of drill
-customers_impacted: "0 (staging environment only)"
+customers_impacted: 0  # staging environment only — no real customers affected
 error_budget_consumed_pct: "0% (synthetic drill; staging SLO not tracked)"
 runbooks_followed:
   - "node-drain.md"
