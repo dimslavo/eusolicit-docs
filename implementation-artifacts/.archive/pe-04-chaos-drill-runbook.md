@@ -1,5 +1,12 @@
 # PE.04 Chaos Drill Runbook — PodDisruptionBudgets + Min-Replica Enforcement
 
+> **⚠ SUPERSEDED 2026-05-11 — historical reference only.**
+> EU Solicit pivoted away from EKS to single-host on-prem Docker. PDBs / HPAs /
+> kubectl chaos are no longer applicable. The active replacement is
+> `eusolicit-docs/runbooks/chaos-drill-single-host.md` covering container kill,
+> disk fill, postgres crash recovery, and Redis AOF replay drills.
+> See `eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md`.
+
 **Story:** 21-4-poddisruptionbudgets-min-replica-enforcement-across-all-services  
 **Date Authored:** 2026-05-05  
 **Epic:** E21 — Platform Reliability for 99.9% SLA  
