@@ -1,5 +1,13 @@
 # PE.02 PostgreSQL HA Migration — Cutover Runbook
 
+> **⚠ SUPERSEDED 2026-05-11 — historical reference only.**
+> EU Solicit pivoted away from AWS RDS Multi-AZ to single-host on-premise Docker on www1.endigitalx.com.
+> This runbook documents the planned AWS migration that was never executed.
+> See: `eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md` for the pivot decision
+> and `eusolicit-docs/planning-artifacts/architecture.md` §ADR-010 (rewritten 2026-05-11) for the new direction.
+> The active replacement story is `onprem-01-postgres-backup-and-recovery` (sprint-status `development_status`).
+> Kept here for design-reasoning continuity; the Method A/B / decision-tree / validation-step patterns may be useful for any future DB migration.
+
 **Story:** 21-2-postgresql-ha-migration-managed-rds-multi-az-or-equivalent
 **Epic:** E21 Platform Reliability for 99.9% SLA
 **Author:** Story 21-2 Dev Agent (2026-05-04)

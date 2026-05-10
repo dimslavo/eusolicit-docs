@@ -1,5 +1,13 @@
 # PE.03 Redis HA Migration — Cutover Runbook
 
+> **⚠ SUPERSEDED 2026-05-11 — historical reference only.**
+> EU Solicit pivoted away from AWS ElastiCache to single-host on-premise Docker on www1.endigitalx.com.
+> This runbook documents the planned AWS migration that was never executed.
+> See: `eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md` for the pivot decision
+> and `eusolicit-docs/planning-artifacts/architecture.md` §ADR-010 (rewritten 2026-05-11) for the new direction.
+> The active replacement story is `onprem-02-redis-persistence-and-recovery` (sprint-status `development_status`).
+> The `redis-py` resilience hardening described here was retained verbatim in the code base — only the ElastiCache provisioning and failover-drill sections are obsolete.
+
 **Story:** 21-3-redis-ha-migration-sentinel-or-managed-cluster
 **Epic:** E21 Platform Reliability for 99.9% SLA
 **Author:** Story 21-3 Dev Agent (2026-05-04)

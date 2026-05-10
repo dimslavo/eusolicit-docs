@@ -754,12 +754,36 @@ Slack/Teams (incoming-webhook templates) ships **before** CRM (bi-directional sy
 **Rationale:** Decomposition stays at 6+1=7 services post-amendment — within the 5–10 sweet spot.
 **Consequences:** New `integrations` schema; OAuth token vault stays in `client.crm_connections` for billing scope; `last-write-wins` conflict resolution with workspace-visible conflict log to `shared.audit_log`.
 
-### ADR-010 — Boring infra for 99.9% SLA: Multi-AZ Postgres + Redis Sentinel, not Patroni
+### ADR-010 — Single-host on-premise Docker for launch (supersedes 2026-04-25)
 
-**Status:** Accepted (Epic 21, Plan 2026-04-25)
-**Decision:** Migrate to managed Multi-AZ RDS (Aurora candidate; RDS Postgres baseline) and managed Redis with Sentinel. PDBs with `minAvailable: 1` and ≥2 replicas per service in production. SLO dashboards with error-budget burn-rate alerting. PagerDuty on-call rotation with runbook density. **Do not publish 99.9% SLA before infra uplift completes** (Phase A → B → C).
-**Rationale:** Patroni-on-K8s is operational debt for a small team. Managed databases with documented Multi-AZ failover semantics are auditable and predictable.
-**Consequences:** ~+€250–600/mo run rate. k6 baseline closure (PE.01) is the **first** Epic 21 story — has been deferred 6 epics; cannot publish any SLO without it. KraftData incidents excluded from SLA scope (isolated by AI Gateway circuit breaker).
+**Status:** Accepted (2026-05-11). Supersedes the 2026-04-25 version which committed to managed AWS (RDS Multi-AZ + ElastiCache + EKS + AMP/AMG). The prior version's "Implementation status (2026-05-04..05)" notes below are PRESERVED as historical record but are NOT current state — Stories 21-2 / 21-3 / 21-4 Terraform deliverables are being deleted in this pivot; what they describe was never provisioned in AWS, only authored as code.
+
+**Decision:** EU Solicit ships its production launch on **`www1.endigitalx.com` as a single Docker host**. PostgreSQL 16 and Redis 7 run as containers backed by host-mounted volumes. Backups go daily to `/home/docker/backups/eusolicit/` and are replicated off-site to **Hetzner Storage Box** (EU residency). Service-level redundancy is provided by `restart: unless-stopped` + healthcheck-driven container restarts; there is **no** horizontal replica layer and **no** Multi-AZ. Paging uses **email + Telegram bot** (PagerDuty cancelled). The 99.9% SLA promise is **withdrawn for launch**; the public posture is "Service is in beta. Best-effort availability."
+
+**Rationale:** The 2026-04-25 ADR committed to a 2–3 week AWS migration with hidden EKS prerequisite work and ~€2,000–2,500/mo ongoing cost. Pre-flight review on 2026-05-11 surfaced 5 blockers including a kubernetes module that was a TODO stub — i.e., the EKS-cluster prerequisite the migration assumed did not exist. With a small operating team and the existing single-host docker stack already running well enough (the recent 4-hour outage was a deploy-pipeline issue, not an infra-layer issue), the simpler launch posture beats the theoretical-HA path. The launch happens; HA is a future-Phase-2 question.
+
+**Consequences:**
+- ~€10–20/mo run rate increment (Hetzner Storage Box + Telegram-bot tier) vs. the original +€250–600/mo AWS estimate. ~€2,000+/mo savings annually.
+- Single physical host = single point of failure for compute. RTO ≤ 4h, RPO ≤ 24h (gated on backup-restore drill measurement).
+- No horizontal scaling. When traffic exceeds www1 capacity: bigger VPS, or open a future Phase-2 HA-migration epic.
+- ISO 27001 achievable; SOC 2 Type II availability commitments may need a contractual carveout.
+- Co-tenancy on www1 with `lifematch-*`, `celthrac.com`, etc. — noisy-neighbour risk managed by docker `mem_limit` + cpu reservations.
+- New launch-blocker stories (sprint-status development_status keys `onprem-01..onprem-06`) replace `pe-02` / `pe-03` and rescope `pe-04` / `pe-06` / `public-sla-announcement-soak-gate`.
+
+**Retained from prior PE.* work:** `pool_pre_ping=True` across all services, `redis-py` resilience hardening (`socket_keepalive`, `health_check_interval`, retry policy), Celery `broker_connection_retry_on_startup`, `/metrics` endpoints via `eusolicit_common.observability` middleware, the 7 Grafana dashboard JSONs at `infra/observability/grafana/dashboards/`, the 15 runbooks at `eusolicit-docs/runbooks/`, the 7 k6 baseline scripts at `tests/load/`.
+
+**Removed in this pivot:** AWS Terraform modules and environments, the Helm chart with PDBs/HPAs/ESO/NetworkPolicy, AMP/AMG, PagerDuty Terraform integration. AWS-specific cutover runbooks remain in `implementation-artifacts/` as historical reference.
+
+**Decision record:** Full deliberation, options matrix, and ratified sub-decisions captured in `eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md`.
+
+---
+
+#### Historical: ADR-010 (2026-04-25, superseded by 2026-05-11)
+
+> **Status:** Accepted (Epic 21, Plan 2026-04-25), **superseded 2026-05-11**.
+> **Decision:** Migrate to managed Multi-AZ RDS (Aurora candidate; RDS Postgres baseline) and managed Redis with Sentinel. PDBs with `minAvailable: 1` and ≥2 replicas per service in production. SLO dashboards with error-budget burn-rate alerting. PagerDuty on-call rotation with runbook density. **Do not publish 99.9% SLA before infra uplift completes** (Phase A → B → C).
+> **Rationale:** Patroni-on-K8s is operational debt for a small team. Managed databases with documented Multi-AZ failover semantics are auditable and predictable.
+> **Consequences:** ~+€250–600/mo run rate. k6 baseline closure (PE.01) is the **first** Epic 21 story — has been deferred 6 epics; cannot publish any SLO without it. KraftData incidents excluded from SLA scope (isolated by AI Gateway circuit breaker).
 
 **Implementation status (2026-05-04):** Story 21-2 closed. Production RDS Multi-AZ provisioned (eu-central-1, db.r6g.large, 35d backup retention, Performance Insights enabled). Migration `M_PE02_opportunities_tsv_gin_index` shipped (data-pipeline rev 003). FTS plan flipped from `Seq Scan` to `Bitmap Index Scan on ix_opportunities_tsv` — see `implementation-artifacts/load-test-results.md` §EXPLAIN ANALYZE Results — Post-PE.02 Migration for verbatim evidence. Multi-AZ failover drill (staging) documented in `implementation-artifacts/pe-02-cutover-runbook.md` §Failover Drill Results; production drill pending operator-on-call execution per D-1 pre-recorded deviation.
 
