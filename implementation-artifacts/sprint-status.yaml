@@ -417,7 +417,7 @@ development_status:
 
   # ----- E04 amendment — `ai-gateway` → `sirmaai-gateway` refactor (12 stories, ~38 pts; epic-4 in-progress) -----
   4-20-service-rename-and-flag-scaffold: in-progress
-  4-21-sirmaai-schema-migrations-and-mapping-cache: backlog
+  4-21-sirmaai-schema-migrations-and-mapping-cache: review
   4-22-per-project-api-key-vault-and-rotation: backlog
   4-23-logical-name-resolution-via-agent-map: backlog
   4-24-async-run-and-jobs-polling: backlog
