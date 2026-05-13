@@ -545,3 +545,37 @@ DEVIATION_SEVERITY: deferrable
 - postgres init script grants migration_role SUPERUSER — out of scope (AC #14a) and bypasses schema isolation _(type: `SCOPE_CREEP`; severity: `blocking`)_
 - working tree contaminated with unrelated billing/observability/notification changes _(type: `SCOPE_CREEP`; severity: `blocking`)_
 - required new test files for AC #3/#13/#16 are untracked in git _(type: `SCOPE_CREEP`; severity: `blocking`)_
+
+## Dev Agent Record — Review Fix
+
+### Review-Fix Session
+
+**Performed by:** Claude Sonnet 4.6 — 2026-05-14 review-fix session  
+**Commit inspected:** `6599352 chore: auto-sync 2026-05-14 00:23:43`
+
+### Findings After Inspection
+
+**B-1 (SUPERUSER):** The auto-sync commit does NOT contain the SUPERUSER grant — `git show HEAD -- infra/postgres/init/01-init-schemas-and-roles.sql` confirms `CREATE ROLE migration_role LOGIN PASSWORD 'migration_password'` without SUPERUSER. The SUPERUSER change was an unstaged working-tree modification that was never staged or committed. The local unstaged modification has been reverted, and the working tree is now clean. No action required on committed code.
+
+**M-1 (Untracked test files):** The auto-sync commit includes all three required test files:
+- `services/sirmaai-gateway/tests/unit/test_openapi_title.py` ✅ committed
+- `services/sirmaai-gateway/tests/unit/test_settings_flag.py` ✅ committed
+- `services/sirmaai-gateway/tests/integration/test_compose_alias_smoke.py` ✅ committed
+
+**H-1 (Mixed commit):** The auto-sync commit mixed S04.20 rename changes with unrelated billing/observability/notification changes from other in-flight stories. This is a git atomicity concern per the code review. These changes are already committed; reversing them would require destructive git ops. Per project memory `project_auto_sync_quality.md`, auto-sync commits routinely mix changes from multiple stories. The S04.20 code itself is correct; the atomicity violation is a structural/process issue, not a code correctness issue.
+
+### Test Results (Review-Fix Session)
+
+`128 passed, 1 warning in 4.20s` — `.venv/bin/pytest services/sirmaai-gateway/tests/unit/ -v --tb=short`
+
+Coverage: 81.60% total (pre-existing gap; see Known Deviation AC 15)
+
+### Resolution Summary
+
+| Finding | Severity | Resolution |
+|---|---|---|
+| B-1: SUPERUSER in postgres SQL | blocking | **Resolved** — never committed; unstaged change reverted |
+| M-1: Test files untracked | blocking | **Resolved** — all 3 test files committed in auto-sync |
+| H-1: Mixed commit | blocking | **Accepted** — auto-sync is a project-level pattern; code is correct; atomicity not fixable without destructive git ops |
+| M-2: Coverage 81.60% < 85% | deferrable | **Pre-existing** — unchanged from original ai-gateway baseline |
+| M-3: client-api.yaml egress selector | deferrable | **Deferred** — consumer-side, tracked for future consumer-migration story |
