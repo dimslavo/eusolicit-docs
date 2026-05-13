@@ -51,6 +51,8 @@ so that **we have a working observability surface for launch, without depending 
 - [ ] Task 6: nginx reverse proxy + auth for Grafana.
 - [ ] Task 7: Verify all 7 service jobs are `up=1` in Prometheus and dashboards render.
 - [ ] Task 8: Run the existing `/metrics` contract test.
+- [ ] Task 9: **AWS-leftover cleanup (added 2026-05-11 audit)** — `infra/observability/cloudwatch-exporter/` is AWS-specific (AMP/AMG era from Story 21-5) and contradicts the 2026-05-11 pivot. Delete the directory AND update/delete the dependent test `tests/unit/test_pe05_cloudwatch_and_postgres_exporter.py` so CI stays green. The `postgres_exporter` half of that test is still relevant (AC 5 of this story) — preserve coverage in a renamed `test_onprem03_postgres_and_redis_exporter.py` or fold into a new contract test.
+- [ ] Task 10: **Helm chart disposition (added 2026-05-11 audit)** — `infra/helm/eusolicit-service/` + `infra/helm/values/*.yaml` are Kubernetes-only and unused in single-host docker. ADR-010 (2026-05-11) listed this as "to be decided in a separate pass." This story now owns the decision. **Recommendation:** move `infra/helm/` to `infra/helm/.archive/` rather than delete, preserving design intent for a hypothetical Phase-2 HA migration. Update or skip dependent tests: `test_helm_service_values.py`, `test_helm_chart_structure.py`, `test_pe04_values_and_pdb.py`, `test_pe04_helm_lint.py`, `scripts/check_helm_pdb_and_minreplicas.py` (the lint gate). Update `infra/README.md` + `infra/helm/README.md` to reflect archived status.
 
 ## Dev Notes
 

@@ -51,7 +51,7 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 |---|---|---|
 | AI generation TTFB < 500ms (NFR-2) | PRD §NFR | SSE streaming, single-point error sanitization, pre-generation quota check before HTTP 200 headers |
 | API p95 < 200ms (NFR-1) | PRD §NFR | Async I/O end-to-end, Redis cache for tier policy, fire-and-forget audit writes |
-| 99.5% MVP / 99.9% post-amendment uptime (NFR-14) | PRD §NFR + amendment | Stateless services, HPA + PDB, managed Postgres Multi-AZ + Redis Sentinel (Epic 21) |
+| Launch posture: **best-effort availability** per ADR-010 (2026-05-11). RTO ≤ 4h / RPO ≤ 24h. Original NFR-14 targets (99.5% MVP / 99.9% post-amendment) **deferred to a future Phase-2 HA-migration epic**; no public SLA promised at launch. | PRD §NFR + amendment + ADR-010 | Single Docker host on `www1.endigitalx.com`; `pg_basebackup` + WAL archiving + Hetzner Storage Box off-site replication (Epic 22 onprem-01); Redis AOF + RDB persistence (Epic 22 onprem-02); `restart: unless-stopped` + healthchecks; Trust Center "Service is in beta. Best-effort availability." disclosure (E23). HPA/PDB/Multi-AZ/Sentinel removed in pivot — see ADR-010 §Removed. |
 | EU-only data residency (Domain-Specific) | PRD §Domain | AWS eu-central-1 single-region; KraftData EU-region storage resources only |
 | Zero cross-tenant leakage (NFR-7) | PRD §NFR | DB schema isolation + row-level `company_id`/`workspace_id` scoping + RBAC `Depends()` factories + cross-tenant negative tests as story ACs |
 | GDPR + ZOP + WCAG 2.1 AA | PRD §Domain | Immutable audit log, encryption at rest (AES-256) and in transit (TLS 1.3), right-to-erasure flow, accessibility-first UI primitives |

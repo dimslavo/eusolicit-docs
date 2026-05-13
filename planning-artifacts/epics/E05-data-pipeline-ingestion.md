@@ -180,3 +180,60 @@ Write integration tests that exercise the full pipeline flow from Beat trigger t
 - [ ] All four Prometheus metrics exported and scrapeable at `/metrics`
 - [ ] Every log line includes `correlation_id`, `task_name`, and `crawler_type` where applicable
 - [ ] Test execution time under 60 seconds with mocked dependencies
+
+---
+
+## 2026-05-12 Amendment — Retire Celery Crawlers, Adopt N8N + SirmaAI Workflows
+
+> Trigger: `sprint-change-proposal-2026-05-12-sirmaai.md` (approved 2026-05-12). Pairs with `architecture-amendment-2026-05-12-sirmaai.md` (ADR-018) and `prd-amendment-2026-05-12-sirmaai.md` (FR-15 rewrite).
+> Original Epic 5 shipped (`epic-5: done` in sprint-status). This amendment **retires Celery crawlers** and replaces them with N8N workflow templates calling SirmaAI crawler agents. Canonical `pipeline.opportunities` schema, `crawler_runs` history, and `opportunities.ingested` Redis Streams event all remain.
+
+### Amended Goal
+
+Re-platform opportunity ingestion onto SirmaAI: author **N8N workflow templates** (one per source: AOP, TED, EU Grants) executing in the shared EU Solicit-Org N8N instance, each invoking SirmaAI crawler / data-normalisation / relevance-scoring / submission-guide agents within the calling tenant's Project. EU Solicit hosts a Standard Webhooks receiver (S04.25 in E04 amendment) consuming `workflow.completed` and writes normalised rows into `pipeline.opportunities` (canonical). Celery Beat crawlers and the per-pipeline `ai_gateway_client` module are retired. Two-phase cutover with 7-day equivalence gate before retirement.
+
+### Amended Acceptance Criteria
+
+- [ ] Three N8N workflow templates authored, versioned (semver), and parameterised by `projectId`: `crawl-aop-v1`, `crawl-ted-v1`, `crawl-eu-grants-v1`
+- [ ] Each template invokes SirmaAI crawler agent → data normalisation team → relevance scoring agent → submission guide agent under the calling tenant's Project scope
+- [ ] Webhook receiver (S04.25 in E04) routes `workflow.completed` events to a `data-pipeline` consumer that writes normalised opportunity rows + scores into `pipeline.opportunities` via upsert on `(source_id, source_type)`
+- [ ] `pipeline.crawler_runs` table retained as read-only history of legacy crawls; new ingestion writes to `gateway.workflow_runs` (per E04 amendment)
+- [ ] `opportunities.ingested` Redis Streams event published after each successful workflow cycle with affected `opportunity_ids` (contract preserved for downstream consumers)
+- [ ] Phase-1 equivalence test harness: Celery crawlers + N8N workflows run in parallel for 7 days; both write to `pipeline.opportunities` under shadow source-IDs; reconciler asserts <0.1% delta in normalised-record contents
+- [ ] Phase-2 cutover: after equivalence-test green, Celery Beat schedule stopped, crawler code archived, `crawler_runs` insertions cease for live runs
+- [ ] N8N workflow templates follow staged-rollout discipline (per ADR-018): canary tenant → 10% → 100% per new version; per-tenant feature flag gate for new template versions
+- [ ] Cross-tenant negative test: workflow run under Project A cannot write to Company B's opportunity rows
+
+### Stories — Amendment Delta
+
+**Retire (after Phase-2 cutover):**
+
+| Story | Reason |
+|---|---|
+| S05.02 Celery Beat schedule | Replaced by N8N cron triggers |
+| S05.03 `ai_gateway_client` retry module | Folded into `sirmaai-gateway` (E04 amendment S04.20-S04.24) |
+| S05.04 AOP crawler task | Replaced by `crawl-aop-v1` N8N template |
+| S05.05 TED crawler task | Replaced by `crawl-ted-v1` N8N template |
+| S05.06 EU Grants crawler task | Replaced by `crawl-eu-grants-v1` N8N template |
+
+**Inject:**
+
+| Story | Pts | Type | Description |
+|---|---|---|---|
+| **S05.20 N8N workflow templates (AOP / TED / EU Grants) + commit-to-Git deploy mechanism** | 10 | backend + workflow | Author 3 N8N templates parameterised by `projectId`. Invoke SirmaAI crawler → normalisation team → scoring → submission guide. **Templates committed to `eusolicit-app/infra/n8n-templates/<name>-v<semver>.json`** as canonical source-of-truth per arch amendment §3.4 addendum. Deploy script `scripts/sync_n8n_templates.py` diffs committed JSON against SirmaAI N8N via API and applies updates; refuses deploy on drift unless `--force` (with audit). Semver-tagged. PR-reviewed. Rollback: revert commit + re-run sync. Closes readiness Concern #7. |
+| **S05.21 Webhook event router → opportunity writer** | 5 | backend | Consume `sirmaai.workflow.completed` from Redis Streams (routed by S04.25). Parse normalised opportunity payload. Upsert into `pipeline.opportunities` with existing dedup on `(source_id, source_type)`. Publish `opportunities.ingested`. Idempotent via run-ID dedup. |
+| **S05.22 Phase-1 equivalence test harness** | 5 | backend + ops | Parallel-run Celery + N8N for 7 days under shadow source-IDs (e.g. `aop_n8n_*`). Daily diff job comparing normalised payload checksums. Acceptance gate: <0.1% delta over rolling 7-day window. Operator runbook for investigating deltas. |
+| **S05.23 Phase-2 cutover runbook + rollback** | 3 | ops + docs | Documented cutover sequence: stop Celery Beat schedule → monitor 24h → archive crawler code → archive `pipeline.crawler_runs` insertion path. Rollback plan: re-enable Celery Beat within 15 minutes if regression detected. |
+| **S05.24 N8N staged-rollout enforcement** | 3 | backend + ops | Per-tenant feature flag `enable_n8n_workflow_<source>_<version>`. Canary → 10% → 100% rollout discipline. Old-version workflow stays live until new version is at 100% for 7 days. |
+| **S05.25 Tenant-aware cross-tenant negative tests** | 2 | backend | Workflow runs under Project A → expected to fail writes to Company B's rows (403 at write layer + audit entry). |
+
+**Total amendment points:** ~26. Sprint placement: depends on E04 amendment landing (webhook receiver + reconciler); E26 owns the broader ingestion narrative — this epic is the schema-and-data-write piece.
+
+### Dependencies
+
+- **Inputs:** E04 amendment (S04.25 webhook receiver + S04.26 reconciler); E24 (tenant provisioning — needs Projects to exist before workflows can target them); E25 (KB lifecycle — workflows seed parsed-text into KB).
+- **Outputs:** Unblocks E26 (Agent-Driven Ingestion & Analysis — broader epic that builds qualification + quantification on top of these workflows).
+
+### Salvaged from original Epic 5
+
+`pipeline.opportunities` canonical schema, `crawler_runs` audit table (retained as history), `opportunities.ingested` event contract, dedup logic on `(source_id, source_type)`, Prometheus throughput metrics, soft-delete cleanup task (now triggered by N8N cron rather than Celery Beat).

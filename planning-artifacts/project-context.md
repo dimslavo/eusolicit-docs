@@ -963,3 +963,95 @@
 ## Anti-Patterns
 
 - Discovered in Epic 20: + [ACTION] entries (→ project-context.md)
+
+## Patterns
+
+- Discovered in Epic 21: **Load tests as discovery tools — not just performance gates (E21-P01).** PE.01's value was the GIN-index gap discovery (Seq Scan at 10K rows projecting to ~28s at 1M): invisible to unit/integration tests, caught by k6 EXPLAIN ANALYZE. Run load tests early, even against local datasets, to surface query-plan-level architectural gaps. Reference: Story 21-1, AP21-02.
+
+## Patterns
+
+- Discovered in Epic 21: **Cross-story URL reservation via placeholder annotations — CI lint gate closes the loop (E21-P02).** Upstream story commits `runbook_url` placeholders in alerting rules; downstream story fulfills them. `check_runbook_url_coverage.py` verifies referential integrity on every PR. Prevents "placeholder that shipped to production" defect class. Reference: PE.05 ↔ PE.06.
+
+## Patterns
+
+- Discovered in Epic 21: **HA-by-default via compounding CI lint gates (E21-P03).** Each story establishing an invariant (HA, observability, runbook coverage) adds a lint gate enforcing it for future stories. Three gates from E21: `check_helm_pdb_and_minreplicas.py` (PE.04), `test_metrics_endpoint_contract.py` (PE.05), `check_runbook_url_coverage.py` (PE.06). Future stories cannot regress these invariants silently.
+
+## Patterns
+
+- Discovered in Epic 21: **"Code done" vs "live done" gates explicitly documented for infra epics (E21-P05).** CODE GATE = all code merged + CI-passing. LIVE GATE = operator production steps complete + soak. Sprint-status `done` = CODE GATE only. LIVE GATE tracked as operator-managed checklist outside sprint-status. Prevents "is the SLA live?" ambiguity after epic close. Reference: E22 applies this pattern to all 6 on-prem stories.
+
+## Anti-Patterns
+
+- Discovered in Epic 21: **[ANTI-PATTERN] Non-functional stories without staging environment confirmation (AP21-01).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — PE.01 FTS baseline captured locally (staging unavailable). Throughput numbers are not production-representative. Entry criterion for load-test stories: "Confirm staging environment has ≥100K production-representative rows and all service images are current before story begins." Reference: Story 21-1 D-7.
+
+## Anti-Patterns
+
+- Discovered in Epic 21: **[ANTI-PATTERN] FTS story started without pre-story EXPLAIN ANALYZE query-plan check (AP21-02).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — Seq Scan (289ms at 10K rows, projecting ~28s at 1M) discovered during dev pass, not planning. Entry criterion for FTS stories: "Run EXPLAIN ANALYZE on FTS query with target data volume. Verify GIN-index Bitmap Index Scan, not Seq Scan." 30-second check; not doing it cost PE.01 a revision pass + PE.02 a required migration. Reference: AP21-02.
+
+## Anti-Patterns
+
+- Discovered in Epic 21: **[ANTI-PATTERN] TEA reviews as separate backlog items are never executed — 16th consecutive epic (AP21-03).** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `critical` — `inj-03` at `ready-for-dev` for 16 epics. Fix must be mechanical: embed TEA execution as a required AC in `bmad-dev-story` template. Score gate ≥ 80/100 blocks `review → done` transition. Remove `inj-03` — wrong implementation strategy. Reference: AP20-C3, 15 prior occurrences.
+
+## Anti-Patterns
+
+- Discovered in Epic 21: **[ANTI-PATTERN] Orchestrator AP18-C2 non-implementation causes story Status mismatch — 18th consecutive epic (AP21-04).** `[ACTION]` IMPACT: `config_tuning` SEVERITY: `critical` — All 6 E21 story files at `Status: review` despite sprint-status `done`. Orchestrator `2b-dev-story-verify` phase must cross-check story file `Status:` against sprint-status before emitting HALT. Until configured, will recur every epic. Reference: AP20-C1, AP18-C2 — same root cause, same fix.
+
+## Patterns
+
+- Discovered in Epic 22: **Architectural pivots as clean ADR rewrites + sprint-change-proposal injection — never in-flight story mutation (E22-P01).** When a major architectural decision reverses mid-sprint: (1) rewrite the ADR with new decision + rationale, (2) author a decision record, (3) mark superseded stories `done` with SUPERSEDED banners, (4) inject new epic via bmad-correct-course. Preserves audit trail; prevents half-delivered code lingering `in-progress`. Reference: ADR-010 rewrite 2026-05-11, sprint-change-proposal-2026-05-12.md.
+
+## Patterns
+
+- Discovered in Epic 22: **Single shared `_lib.sh` for sibling infra scripts — DRY principle for operator automation (E22-P02).** When multiple infra scripts in the same domain (backup, restore, monitoring) share logic (credential loading, structured logging, error exits), extract to `_lib.sh` sourced by all siblings. Ensures: consistent log format for `grep`-ability, single credential-path definition, uniform exit-code semantics. Reference: `scripts/onprem/_lib.sh` sourced by all backup/restore scripts.
+
+## Patterns
+
+- Discovered in Epic 22: **Redis `maxmemory-policy: noeviction` is required when Redis holds non-cache state (E22-P03).** `allkeys-lru` silently evicts Celery task records and Redis Streams consumer-group offsets under memory pressure — eviction logged at DEBUG level only, surfaces as "tasks not completing" in application logs. Correct policy for Celery broker + event-bus Redis: `noeviction` (returns error on new writes when full, surfaces problem explicitly). Reference: onprem-02, Story 21-3 redis-py hardening.
+
+## Patterns
+
+- Discovered in Epic 22: **Deploy pipeline CI-gate via `workflow_run` trigger eliminates auto-sync outage class structurally (E22-P04).** `on: push: branches: [main]` + parallel CI = broken code deploys before CI catches it. Change `deploy.yml` to `on: workflow_run: workflows: [CI]: types: [completed]` with `if: github.event.workflow_run.conclusion == 'success'`. Add auto-rollback on smoke-test failure. Together: structural elimination of "auto-sync ships broken code" failure mode. Reference: onprem-05, 2026-05-09 SEV1.
+
+## Anti-Patterns
+
+- Discovered in Epic 22: **[ANTI-PATTERN] PM sprint-change-proposal "dev passes" are code seeds, not formal story completions (E22-AP01).** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `critical` — When PM injects sprint-change-proposal with "LANDED IN CODE" notes, code has been sketched but NOT gone through formal dev-story gate. Sprint-status `ready-for-dev` is accurate — stories require full `bmad-dev-story` + `bmad-code-review` before closure. Treating PM seed passes as story completion is a false-done anti-pattern. Reference: All 6 E22 onprem stories at `ready-for-dev` after PM seed pass.
+
+## Anti-Patterns
+
+- Discovered in Epic 22: **[ANTI-PATTERN] Infrastructure story ACs must distinguish CODE-AC from LIVE-AC — on-prem stories have inherently wider code/live gate gap (E22-AP02).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — On-prem stories where ACs include "execute a drill and populate §First Drill Results" cannot be code-reviewed to `done` without drill execution. Story template for operator-execution epics must list ACs by category: CODE-AC (reviewable) vs LIVE-AC (requires execution). Sprint-status `review` = CODE-ACs satisfied; `done` = all ACs including LIVE-ACs. Reference: E22 all 6 stories, E21 Pattern E21-P5.
+
+## Anti-Patterns
+
+- Discovered in Epic 22: **[ANTI-PATTERN] Pre-existing resource pressure on deployment target must be a story entry criterion, not a post-deployment follow-up (E22-AP03).** `[ACTION]` IMPACT: `standards_update` SEVERITY: `high` — www1 `/` partition at 85% before E22 deployment begins. Deploying new Docker containers (Prometheus, Grafana, Alertmanager, exporters) without resolving disk pressure will breach 90% critical threshold during setup. Entry criterion for stories deploying new Docker containers: "Confirm `/` < 75% after Docker storage-root migration." Reference: onprem-04 Dev Notes, onprem-06 AC5.
+
+## Anti-Patterns
+
+- Discovered in Epic 22: **[ANTI-PATTERN] TEA reviews as separate backlog items — 17th consecutive epic without TEA score (E22-AP04 / AP21-03 / AP20-C3).** `[ACTION]` IMPACT: `prompt_adjustment` SEVERITY: `critical` — Same finding as AP21-03, AP20-C3. Fix is the same: embed TEA execution as a gate AC in `bmad-dev-story` template. 17 epics of evidence that the backlog-item approach fails. Reference: inj-03-tea-review-backlog-epic8-epic9 at `ready-for-dev` for 17th consecutive epic.
+
+## Patterns
+
+- Discovered in Epic 23: E23-P01 | Operator stories gate on upstream **live-state evidence**, not code-gate completion | standards_update | high |
+
+## Patterns
+
+- Discovered in Epic 23: E23-P02 | SLA disclosure uses calendar soak gate — conservative posture first, numeric SLA only after observation | standards_update | medium |
+
+## Patterns
+
+- Discovered in Epic 23: E23-P03 | Rescope over cancel when technology changes but operational goal survives | standards_update | medium |
+
+## Anti-Patterns
+
+- Discovered in Epic 23: E23-AP01 | TEA as separate story — **18th consecutive epic**, terminal escalation | prompt_adjustment | **critical** |
+
+## Anti-Patterns
+
+- Discovered in Epic 23: E23-AP02 | Sprint-status missing individual story keys for operator-execution epic | config_tuning | high |
+
+## Anti-Patterns
+
+- Discovered in Epic 23: E23-AP03 | Zombie code: partial AC implementation (1/9 Stripe sites, metrics registered but not emitting) | prompt_adjustment | high |
+
+## Anti-Patterns
+
+- Discovered in Epic 23: E23-AP04 | E22 retro claimed `project-context.md` writes that never executed — zero-output guard failure | prompt_adjustment | high |

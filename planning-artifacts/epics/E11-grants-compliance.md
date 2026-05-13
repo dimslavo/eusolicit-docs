@@ -164,3 +164,59 @@ Write end-to-end tests covering the critical user journeys:
 5. Regulation tracker fires -> admin views changes -> acknowledges and reviews affected framework.
 
 Harden agent error handling across all E11 endpoints: standardise timeout handling (30s default, configurable), retry logic (1 retry with exponential backoff for transient failures), graceful degradation messages when agents are unavailable, and consistent error response format. Verify error states render correctly in all frontend panels. Write tests for timeout, retry, and failure scenarios with mocked agent errors.
+
+---
+
+## 2026-05-12 Amendment — Migrate Agent Definitions into SirmaAI Project Template
+
+> Trigger: `sprint-change-proposal-2026-05-12-sirmaai.md` (approved 2026-05-12). Pairs with `architecture-amendment-2026-05-12-sirmaai.md` (ADR-018) and `prd-amendment-2026-05-12-sirmaai.md` (FR-36 rewrite).
+> Original Epic 11 shipped (`epic-11: done` in sprint-status). This amendment is **definition migration only** — agent prompts, tools, memories, and model bindings move from EU Solicit's retired `agents.yaml` registry to the SirmaAI Project template. **Public API contracts unchanged.** ESPD XML/PDF rendering stays in EU Solicit. UX is identical post-migration.
+
+### Amended Goal
+
+Migrate the E11 agent definitions — ESPD Auto-Fill, Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template Generator, Framework Suggestion, Regulation Tracker — from EU Solicit's `agents.yaml` logical registry into the **SirmaAI Project template** (versioned, traced, memory-attached inside SirmaAI). All client-API endpoints (`/grants/eligibility-check`, `/grants/budget-builder`, `/espd-profiles/:id/auto-fill`, etc.) preserve their public contracts; internally they invoke `sirmaai-gateway.call_agent(logical_name, company_id, payload)` which resolves to the tenant's Project agent UUID via `agent_map` (per E04 amendment S04.23).
+
+### Amended Acceptance Criteria
+
+- [ ] All 8 grant/compliance agent definitions exported from `agents.yaml` and authored into the SirmaAI Project template (the seed-template applied at tenant provisioning per E24)
+- [ ] Agent prompts, system messages, tool bindings, and storage-resource attachments captured in the SirmaAI Project template as the source of truth
+- [ ] ESPD Auto-Fill agent retains access to the tenant's KB (storage-resource per E25) for grounded ESPD generation
+- [ ] Regulation Tracker agent's Celery Beat schedule replaced by N8N workflow template `regulation-tracker-v1` (org-shared, parameterised by `projectId`)
+- [ ] All E11 client-API endpoint contracts unchanged — request/response schemas identical; only internal call target shifts to `sirmaai-gateway.call_agent(...)`
+- [ ] Integration tests updated to mock SirmaAI Project agent IDs (not logical names); existing test scenarios preserved verbatim
+- [ ] ESPD XML schema rendering + PDF (reportlab) export remain native EU Solicit responsibilities; agent returns structured payload, EU Solicit renders
+- [ ] Cross-tenant negative test: ESPD auto-fill invoked from Company A returns agent run executed under Company A's Project, never B's
+- [ ] Per-tenant agent versioning supported (SirmaAI agent versions API): tenant can roll back agent version if regression observed in their KB context
+- [ ] Compliance frameworks (admin-managed) remain canonical in `admin.compliance_frameworks` Postgres; SirmaAI agents receive framework context via payload, not via SirmaAI-side storage
+
+### Stories — Amendment Delta
+
+**No story retires.** Each existing E11 story (S11.03 ESPD Auto-Fill, S11.04 Grant Eligibility, S11.05 Budget Builder, S11.06 Consortium Finder, S11.07 Logframe + Reporting, S11.10 Regulation Tracker, S11.11 Framework Suggestion) gains a sub-task documented in the amendment:
+
+> *Migrate prompt + tool definition to SirmaAI Project template; update integration test to mock SirmaAI Project agent ID; verify per-tenant agent isolation via Project scoping; verify KB-grounded responses for agents that consume tenant KB.*
+
+**Inject (new amendment stories):**
+
+| Story | Pts | Type | Description |
+|---|---|---|---|
+| **S11.20 SirmaAI Project template seed for grant/compliance agents** | 5 | backend + ops | Author the 8 agent definitions (prompts, tools, memories, model bindings) as a SirmaAI Project template. Applied at tenant provisioning (E24 S24.03). Versioned and code-reviewed like production code. |
+| **S11.21 Regulation Tracker N8N workflow + Celery retire** | 3 | backend + workflow | Replace Celery Beat-scheduled regulation tracker with `regulation-tracker-v1` N8N template (org-shared). Same admin-dashboard surface; underlying schedule shifts to N8N cron. |
+| **S11.22 E11 endpoint internal call-path swap** | 5 | backend | Replace `AiGatewayClient.run_agent("logical_name", payload)` calls with `SirmaaiGatewayClient.call_agent(logical_name, company_id, payload)` across 8 endpoints. Update integration tests to mock SirmaAI Project agent IDs. Verify no public contract drift via OpenAPI diff. |
+| **S11.23 KB-grounded ESPD + grant tests** | 3 | backend + integration | New integration tests verifying ESPD Auto-Fill + Grant Eligibility consume the tenant KB (E25 storage-resource) when present. Asserts that agent runs ground in uploaded ESPD templates and company profile documents. |
+
+**Total amendment points:** ~16. Sprint placement: after E24 (needs SirmaAI Project provisioning + agent_map populated by template seed) and E25 (KB-grounded agents need KB lifecycle endpoints).
+
+### Dependencies
+
+- **Inputs:** E04 amendment (S04.23 logical-name resolution), E24 (Project provisioning + template seed application), E25 (KB lifecycle for ESPD/Grant grounding).
+- **Outputs:** Closes the loop on grant/compliance feature parity — once E11 amendment lands, all of E11's user-facing surface runs on SirmaAI under the new tenancy.
+
+### Salvaged from original Epic 11
+
+ESPD XML schema + reportlab PDF rendering (EU Solicit responsibility, unchanged), compliance framework admin CRUD + Postgres schema (`admin.compliance_frameworks`, `platform_settings`, `opportunity_compliance_frameworks`), all E11 client-API endpoint contracts (public surface frozen), frontend pages (grant tools, ESPD management, compliance administration), integration test scenarios (only agent ID mock changes).
+
+### What this amendment is NOT
+
+- Not a redesign of the grant/compliance user experience.
+- Not a contract change on any public API.
+- Not an opportunity to retire compliance framework Postgres-canonical-ness — frameworks stay in `admin.compliance_frameworks` (admin governance > SirmaAI grounding for this dataset).

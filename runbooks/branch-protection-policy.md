@@ -1,8 +1,25 @@
 # Branch Protection Policy — `main` (Story onprem-05)
 
-**Status:** Operator action required to land
+**Status:** Partially landed 2026-05-11 — see "Currently enabled" below
 **Source story:** `eusolicit-docs/implementation-artifacts/onprem-05-deploy-guardrails.md`
 **Related:** `.github/workflows/deploy.yml` (now gates on CI via `workflow_run` trigger)
+
+## Currently enabled (2026-05-11)
+
+After the GitHub subscription upgrade, the following minimum rule landed on `main`:
+
+- ✅ **Require status checks to pass** — single top-level `CI` check.
+
+Deferred (operator decision):
+
+- ❌ Require PR + approval before merge — would block auto-sync direct-pushes; not enabled until auto-sync redirect lands (AC3).
+- ❌ Restrict force pushes — **recommended next toggle**, single click, no subscription tier issue.
+- ❌ Restrict deletions — **recommended next toggle**.
+- ❌ Block admin bypass.
+- ❌ Require linear history.
+- ❌ Require signed commits.
+
+**Net protection today:** PR-merge path is CI-gated. Direct push to `main` is still possible (auto-sync still works). Force-push to `main` is still possible — this is the highest residual irreversible-damage risk and is worth closing with a single click. Production deploy is independently protected by `deploy.yml`'s `workflow_run` gate: a red CI run blocks the deploy regardless of how the commit landed on `main`.
 
 ## Why this exists
 

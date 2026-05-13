@@ -19,7 +19,13 @@ so that **the recurring outage pattern of "auto-sync ships unverified code → p
 
 2. **`deploy.yml` only fires after CI passes** — currently `deploy.yml` and `ci.yml` run in parallel on push to main; the deploy job has no `needs:` dependency on CI. Change: add `concurrency` + `if: github.event.workflow_run.conclusion == 'success'` pattern, OR convert deploy.yml to trigger on `workflow_run: workflows: [CI]` instead of `push: branches: [main]`. Test by intentionally pushing a failing change and confirming deploy does NOT run.
 
-3. **`chore: auto-sync` PR policy** — auto-sync commits must land via PR (not direct push). The auto-sync workflow that currently pushes directly is modified to open a PR instead. The PR template states "Requires human review before merge — auto-sync is unverified code per project memory." The PR author cannot self-approve (GitHub setting: require review from someone other than the author).
+3. **`chore: auto-sync` PR policy** — auto-sync commits must land via PR (not direct push). **The auto-sync source is the Orchestrator (lives outside `eusolicit-app/`), not a `.github/workflows/` file in this repo.** Therefore this AC is closed by changes in `Orchestrator/`, not here:
+   - The Orchestrator config that currently pushes `chore: auto-sync` directly to `main` is modified to open a PR against `main` instead.
+   - The PR template states "Requires human review before merge — auto-sync is unverified code per project memory."
+   - The PR author (Orchestrator bot identity) cannot self-approve (GitHub branch-protection setting from AC 1: require review from someone other than the author — this already covers it).
+   - **Cross-repo coordination:** the Orchestrator-side change is tracked separately; this AC closes when the *first* `chore: auto-sync` PR is opened against `main` and merged through human review.
+
+   Rewritten 2026-05-11 (audit found the original AC pointed at a workflow that doesn't exist in `eusolicit-app/.github/workflows/`).
 
 4. **Auto-rollback on smoke-test failure** — `deploy.yml`'s smoke-test step (already present, currently only logs) is extended to:
    - On failure: `git reset --hard <previous-sha>` on www1, re-run `bash scripts/deploy.sh` to redeploy the previous version, exit non-zero with a clear "ROLLED BACK to <sha>" message.
@@ -36,7 +42,7 @@ so that **the recurring outage pattern of "auto-sync ships unverified code → p
 
 - [ ] Task 1: Configure branch protection on main via GitHub UI (operator action; not codifiable in this repo, but document the setting in `branch-protection-policy.md`).
 - [ ] Task 2: Modify `.github/workflows/deploy.yml` to depend on CI conclusion (workflow_run trigger or status-check gate).
-- [ ] Task 3: Modify the auto-sync workflow (`.github/workflows/<auto-sync-name>.yml` — find it) to open PRs instead of pushing directly.
+- [ ] Task 3: **Orchestrator-side** — modify the Orchestrator config that emits `chore: auto-sync` commits so it opens a PR against `main` rather than pushing directly. (Not in `eusolicit-app/.github/workflows/` — no such workflow exists here. Work routes through `Orchestrator/`.)
 - [ ] Task 4: Add a rollback step to `deploy.yml` smoke-test on-failure path.
 - [ ] Task 5: Update `scripts/deploy.sh` log format (dated headers + section dividers).
 - [ ] Task 6: Test with an intentional failing push to a branch + verify deploy.yml does NOT run.

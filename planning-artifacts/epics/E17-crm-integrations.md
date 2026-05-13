@@ -110,3 +110,74 @@ Tests:
 - Quota state machine: simulated 80% threshold → warning event; 100% → hard-stop + recovery on next day rollover
 - Sandbox-vs-production environment switching
 - Custom-field mapping configurable
+
+---
+
+## 2026-05-12 Amendment — CRM Scope Swap: Dynamics 365 + HubSpot via SirmaAI MCP
+
+> Trigger: `sprint-change-proposal-2026-05-12-sirmaai.md` (approved 2026-05-12). Pairs with `architecture-amendment-2026-05-12-sirmaai.md` (ADR-020) and `prd-amendment-2026-05-12-sirmaai.md` (FR-53 + Integrations rewrite).
+> Original Epic 17 shipped (`epic-17: done` in sprint-status): HubSpot direct adapter (S17.01), Pipedrive (S17.02), Salesforce (S17.03). This amendment **scope-swaps** the v1 CRM lineup: HubSpot retained, Dynamics 365 added, Pipedrive + Salesforce deferred to post-launch. Delivery vehicle changes from direct provider adapters in `integrations-api` to **SirmaAI MCP servers registered per Project**.
+
+### Amended Title
+
+`E17: CRM Integrations via SirmaAI MCP — Dynamics 365 + HubSpot` (was: `CRM Integrations (HubSpot, Pipedrive, Salesforce)`)
+
+### Amended Goal
+
+Deliver bi-directional CRM connectivity for **Microsoft Dynamics 365** and **HubSpot** exposed as **SirmaAI MCP servers** registered per tenant Project. Each MCP server exposes a stable tool surface — `find_account`, `create_deal`, `update_deal_stage`, `enrich_contact`, `attach_note` — callable by SirmaAI agents during qualification, opportunity-lifecycle transitions, and on-demand enrichment. EU Solicit hosts the OAuth callback and stores access + refresh tokens Fernet-encrypted in `client.crm_connections`; tokens are injected into MCP-server config at registration (and on rotation) via SirmaAI's secrets API. Pipedrive and Salesforce **deferred to post-launch** as additional MCP-server registrations following the same pattern (no architectural change required).
+
+### Amended Acceptance Criteria
+
+- [ ] Two MCP server registrations per tenant Project at provisioning time (per E24): `dynamics365`, `hubspot`. Initial state `inactive` until OAuth-connected by tenant admin.
+- [ ] OAuth callback flow per provider: redirect to provider auth URL → callback handler verifies state nonce → token vault stores encrypted refresh + access tokens with rotation tracking. EU Solicit hosts the callback; SirmaAI never touches the OAuth dance.
+- [ ] On successful OAuth: tokens pushed to the corresponding SirmaAI MCP-server's secrets via `POST /api/organizations/{orgId}/secrets`; `client.sirmaai_mcp_servers.status` set to `registered`.
+- [ ] MCP tools exposed (5 minimum per provider): `find_account`, `create_deal`, `update_deal_stage`, `enrich_contact`, `attach_note`. Each tool's schema captured in the MCP-server registration.
+- [ ] SirmaAI agents (qualification, lifecycle-transition, on-demand enrichment) can call MCP tools mid-run via `POST .../mcp-servers/{id}/tools/{toolName}/call`.
+- [ ] Token rotation Celery Beat (every 6h): for tokens approaching expiry, refresh via provider OAuth → re-push to SirmaAI secrets → verify reachability → only then update `client.crm_connections.expires_at` (double-sided rotation per ADR-020).
+- [ ] Conflict resolution via Last-Write-Wins: `integrations.conflict_log` repurposed to log MCP-tool invocation outcomes that conflict with subsequent CRM-webhook reflections; same audit shape, new source semantics.
+- [ ] Tier-gated to Pro+ and above (existing TierGate Depends, Epic 6 pattern); Professional tier sees upgrade prompt on CRM connect UI.
+- [ ] Per-provider rate-limit state moves to SirmaAI side (per ADR-020); EU Solicit's circuit-breaker now applies only to the EU Solicit → SirmaAI call (sirmaai-gateway, ADR-004 addendum).
+- [ ] Cross-tenant negative test: tenant A's agent cannot invoke MCP tools in tenant B's Project (enforced by SirmaAI api-key scope; EU Solicit verifies via post-call audit trail).
+- [ ] Token revocation on workspace archive: `client.crm_connections.status = revoked` triggers MCP-server secret deletion in SirmaAI within 24 hours.
+- [ ] CRM dashboard widget per workspace: connection health (token validity, last rotation), MCP-tool invocation count last 7 days, conflict log, agent runs that consumed CRM tools.
+
+### Stories — Amendment Delta
+
+**Retire:**
+
+| Story | Reason |
+|---|---|
+| S17.01 HubSpot Adapter — Full Bi-Directional Sync (Deals + Contacts) — **direct HTTP adapter portions** | HTTP-to-HubSpot now lives in SirmaAI MCP server, not `integrations-api` |
+| S17.02 Pipedrive Adapter | **Deferred to post-launch** as additional MCP-server registration |
+| S17.03 Salesforce Adapter | **Deferred to post-launch** as additional MCP-server registration |
+| S17.00 portions: per-provider Celery sync queue, direct provider adapter base class | Per-provider HTTP now SirmaAI's responsibility |
+
+**Inject:**
+
+| Story | Pts | Type | Description |
+|---|---|---|---|
+| **S17.30 Dynamics 365 MCP server — tool spec + registration** | 8 | backend + integration | Author Dynamics 365 MCP-server tool spec (5 tools). Implement registration flow: at tenant provisioning (E24), register inactive MCP-server in SirmaAI Project; activate on OAuth completion. Tool schema captures Dynamics-specific fields (entity types, custom field IDs). Tests against Dynamics sandbox. |
+| **S17.31 HubSpot MCP server — tool spec + registration** | 5 | backend + integration | Author HubSpot MCP-server tool spec (5 tools). Same flow as S17.30 — HubSpot was simpler in the original E17, simpler here too. Tests against HubSpot sandbox. |
+| **S17.32 OAuth callback hosting + Fernet token vault** | 5 | backend | Salvaged from original S17.00. OAuth flow per provider: `GET /api/v1/workspaces/:id/crm/:provider/connect` → returns provider auth URL with state nonce; `GET /api/v1/crm/oauth/callback` → validates state, exchanges code, stores Fernet-encrypted. **Now also pushes tokens to SirmaAI MCP-server secrets at activation.** |
+| **S17.33 Token rotation double-sided** | 5 | backend | Celery Beat (every 6h). For tokens within 7 days of expiry: refresh via provider OAuth → push new token to SirmaAI secrets → verify by invoking MCP-server health check → update `client.crm_connections.expires_at`. Rollback path: if SirmaAI push fails, abort rotation, alert admin. |
+| **S17.34 MCP-tool invocation log + conflict resolution** | 3 | backend | Repurpose `integrations.conflict_log`: record MCP-tool invocations and their outcomes; on subsequent CRM webhook reflection that conflicts with the tool's intended state change, log + apply LWW. Tenant-visible conflict surface unchanged. |
+| **S17.35 Tier-gate Pro+ + workspace CRM dashboard widget** | 3 | full-stack | TierGate Depends on CRM connect endpoints (existing pattern). Frontend widget: connection health, tool-invocation count, conflict log link. |
+| **S17.36 Workspace archive → MCP secret deletion** | 2 | backend | On workspace archive event: revoke OAuth tokens at provider + delete MCP-server secrets in SirmaAI + transition `client.sirmaai_mcp_servers.status = inactive`. Audit-logged. |
+
+**Total amendment points:** ~31. Sprint placement: after E04 amendment (needs sirmaai-gateway), E24 (needs Project per company), E25 (KB grounding for enrichment context). Parallel-trackable with E26 (agents that call CRM tools).
+
+### Dependencies
+
+- **Inputs:** E04 amendment (sirmaai-gateway), E24 (Project provisioning + MCP-server registration at provisioning time), E25 (KB context for enrichment agents).
+- **Outputs:** Unblocks the CRM-enrichment story arc inside E26 (qualification agents that auto-enrich leads via MCP tools).
+
+### Salvaged from original Epic 17
+
+`client.crm_connections` table + Fernet token vault pattern (Epic 9 canonical, retained verbatim), OAuth state-nonce flow (Rule 39, retained), webhook HMAC validation pattern (Rule 48, retained), `integrations.conflict_log` table (repurposed), two-layer resilience pattern (now applied to EU Solicit → SirmaAI only, not to direct CRM), tier-gate Pro+ pattern, workspace dashboard widget surface.
+
+### Post-launch additions (out of scope for this amendment)
+
+- **E17.B Pipedrive MCP server** — same pattern as S17.30/S17.31. Lift HubSpot tool spec, swap auth flow + endpoints + rate-limit details. ~8 pts.
+- **E17.C Salesforce MCP server** — same pattern. Salesforce's daily-quota model needs explicit handling in MCP-server config. ~13 pts (Salesforce remains the most complex).
+
+These do not change the EU Solicit contract; they are SirmaAI-side additions invoked by existing agents.

@@ -454,3 +454,76 @@ Comprehensive integration test suite that validates the full AI Gateway request 
 
 **Tests**:
 - All tests listed above, plus edge cases discovered during implementation
+
+---
+
+## 2026-05-12 Amendment — SirmaAI Gateway Refactor
+
+> Trigger: `sprint-change-proposal-2026-05-12-sirmaai.md` (approved 2026-05-12). Pairs with `architecture-amendment-2026-05-12-sirmaai.md` (ADR-018, ADR-019, ADR-020, ADR-004 addendum) and `prd-amendment-2026-05-12-sirmaai.md`.
+> The original Epic 4 shipped, retrospective complete (sprint-status: `epic-4: done`). This amendment **refactors the service in place** under feature flag `SIRMAAI_GATEWAY_ENABLED`; the original AC list above is preserved as the record of what was delivered.
+
+### Amended Goal
+
+Refactor the existing `ai-gateway` into **`sirmaai-gateway`** — the single integration point between EU Solicit backend services and the **SirmaAI** agentic substrate at `https://agenticsai.endigitalx.com/`. The gateway: (a) holds the tenant↔SirmaAI Project mapping cache and per-Project api-key vault (Fernet, Epic 9 canonical); (b) proxies agent / team / workflow run calls (sync, SSE, and async-poll patterns); (c) hosts the Standard Webhooks receiver and routes events into Redis Streams; (d) runs the 5-minute run-status reconciler. ClusterIP-only; consumed by Client API, Admin API, and the new Data Pipeline webhook layer. **Retires** the `agents.yaml` logical-name registry; logical names survive as a per-Project resolution table in `client.sirmaai_projects.agent_map` JSONB.
+
+### Amended Acceptance Criteria
+
+- [ ] Service renamed `ai-gateway` → `sirmaai-gateway` (folder, Docker image, Helm-values key, Prometheus job, OpenAPI title); old name redirects retired only after green tests
+- [ ] `agents.yaml` registry retired; logical-name resolution moves to per-Project `agent_map` lookup at call time
+- [ ] `client.sirmaai_projects` cache: Redis-backed, 5-min TTL, invalidated on `sirmaai.key_rotated` event; cache-hit rate ≥99% in steady state
+- [ ] Per-Project api-key Fernet-encrypted at rest; rotation runs on 90-day cadence with double-validation overlap (new key issued + verified before old key revoked)
+- [ ] Outbound calls to SirmaAI use existing two-layer resilience `circuit_breaker(retry(http_factory))` (ADR-004); circuit-breaker keys = `(eusolicit_logical_name, sirmaai_project_id)`
+- [ ] Async-run pattern implemented: `submit_agent_run_async(...)` + `get_job_status(jobId)`; job poll backoff exponential with jitter, capped at 30s
+- [ ] Standard Webhooks receiver: HMAC SHA-256 verification via `hmac.compare_digest()`; 7-day Redis idempotency cache (SETNX); routes events to internal Redis Streams; DLQ for poison events
+- [ ] 5-minute run-state reconciler: scans `gateway.workflow_runs` partial index for non-terminal rows, polls `GET /jobs/{jobId}/status`, converges status; reconciler is authoritative truth
+- [ ] SSE proxy salvaged from original epic; lifecycle invariants (ADR-005) unchanged; upstream URL shifts to SirmaAI `/agents/{id}/run/stream`
+- [ ] Tenant-visible "AI analysis temporarily unavailable" banner surfaced on circuit-breaker open >5 minutes
+- [ ] Cross-tenant negative test: company-A request resolved against company-B Project token returns 403
+- [ ] Feature flag `SIRMAAI_GATEWAY_ENABLED` allows phased rollout per environment; original `ai-gateway` code path stays callable until flag flip in production
+- [ ] OpenAPI spec regenerated; client packages (`eusolicit-kraftdata` → `eusolicit-sirmaai`) re-generated; type-check across consuming services green
+- [ ] Tier-to-rate-limit sync (NFR-25) reflects every `subscription.changed` event on SirmaAI within 60s p95
+- [ ] Public ingress configured for webhook receiver only (path `/webhooks/sirmaai`); all other gateway paths remain ClusterIP-only (updates original Epic 4 AC #15)
+- [ ] Local-dev `make up` boots `sirmaai-gateway` pointing at SirmaAI staging via env override; documented in `eusolicit-app/CLAUDE.md`
+
+### Stories — Amendment Delta
+
+**Retire:**
+
+| Story | Reason |
+|---|---|
+| S04.03 Agent registry (`agents.yaml`) | Logical names now resolved per-Project from `agent_map` JSONB |
+| S04.04-style internal route table for KraftData paths | Routes now resolved via SirmaAI Project IDs |
+| Hard-coded KraftData base URL config keys | Replaced by `SIRMAAI_BASE_URL` + per-tenant Project context |
+
+**Inject:**
+
+| Story | Pts | Type | Description |
+|---|---|---|---|
+| **S04.20 Service rename + flag scaffold** | 2 | backend | Rename folder, Docker image, Helm key, Prometheus job, OpenAPI title. Add `SIRMAAI_GATEWAY_ENABLED` feature flag. Old path callable until flag flip in prod. |
+| **S04.21 SirmaAI-platform schema migrations + mapping cache** | 5 | backend | Alembic migration creating **all 3 net-new tables in the `gateway` schema and 1 in the `client` schema** per architecture amendment §4.1: `client.sirmaai_projects` (with `agent_map` JSONB + Fernet-encrypted api-key column + partial index on non-`provisioned` rows), `gateway.webhook_subscriptions` (HMAC secret store), `gateway.workflow_runs` (with partial index on non-terminal rows). Redis-backed mapping cache for `client.sirmaai_projects` (5-min TTL, invalidation on `sirmaai.key_rotated` event). Negative-path tests for missing tenant. Schema-isolation invariant (ADR-001) verified — no cross-schema FKs beyond `client.companies`. |
+| **S04.22 Per-Project api-key vault + rotation** | 3 | backend | Fernet encryption at rest (Epic 9 canonical). 90-day rotation Celery Beat with overlap verification. `sirmaai.key_rotated` event publication. |
+| **S04.23 Logical-name resolution via `agent_map`** | 2 | backend | Resolve `(logical_name, company_id) → sirmaai_agent_uuid` at call time. Re-sync against SirmaAI Project agent inventory on miss before 503. |
+| **S04.24 Async-run + jobs polling** | 3 | backend | `submit_agent_run_async` + `get_job_status` with exponential-backoff poll (capped 30s, jitter). Persists `gateway.workflow_runs` rows. |
+| **S04.25 Standard Webhooks receiver** | 5 | backend | HMAC verification, 7-day idempotency cache, Redis Streams routing, DLQ. Subscription bootstrap on deploy. Webhook secret rotation Celery Beat (90-day overlap). |
+| **S04.26 Run-state reconciler** | 3 | backend | 5-min job scanning `gateway.workflow_runs` partial index of non-terminal rows; converges status via `GET /jobs/{jobId}/status`. Authoritative truth. |
+| **S04.27 Tenant degraded-mode banner** | 2 | full-stack | Circuit-breaker open >5min → tenant-visible banner via existing notification surface; clears on recovery. |
+| **S04.28 Tier-to-SirmaAI-rate-limit sync (NFR-25)** | 3 | backend | Subscribe to existing `subscription.changed` Redis Streams event (Epic 8 pattern). On event: lookup tier → rate-limit mapping (config-driven, defaults per NFR-25: Free 100/day, Starter 1k/day, Professional 10k/day, Pro+ 20k/day, Enterprise 100k/day). Call `PATCH /api/admin/organizations/{orgId}/rate-limit` against SirmaAI within 60s SLO. Idempotent retry on transient failures via existing two-layer resilience. Audit row written per sync. Tier-mapping table maintained in `services/sirmaai-gateway/config/tier_rate_limits.yaml` for commercial calibration without code changes. Closes readiness Concern #1. |
+| **S04.29 Public ingress for webhook receiver** | 3 | backend + ops | nginx vhost on www1 routing `https://api.eusolicit.com/webhooks/sirmaai` → cluster-internal `sirmaai-gateway:8004/webhooks/sirmaai`; **all other gateway paths remain ClusterIP-only**. Requires manual sudo cp on www1 per `project_deploy_nginx_manual.md` (memory). TLS via existing certbot (ACME challenge path stays open per existing pattern). Runbook entry at `eusolicit-docs/runbooks/sirmaai-webhook-ingress.md` (pre-flight check, deploy steps, rollback). Updates original Epic 4 AC #15 wording: webhook receiver path is publicly exposed; all other paths remain ClusterIP-only. Closes readiness Concern #4. |
+| **S04.30 Package rename — `eusolicit-kraftdata` → `eusolicit-sirmaai`** | 5 | backend | Rename `packages/eusolicit-kraftdata/` → `packages/eusolicit-sirmaai/`. Update `pyproject.toml` package name. Regenerate typed client from `eusolicit-docs/sirmaai-reference-docs/api-docs v3.json`. Update `pyproject.toml` dependency in `services/client-api/`, `services/admin-api/`, `services/data-pipeline/`. Find-and-replace import statements across all services. Backward-compatibility shim retired after 1 sprint (no historic Python clients to support — internal-only package). Type-check green across all consuming services. Closes readiness Concern #3. |
+| **S04.31 Local-dev SirmaAI configuration** | 2 | backend + docs | For `make up` local-dev: point at SirmaAI staging (`stage.sirma.ai` or shared dev Org on `agenticsai.endigitalx.com`) via env override `SIRMAAI_BASE_URL` + dev Org/Project credentials in `.env.example`. Shared dev Project allocated outside the per-tenant flow (admin-bootstrapped). Documentation in `eusolicit-app/CLAUDE.md` under "Local stack". `sirmaai-mock` deferred to when test-isolation pain warrants (per ADR-019). Closes readiness Concern #8. |
+
+**Total amendment points:** ~36 (was ~23 pre-gap-closure). Sprint placement: first post-pivot sprint, parallel-trackable with E24 (which depends on E04 amendment landing for tenant→Project key issuance).
+
+### Dependencies
+
+- **Inputs:** ADR-018, ADR-019, ADR-020, ADR-004 addendum (architecture amendment).
+- **Outputs:** Unblocks E24 (tenant provisioning needs per-Project key vault + mapping), E26 (agent-driven ingestion needs async-run + webhooks), E28 (webhook + reconciliation epic builds on S04.25 + S04.26).
+
+### Salvaged from original Epic 4
+
+SSE proxy lifecycle (ADR-005 invariants), `circuit_breaker(retry(http_factory))` composition (ADR-004), `X-Caller-Service` header convention, flat 503 body `{"message", "code": "AGENT_UNAVAILABLE"}` (Epic 11 standard), structured logging, integration test fixtures.
+
+### Cutover plan
+
+Phase 1: New code paths shipped behind `SIRMAAI_GATEWAY_ENABLED=false` in production; staging flipped first.
+Phase 2: After 7 days green on staging + green smoke on prod with single-tenant pilot, flip flag for all tenants. Old `ai-gateway` code remains callable for 1 sprint, then deleted.
