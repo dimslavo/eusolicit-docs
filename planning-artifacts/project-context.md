@@ -1055,3 +1055,11 @@
 ## Anti-Patterns
 
 - Discovered in Epic 23: E23-AP04 | E22 retro claimed `project-context.md` writes that never executed — zero-output guard failure | prompt_adjustment | high |
+
+## Patterns
+
+- Discovered in Epic 4: ` | 7 (E04A-P01..P07) | 1 medium / 4 high / 2 medium |
+
+## Anti-Patterns
+
+- Discovered in Epic 4: ` | 7 (E04A-AP01..AP07) | 2 critical / 4 high / 1 medium |

@@ -1,6 +1,8 @@
 # Story 4.21: SirmaAI-platform Schema Migrations + Mapping Cache
 
-Status: review
+Status: done
+
+> **NOTE (updated by bmad-code-review 2026-05-14, re-review):** All previously-flagged findings (H1–H4, M1–M4, L1–L3) have been verified as correctly addressed in commit `5b17679`. Adversarial re-review confirms migration 072 grants are correctly scoped, the H3 negative-isolation test is in place, ProjectMapping uses SecretStr, workflow_runs FK is SET NULL with nullable=True, and the entire change set is committed. **REVIEW: Approve.** See "Re-Review Outcome" appendix at the bottom of this file.
 
 > **NOTE (updated by dev-story 2026-05-14):** All code-review findings (H1–H4, M1–M4, L1–L3) from `bmad-code-review` have been addressed and the entire change set committed as `5b17679` on `main`. See Dev Agent Record below.
 
@@ -357,3 +359,55 @@ Unit tests (SP-001 through SP-010) all PASS. Errors are connection teardown only
 
 Lint: `ruff check` on all changed files → `All checks passed!`
 Type: `mypy` on changed files → 0 new errors (12 pre-existing `attr-defined` in unchanged files resolved by `_SirmaAIProjectRow` Protocol).
+
+---
+
+## Re-Review Outcome (bmad-code-review, 2026-05-14)
+
+**Reviewer:** dkslavo (via `bmad-code-review`, re-review pass)
+**Date:** 2026-05-14
+**Outcome:** **REVIEW: Approve**
+**Reviewed commit:** `5b17679` (main, working tree clean)
+
+### Verification of prior findings
+
+| Finding | Severity | Verified |
+|---------|----------|----------|
+| H1 — `ALTER DEFAULT PRIVILEGES` on client schema | blocking | ✅ Removed in `072_create_sirmaai_projects.py`. Only two explicit `GRANT SELECT` remain (`client.companies`, `client.sirmaai_projects`). Inline comment now warns future authors against extending via DEFAULT PRIVILEGES. |
+| H2 — Story file missing | blocking | ✅ Present with reconstructed Story / AC / Tasks + Dev Agent Record. |
+| H3 — No negative isolation test | blocking | ✅ `TestS0421SirmaAISchemaIsolation::test_ai_gateway_role_denied_on_other_client_tables` parametrised over six tables (`users`, `proposals`, `password_reset_tokens`, `entity_permissions`, `espd_profiles`, `subscriptions`). Test docstring explicitly cites H1 as the regression it guards. |
+| H4 — Change set uncommitted | blocking | ✅ Committed as `5b17679`. `git status` clean. |
+| M1 — Unrelated re-sort in `__init__.py` | medium | ✅ Re-sort justified as ruff I001 enforcement (pre-existing violation). Acceptable. |
+| M2 — `api_key_plaintext: str` | medium | ✅ `SecretStr` in `ProjectMapping`. Callers in tests updated to `.get_secret_value()`. |
+| M3 — Private prometheus API | medium | ✅ Module-level `try/except ValueError: pass` with `_HITS`/`_MISSES` initialised None and guarded at call site. No `REGISTRY._names_to_collectors` access remains. |
+| M4 — `workflow_runs.company_id` FK semantic | medium | ✅ `ondelete="SET NULL"` + `nullable=True` in both migration 004 and the ORM model. Docstring spells out forensics retention semantic. |
+| L1 — `agent_map` weak typing | low | ✅ `Mapped[dict[str, str]]` in `SirmaAIProject`. |
+| L2 — No TTL test | low | ✅ `TestCacheTTL` present in `test_project_cache.py`. |
+| L3 — `decode_responses` mode not documented | low | ✅ Comment added in `ProjectCache.__init__`. |
+
+### Adversarial spot-checks (this pass)
+
+- **Migration 072 grants are minimal:** only two `GRANT SELECT` statements; no `ALTER DEFAULT PRIVILEGES` on the client schema; init-script verification (`grep -n` on `infra/postgres/init/01-init-schemas-and-roles.sql`) shows the only DEFAULT PRIVILEGES for `ai_gateway_role` are scoped to the `gateway` schema (its own). Carve-out is the documented two tables only.
+- **H3 test actually exercises the regression:** the parametrised table list includes tables that pre-exist in `client.*`; if H1 were to regress (e.g., a future `ALTER DEFAULT PRIVILEGES` re-introduced), these six SELECTs would succeed and the test would fail.
+- **SecretStr propagation:** `FernetCrypto.decrypt(...)` returns `str` (verified by signature in `packages/eusolicit-common/src/eusolicit_common/crypto.py:40`), so the constructor `SecretStr(self._crypto.decrypt(...))` path is type-safe.
+- **Cache invalidation consumer:** always ACKs (even on error) to prevent stream wedging; the `try/except/finally` around `_handle_event` correctly re-raises `asyncio.CancelledError` rather than swallowing it, so cooperative shutdown is preserved.
+- **Lifespan gate:** `SIRMAAI_GATEWAY_ENABLED && not SIRMAAI_FERNET_KEY → RuntimeError` fires before any other init in `main.py`; cache + consumer creation is gated behind the same flag.
+- **`workflow_runs.company_id` SET NULL semantic:** migration, ORM model (`Mapped[uuid.UUID | None]`), and the cross-schema FK isolation test (`test_no_fks_out_of_gateway_except_companies`) all agree. No `relationship()` declared — gateway code cannot navigate to client objects via ORM, as required by ADR-001.
+
+### Residual non-blocking observations (not gating)
+
+These are flagged for future work but do not warrant Changes Requested:
+
+- **No runtime test for SET NULL behaviour.** The FK semantic was changed in M4 but no test asserts that deleting a `client.companies` row sets `workflow_runs.company_id = NULL`. Worth adding in S04.26 (reconciler/retention) when the forensics path is exercised.
+- **Counter reload path silently skips metrics.** `_HITS` / `_MISSES` can be `None` if `importlib.reload()` is used in tests. In production the module is loaded once so this is a no-op. Acceptable but worth documenting in the metrics runbook.
+- **Migration 072 docstring** still references the old "rollback could leave ai_gateway_role broken" rationale for not revoking GRANTs in `downgrade()`. The rationale is fine; just note for future auditors that the grants are intentionally retained on downgrade.
+
+### Verdict
+
+**REVIEW: Approve**
+
+All previously-blocking findings are resolved with verifiable code-level evidence. The implementation matches the architecture amendment §4.1 scope, the ADR-001 carve-out is minimal and guarded by tests, and the change set is committed and clean.
+
+```
+FAILURE_REASON: (none — review passed)
+```

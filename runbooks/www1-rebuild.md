@@ -49,9 +49,14 @@ Certbot's initial run is interactive (email + ToS accept). One-time:
 ```bash
 ssh debian@<new-ip>
 sudo certbot --nginx --expand \
-  -d www.eusolicit.com -d eusolicit.com -d admin.eusolicit.com \
+  -d www.eusolicit.com -d eusolicit.com \
+  -d admin.eusolicit.com -d api.eusolicit.com \
   --email <ops-email> --agree-tos --no-eff-email
 ```
+> **Note (S04.29):** `-d api.eusolicit.com` is required so the rebuilt cert covers
+> the SirmaAI webhook ingress from the start. DNS for `api.eusolicit.com` must
+> resolve to the new www1 IP BEFORE this step or the ACME challenge will fail.
+> See: [`eusolicit-docs/runbooks/sirmaai-webhook-ingress.md`](sirmaai-webhook-ingress.md) §Pre-flight check 1.
 
 Verify:
 ```bash
