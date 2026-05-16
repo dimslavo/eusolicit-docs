@@ -2,6 +2,7 @@
 
 **Trigger:** `ContainerRestartLoop` (>3 restarts of an `eusolicit-app-*` container in 5 min)
 **Story:** onprem-04 | **SLO:** platform
+**SLA-Scope**: in-scope
 
 ## Symptoms
 
@@ -24,7 +25,9 @@ docker logs --tail=100 "$SVC" 2>&1 | tail -80
 docker inspect --format='{{json .State.Health}}' "$SVC" | jq .
 ```
 
-## Common causes + fixes
+## Resolution
+
+Identify the cause and apply the matching fix:
 
 1. **Bad recent deploy** — check `git log --oneline -5` for the most recent commit. If a `chore: auto-sync` or fresh feature commit just landed, **roll back**:
    ```bash
@@ -42,14 +45,32 @@ docker inspect --format='{{json .State.Health}}' "$SVC" | jq .
 
 5. **Disk full** — see `runbooks/disk-cleanup-root.md`. Out-of-disk causes mystery crashes.
 
-## Escalation
+## Verification
 
-If restarts continue after triage:
-- Increment severity to S1 if user-facing service is the affected container (`client-api`, `frontend`).
-- Open a post-mortem in `eusolicit-docs/post-mortems/`.
-- If trigger commit is `chore: auto-sync`, append a row to `incident-management/auto-sync-incidents.md`.
+```bash
+# No new restarts; container Up and healthy
+docker ps --filter "name=eusolicit-app-" --format "table {{.Names}}\t{{.Status}}"
+docker inspect --format='{{json .State.Health}}' "$SVC" | jq .
 
-## References
+# Confirm no further start events for this container
+docker events --since 10m --filter "type=container" --filter "event=start" --filter "name=$SVC" 2>&1 | tail -5
+```
+
+`ContainerRestartLoop` clears once the container stays up for the alert window with no further restarts and the healthcheck reports `healthy`.
+
+## Rollback
+
+For cause #1 the Resolution step **is** a rollback (`git reset --hard` + `scripts/deploy.sh --rollback`). If the rollback itself misbehaves, follow `deploy-rollback.md` §Rollback. Causes #2–#5 are diagnostic/forward-only — there is no state to revert; if a config or memory-limit change made things worse, revert that single edit in `docker-compose.prod.yml` / `.env.prod` and `docker compose up -d <service>` again.
+
+## Related
 
 - Alert rule: `infra/observability/prometheus/rules/host-alerts.yaml`
 - Project memory: "Auto-sync ships unverified code"
+- `memory-pressure.md`, `disk-cleanup-root.md`, `deploy-rollback.md`
+
+### Escalation
+
+If restarts continue after triage:
+- Increment severity to S1 if the user-facing service is the affected container (`client-api`, `frontend`).
+- Open a post-mortem in `eusolicit-docs/post-mortems/`.
+- If the trigger commit is `chore: auto-sync`, append a row to `incident-management/auto-sync-incidents.md`.

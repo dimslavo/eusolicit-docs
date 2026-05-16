@@ -2,6 +2,7 @@
 
 **Trigger:** `PostgresWalArchivingStalled` (no archived count increase in 15 min + last archive >15 min ago)
 **Story:** onprem-04 | **SLO:** platform
+**SLA-Scope**: in-scope
 
 ## Symptoms
 
@@ -27,7 +28,9 @@ df -h /home
 grep wal-only /var/log/eusolicit/cron.log | tail -10
 ```
 
-## Common causes + fixes
+## Resolution
+
+Identify the cause and apply the matching fix:
 
 1. **`/wal_archive` is full or unwritable.** Free space:
    ```bash
@@ -50,15 +53,33 @@ grep wal-only /var/log/eusolicit/cron.log | tail -10
    ssh u123456@u123456.your-storagebox.de "echo ok"
    ```
 
-## Recovery
-
 After the underlying cause is fixed, run a one-shot push to catch up:
+
 ```bash
 bash /home/debian/Projects/eusolicit/eusolicit-app/scripts/onprem/postgres-backup.sh --wal-only
 ```
 
-## References
+## Verification
+
+```bash
+# archived_count increasing, last_archived_time recent, failed_count not growing
+docker exec eusolicit-app-postgres-1 psql -U eusolicit -d eusolicit -c "
+  SELECT archived_count, last_archived_time, failed_count, last_failed_time
+  FROM pg_stat_archiver;"
+
+# Off-site copy caught up (Hetzner Storage Box listing is recent)
+ls -lah /home/debian/eusolicit-overrides/pg_wal_archive | tail -5
+```
+
+`PostgresWalArchivingStalled` clears once `archived_count` advances and `last_archived_time` is within the last 15 min.
+
+## Rollback
+
+The catch-up push (`postgres-backup.sh --wal-only`) is **idempotent and forward-only** — re-running it is safe and there is nothing to undo. The one irreversible action is manual deletion of old WAL segments (Resolution #1); only do it after verifying a recent basebackup exists. If WAL needed for point-in-time recovery was deleted in error, the off-site Hetzner copy is authoritative — recover per `postgres-restore.md`. No change here alters running Postgres.
+
+## Related
 
 - Alert rule: `infra/observability/prometheus/rules/host-alerts.yaml`
 - Backup script: `eusolicit-app/scripts/onprem/postgres-backup.sh`
 - onprem-01 story for full backup architecture
+- `postgres-restore.md`, `disk-cleanup-home.md`

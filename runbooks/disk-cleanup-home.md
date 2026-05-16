@@ -2,6 +2,7 @@
 
 **Trigger:** `HostHomeDiskWarning` (>90%)
 **Story:** onprem-04 | **SLO:** platform
+**SLA-Scope**: in-scope
 
 ## Symptoms
 
@@ -16,7 +17,9 @@ sudo du -shx /home/docker/backups/* 2>/dev/null | sort -h | tail -10
 sudo du -shx /home/debian/eusolicit-overrides/pg_wal_archive 2>/dev/null
 ```
 
-## Fixes (in order)
+## Resolution
+
+Apply in order:
 
 ```bash
 # 1. Backup directory bloat — purge anything older than the local 7d retention
@@ -35,11 +38,25 @@ docker volume rm $(docker volume ls -q --filter "name=eusolicit-restore-temp") 2
 #    the relevant team; we share /home/docker/backups/ as a convention.
 ```
 
-## Long-term
+### Long-term
 
 If sustained pressure: expand the storage volume on www1 (provider UI) or move postgres data volume to a dedicated mount.
 
-## References
+## Verification
+
+```bash
+# /home back under the 90% alert threshold
+df -h /home
+```
+
+`HostHomeDiskWarning` should clear within one scrape interval once usage drops below 90%. Confirm the next backup lands and WAL archiving resumes (see `wal-archiving-stalled.md` §Verification).
+
+## Rollback
+
+The Resolution steps (deleting aged backups, pruning stale restore-test volumes) are **forward-only and irreversible** — there is nothing to undo, and nothing within the local 7-day retention or any in-use volume is touched. If an aged backup that was just purged is later needed, restore it from the off-site Hetzner copy per `postgres-restore.md`. If co-tenant data was deleted in error (step 4), escalate to that tenant's on-call immediately.
+
+## Related
 
 - Alert rule: `infra/observability/prometheus/rules/host-alerts.yaml`
 - Backup script: `eusolicit-app/scripts/onprem/postgres-backup.sh`
+- `wal-archiving-stalled.md`, `postgres-restore.md`

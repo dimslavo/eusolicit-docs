@@ -2,6 +2,7 @@
 
 **Triggers:** `HostMemoryPressure` (available <2 GiB) | `HostSwapHigh` (swap >32 GiB)
 **Story:** onprem-04 | **SLO:** platform
+**SLA-Scope**: in-scope
 
 ## Symptoms
 
@@ -27,7 +28,7 @@ for id in $(docker ps -q); do
 done | sort -k2 -nr | head -5
 ```
 
-## Fixes
+## Resolution
 
 ```bash
 # 1. Find the leaker. If it's a single eusolicit container leaking, restart it:
@@ -43,11 +44,32 @@ docker compose -f /home/debian/Projects/eusolicit/eusolicit-app/docker-compose.p
 #    docker compose restart them so volumes flush cleanly.
 ```
 
-## Long-term
+### Long-term
 
 - Cap individual containers via `deploy.resources.limits.memory` (already partially done in `docker-compose.prod.yml`).
 - Consider adding a swap-pressure metric to per-service Grafana dashboards.
 
-## References
+## Verification
+
+```bash
+# Available memory recovered, swap no longer climbing
+free -h
+
+# No new OOM kills since the fix
+sudo journalctl -k --since "10 min ago" | grep -iE "oom-kill|out of memory" || echo "no OOM kills"
+
+# Restarted container is back and healthy
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
+```
+
+`HostMemoryPressure` / `HostSwapHigh` clear once available memory rises above 2 GiB / swap drops below the threshold for the alert window.
+
+## Rollback
+
+A `docker compose restart` is **forward-only** — there is no prior state to restore, and using `restart` (not `kill -9`) lets volumes flush cleanly. If restarting a container worsened things (e.g. a dependency wasn't ready), bring the stack back to a consistent state with `bash scripts/deploy.sh --no-build`. Killing a co-tenant process (step 3) is irreversible for that tenant — coordinate via their on-call before and after.
+
+## Related
 
 - Alert rule: `infra/observability/prometheus/rules/host-alerts.yaml`
+- `container-restart-loop.md` (OOM-kill is a common restart-loop cause)
+- Per-service Grafana memory dashboards
