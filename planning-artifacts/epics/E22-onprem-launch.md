@@ -21,6 +21,7 @@ This epic exists because the 2026-05-11 ADR-010 pivot abandoned managed-AWS infr
 - [ ] AWS Terraform deleted (`infra/terraform/modules/` and `infra/terraform/environments/`); `infra/helm/` moved to `infra/helm/.archive/` to preserve design for hypothetical Phase-2 HA migration
 - [ ] No public 99.9% SLA promised. Trust Center disclosure live (owned by E23 `public-sla-announcement-soak-gate`): "Service is in beta. Best-effort availability." + RTO ≤ 4h / RPO ≤ 24h commitment
 - [ ] All application-layer resilience from E21 retained verbatim (`pool_pre_ping=True`, redis-py keepalive + health-check + retry, Celery `broker_connection_retry_on_startup`, `/metrics` endpoints, 15 runbooks, k6 baseline)
+- [ ] N8N instance on www1 is version-pinned (no `latest`), backed up via Hetzner Storage Box, has restore + upgrade runbooks, and is observable via Prometheus/Grafana/Alertmanager (per `onprem-07`, added 2026-05-15)
 
 ## Stories
 
@@ -47,6 +48,10 @@ Branch protection on main + require CI green + `chore: auto-sync` PR policy + `d
 ### onprem-06: www1-as-Code (~1-2 days, platform-engineering)
 
 Codify host-only state (`authorized_keys`, `eusolicit-overrides`, `.env.prod`, `/etc/nginx`, certbot) as Ansible playbooks or shell scripts under `infra/host/`. Required to honestly defend a 4h RTO commitment. Includes practice rebuild on a sacrificial Debian 13 VM (Hetzner Cloud trial or local KVM). Source story: `implementation-artifacts/onprem-06-www1-itself-as-code.md`.
+
+### onprem-07: N8N Instance Ops (NEW 2026-05-15 via IR remediation, ~1 day, platform-engineering)
+
+Codify operational ownership of the shared EU Solicit-owned N8N instance on www1: version pinning (no `latest` tag); host-mounted volume backup to Hetzner Storage Box; weekly workflow JSON export committed to `infra/n8n/workflows-export/`; restore + upgrade runbooks; Prometheus `/metrics` scrape + Grafana dashboard + Alertmanager rules with `runbook_url` annotations; practice rebuild on a sacrificial Debian 13 VM (AP22-D1 discipline). Without this story the N8N substrate has no upgrade/backup/SLO owner — a risk class equivalent to auto-sync defects per project memory. E05 amendment owns workflow *templates*; this story owns the N8N *container itself*. Source story: `implementation-artifacts/onprem-07-n8n-instance-ops.md` with 9 ACs.
 
 ## Tests
 

@@ -29,24 +29,23 @@ This epic and the **E17 amendment** describe overlapping work. E27 is the **forw
 
 ## Stories
 
-(See **E17 amendment §Stories — Amendment Delta** — canonical list:)
+> **Story numbering (resolved 2026-05-15 IR remediation):** Canonical story keys are `S17.30a..S17.36` (E17 amendment namespace) — that's what the orchestrator dispatches against, what `sprint-status.yaml` tracks, and what implementation tickets must cite. **The only story unique to E27 is `S27.08`** (agent-side MCP-tool consumption patterns) — it has no E17 equivalent because the original E17 had no agent-side consumer to document. E27 is the design narrative for the post-pivot CRM lifecycle; E17 amendment §Stories table is the canonical execution unit.
 
-| Story | Pts | Type | Description |
+Canonical list (see **E17 amendment §Stories — Amendment Delta** for full descriptions):
+
+| Story (canonical key) | Pts | Type | Description |
 |---|---|---|---|
-| **S27.01 = S17.30** Dynamics 365 MCP server — tool spec + registration | 8 | backend + integration | Author Dynamics tool spec; register on tenant provisioning |
-| **S27.02 = S17.31** HubSpot MCP server — tool spec + registration | 5 | backend + integration | Author HubSpot tool spec; register on tenant provisioning |
-| **S27.03 = S17.32** OAuth callback hosting + Fernet token vault + SirmaAI secret push | 5 | backend | OAuth flow; on success, push tokens to SirmaAI MCP-server secrets |
-| **S27.04 = S17.33** Token rotation double-sided | 5 | backend | 6h Beat; refresh OAuth → push to SirmaAI → verify → update expires_at |
-| **S27.05 = S17.34** MCP-tool invocation log + conflict resolution | 3 | backend | Repurpose `integrations.conflict_log` for MCP-tool outcomes; LWW |
-| **S27.06 = S17.35** Tier-gate Pro+ + workspace CRM dashboard | 3 | full-stack | TierGate Depends; UI widget |
-| **S27.07 = S17.36** Workspace archive → MCP secret deletion | 2 | backend | On archive: revoke tokens at provider + delete SirmaAI secrets + transition status |
-| **S27.08** Agent-side MCP-tool consumption patterns | 3 | backend + integration | Document how qualification + quantification + on-demand enrichment agents call MCP tools; eval-runs with mocked CRM responses |
+| **S17.30a** Dynamics 365 MCP server — tool spec authoring | 4 | backend | Author the 5-tool MCP spec; PR-reviewed YAML at `services/integrations-api/config/sirmaai_mcp_specs/dynamics365.yaml` |
+| **S17.30b** Dynamics 365 MCP server — registration flow + sandbox tests | 4 | backend + integration | Consume S17.30a spec; register inactive MCP-server at provisioning; sandbox integration tests |
+| **S17.31** HubSpot MCP server — tool spec + registration | 5 | backend + integration | Same shape as Dynamics; HubSpot simpler |
+| **S17.32** OAuth callback hosting + Fernet token vault + SirmaAI secret push | 5 | backend | OAuth flow; on success, push tokens to SirmaAI MCP-server secrets |
+| **S17.33** Token rotation double-sided | 5 | backend | 6h Beat; refresh OAuth → push to SirmaAI → verify → update `expires_at` |
+| **S17.34** MCP-tool invocation log + conflict resolution | 3 | backend | Repurpose `integrations.conflict_log`; LWW |
+| **S17.35** Tier-gate Pro+ + workspace CRM dashboard | 3 | full-stack | TierGate Depends; UI widget |
+| **S17.36** Workspace archive → MCP secret deletion | 2 | backend | Revoke tokens at provider + delete SirmaAI secrets + transition status |
+| **S27.08** Agent-side MCP-tool consumption patterns (E27-unique) | 3 | backend + integration | How qualification / quantification / on-demand-enrichment agents call MCP tools; eval-runs with mocked CRM responses |
 
-**Total: ~34 pts** (matches sprint change proposal §3.1 estimate).
-
-## Story numbering note
-
-E27 stories use S27.* prefix in this file for clarity. The E17 amendment uses S17.30-S17.36 for the same work in its delta. **Implementation tickets should pick one convention** — recommend S17.30-S17.36 since E17 already has a story-numbering namespace and E17 amendment is what the orchestrator dispatches against. E27 stays as the design narrative.
+**Total: ~34 pts** (unchanged after 2026-05-15 split of S17.30 8pts → S17.30a 4pts + S17.30b 4pts).
 
 ## Out of scope
 

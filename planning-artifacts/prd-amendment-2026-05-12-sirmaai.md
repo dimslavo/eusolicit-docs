@@ -70,7 +70,9 @@ The product is at the same line on the wall it was at on 2026-04-27 — automate
 
 > **NEW — FR-46 (Per-tenant SirmaAI Project archival):** *"On company archive in EU Solicit, the system shall soft-delete the corresponding SirmaAI Project and revoke its API key within 24 hours. Archived Projects shall not be re-provisioned on company restoration without explicit admin action."*
 
-**Rationale:** Tenant lifecycle in EU Solicit and SirmaAI must remain in lockstep; without this, every other SirmaAI-facing capability (KB, agents, MCP servers) has no parent to attach to.
+> **NEW — FR-56 (Cross-substrate right-to-erasure — added 2026-05-15 via IR remediation):** *"GDPR Article 17 right-to-erasure for a company shall propagate to all data substrates the company has reached: (a) EU Solicit Postgres (canonical proposal, opportunity-analysis, RBAC, audit-trail rows scoped by `company_id`); (b) SirmaAI Project (Project archival per FR-46) and all `client.sirmaai_kb_files` artefacts deleted from the underlying SirmaAI storage-resource; (c) SirmaAI MCP-server secrets purged per FR-53 archival flow; (d) external CRM tokens revoked at the provider. Erasure shall not be certified until two ACKs are written to `shared.audit_log`: `erasure_step: postgres_rows_deleted` and `erasure_step: sirmaai_files_deleted`. A nightly sweep job shall surface stale erasure attempts (in_progress > 48h) for admin attention. Owned by E24 S24.07."*
+
+**Rationale:** Tenant lifecycle in EU Solicit and SirmaAI must remain in lockstep; without this, every other SirmaAI-facing capability (KB, agents, MCP servers) has no parent to attach to. FR-56 lifts the cross-substrate erasure invariant from an E24 S24.07 acceptance criterion to a numbered FR — preventing it from being trimmed under scope pressure and giving it explicit GDPR-Article-17 traceability.
 
 ---
 
@@ -232,6 +234,7 @@ The product is at the same line on the wall it was at on 2026-04-27 — automate
 | New / Amended FR-NFR | Owning Epic |
 |---|---|
 | FR-45, FR-46 (tenant provisioning + archival) | **E24** SirmaAI Tenant Provisioning |
+| FR-56 (cross-substrate right-to-erasure — added 2026-05-15) | **E24** S24.07 |
 | FR-49, FR-50, FR-51, FR-52 (KB lifecycle) | **E25** Knowledge Base Lifecycle |
 | FR-15 (amended), FR-47, FR-48 (qualification + quantification) | **E26** Agent-Driven Ingestion & Analysis + modified **E05** |
 | FR-53 (CRM via MCP) | **E27** CRM via MCP (modified **E17**) |

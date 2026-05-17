@@ -15,7 +15,8 @@ Close out the operator-execution work that doesn't fit any prior epic's engineer
 - [ ] Trust Center disclosure live with "Service is in beta. Best-effort availability." posture card + RTO ≤ 4h / RPO ≤ 24h commitment; 2-week post-launch soak observed before any uptime claim
 - [ ] Stripe circuit-breakers added (AC4 of `drift-recovery-story`); billing metrics dashboard live (AC5 of `drift-recovery-story`); circuit-breaker state observable in Grafana
 - [ ] 6 TEA-review tickets cleared (Epic 8 + Epic 9 backlog from `inj-03`); coverage gaps documented in `test_artifacts/`
-- [ ] All 5 stories transition `ready-for-dev` → `done` with two-gate close (`bmad-code-review` Approve verdict + operator-completion signal in each story's runbook §Results section)
+- [ ] SirmaAI EU-residency contractual confirmation signed (DPA or amendment); Trust Center sub-processor disclosure updated; PRD §Domain-Specific Data Residency line flipped from "launch-blocking due-diligence item" to "confirmed" *(added 2026-05-15)*
+- [ ] All 6 stories transition `ready-for-dev` → `done` with two-gate close (`bmad-code-review` Approve verdict + operator-completion signal in each story's runbook §Results section) *(was "5 stories" — bumped 2026-05-15 with addition of `sirmaai-eu-residency-due-diligence`)*
 
 ## Stories
 
@@ -38,6 +39,10 @@ Long-standing E13 carry-forward. AC1-3 already done; AC4 (Stripe circuit-breaker
 ### inj-03-tea-review-backlog-epic8-epic9 (E13 carry-forward, ~1 day per ticket)
 
 Long-standing E13 carry-forward. 6 TEA-review tickets covering test-coverage gaps in Epic 8 (Subscription Billing) and Epic 9 (Notifications/Calendar). Each ticket: targeted test addition + traceability matrix update at `test_artifacts/`. Source story: `implementation-artifacts/inj-03-tea-review-backlog-epic8-epic9.md`.
+
+### sirmaai-eu-residency-due-diligence (NEW 2026-05-15 via IR remediation — operator + legal, ~5–10 business days wall-clock)
+
+Obtain signed contractual confirmation (DPA / amendment) from SirmaAI that all EU Solicit Organisation data — including KB artefacts, agent traces, memory, prompt logs, vector embeddings, MCP-server secrets — resides exclusively in EU data centres, with named sub-processor list + 30-day change notification. Without this, the PRD amendment 2026-05-12 §Domain-Specific Data Residency clause is unenforceable and the 2026-06-01 launch posture cannot honestly defend GDPR Art. 44. Predominantly PM + legal work, not engineering. 7 ACs cover the addendum content, SCC clauses, archival, Trust Center disclosure, PRD reconciliation, project-context update, and the two-gate close. Source story: `implementation-artifacts/sirmaai-eu-residency-due-diligence.md`.
 
 ## Tests
 

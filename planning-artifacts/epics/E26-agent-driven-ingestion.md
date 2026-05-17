@@ -56,24 +56,27 @@ CREATE INDEX ix_opportunity_analyses_company_oppty
 
 ### S26.01: `opportunity_qualifier` SirmaAI agent definition + Project template addition
 **Points:** 3 | **Type:** backend + prompt-engineering
+**Prerequisite (added 2026-05-15):** `eusolicit-docs/test-artifacts/e26-baseline-datasets-spec.md` § "Qualifier Baseline" curated and committed at `services/client-api/tests/data/sirmaai-baselines/v1/qualifier-baseline-v1.json`. The eval-run AC below is unmeasurable without this dataset.
 
 Author the qualification agent in SirmaAI Project template (added to S24.03 seed): system prompt covering fit assessment against company profile, gap analysis methodology, pursue/monitor/decline decision criteria. Tool bindings: KB search (for retrieving company profile + past proposals + qualification rubrics). Structured output schema (JSON). Eval-runs harness in SirmaAI with 20 sample opportunities for prompt regression testing.
 
 **Acceptance:**
 - Agent definition committed to `services/client-api/config/sirmaai_project_template.yaml`
-- Eval-run with 20 sample opportunities → ≥85% align with human qualification baseline
+- Eval-run with 20 sample opportunities (per `qualifier-baseline-v1.json`) → ≥85% align with human qualification baseline (alignment metric defined in baseline spec: 0.6·action-match + 0.3·fit-score-band + 0.1·gap-keyword-overlap)
 - Structured output schema validated by Pydantic on EU Solicit side
 
 ---
 
 ### S26.02: `opportunity_quantifier` SirmaAI agent definition + template
 **Points:** 3 | **Type:** backend + prompt-engineering
+**Prerequisite (added 2026-05-15):** `eusolicit-docs/test-artifacts/e26-baseline-datasets-spec.md` § "Quantifier Baseline" curated and committed at `services/client-api/tests/data/sirmaai-baselines/v1/quantifier-baseline-v1.json` (15 opps with historical actuals + 2 synthetic thin-KB adversarial opps).
 
 Quantification agent: effort estimation, win probability, expected value. Tool bindings: KB search, MCP CRM tools (E27, for past-deal-history if available). Structured output schema. Eval-runs harness with 15 sample opportunities + historical outcomes.
 
 **Acceptance:**
 - Agent committed to template
-- Eval-run: estimated values within ±25% of historical actuals on validation set
+- Eval-run: estimated effort within ±25% AND estimated expected-value within ±25% of historical actuals on validation set (accuracy metric defined in baseline spec)
+- For the 2 synthetic thin-KB opps: agent MUST return `confidence ≤ medium` AND `caveat: "low_kb_context"` (overconfidence is a fail signal)
 - Quantification respects "if no historical CRM data, fall back to KB-grounded estimate with lower confidence" pattern
 
 ---

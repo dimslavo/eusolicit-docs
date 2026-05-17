@@ -1,4 +1,6 @@
-# E28: Webhook & Run-State Reconciliation
+# E28: Webhook & Reconciler Hardening
+
+> **Naming note (2026-05-15 IR fix):** Renamed from "Webhook & Run-State Reconciliation" to make explicit that this epic is *operational hardening* of the webhook/reconciler infrastructure already scaffolded in E04 amendment (S04.25 receiver, S04.26 reconciler). The hardening items (subscription bootstrap, HMAC rotation Beat, DLQ admin surface, observability, degraded-mode banner, cross-tenant negative tests) are NOT already-done — only the underlying scaffold is.
 
 **Sprint:** post-pivot S+1..S+2 (parallel-trackable with E04 amendment) | **Points:** 21 | **Dependencies:** E04 amendment (S04.21 schema, S04.25 receiver, S04.26 reconciler scaffold) | **Milestone:** SirmaAI Pivot
 
