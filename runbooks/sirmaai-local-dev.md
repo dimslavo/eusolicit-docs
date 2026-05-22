@@ -132,7 +132,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8004/ready
 | `make up` fails with `pydantic.ValidationError: agenticsai_fernet_key` required | `AGENTICSAI_FERNET_KEY` unset while `AGENTICSAI_GATEWAY_ENABLED=true` | Run step 2 above |
 | `/admin/circuits` 500s on first call | `AGENTICSAI_ORG_ID` or `AGENTICSAI_ADMIN_API_KEY` unset | Run step 3 above |
 | Webhook bootstrap fails with `WEBHOOK_BOOTSTRAP_ENABLED but callback URL empty` | `AGENTICSAI_WEBHOOK_CALLBACK_URL` unset while bootstrap is enabled | Run step 5 above |
-| Calls to AgenticSAI hang 60 s+ and return 504 | Default base URL `stage.sirma.ai` unreachable from local network | Verify staging is up; consider VPN; check ADR-019 for current canonical staging URL |
+| Calls to AgenticSAI hang 60 s+ and return 504 | Default base URL `agenticsai.endigitalx.com` unreachable from local network | Verify staging is up; consider VPN; check ADR-019 for current canonical staging URL |
 | Env var change silently ignored at boot | `AgenticSAIGatewaySettings` has no `env_prefix` — typos in field names are swallowed by `extra="ignore"` | Double-check env var spelling against field names in `config.py` (field name uppercased = env var) |
 
 ---
