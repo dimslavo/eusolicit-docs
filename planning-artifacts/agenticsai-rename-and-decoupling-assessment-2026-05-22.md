@@ -218,3 +218,66 @@ maintenance window on www1.
 - Confirm env-var naming target (`AGENTICSAI_*` vs a shorter `AGS_*`) before P2.
 - Decide whether P1 (docs) proceeds in parallel with P0 (it has no code risk) or waits.
 - Confirm Helm/PagerDuty/observability rename scope (service name appears in alerting/escalation).
+
+---
+
+## 8. Revision 2026-05-23 — reviewed against the AgenticSAI integration guide
+
+Re-reviewed the gaps and approach against the authoritative platform contract
+(`agenticsai.endigitalx.com APIs/AGENTICSAI_API_INTEGRATION_GUIDE.md`, OpenAPI 3.1.0,
+v1.0). The guide **validates the overall direction** and sharpens four points.
+
+### 8.1 Canonical host (directive)
+`https://agenticsai.endigitalx.com` is the **single canonical base URL** going forward
+(guide §2). `stage.sirma.ai` and `kraftdata.ai` are **obsolete** — treat any reference as
+stale.
+- **Code (P2/P3):** the gateway's outbound defaults `sirmaai_base_url` *and*
+  `kraftdata_base_url` (`services/sirmaai-gateway/src/sirmaai_gateway/config.py:46,79`) still
+  default to `https://stage.sirma.ai` → set both to `https://agenticsai.endigitalx.com`
+  (the data-pipeline n8n template tests already enforce this host). Update test fixtures off
+  `stage.sirma.ai`. This is the **external** AgenticSAI host, distinct from the *internal*
+  consumer→gateway URL (the `ai-gateway:8000` drift handled separately).
+- **Docs (P1):** living docs updated to `agenticsai.endigitalx.com`.
+
+### 8.2 Validated — the integration already follows the recommended pattern
+- The gateway calls the **Public Integration API** `/client/api/v1/...` with project-scoped
+  **`X-API-Key`** (verified: `sirmaai_key_client`, `sirmaai_inventory_client`,
+  `sirmaai_async_client`, `execution.py`), exactly the guide's §3.1/§10.1 M2M recommendation
+  — **not** the first-party `/api/...` console surface. No change needed; **not a gap**.
+- **Tenancy = project-per-tenant** (one Org, one Project per company, per-Project key) matches
+  guide §10.5's "hard isolation" recommendation — the correct model for the strict-isolation
+  goal. Keep.
+- Per-request degradation (503 → `AGENT_UNAVAILABLE`), circuit breaker, reconciler, Standard
+  Webhooks receiver all align with guide §6/§8/§10.6.
+
+### 8.3 Sharpened gaps
+1. **`agents.yaml` fail-fast is doubly wrong.** Beyond the availability bug (the 2026-05-22
+   prod crash), the guide explicitly says *discover capabilities dynamically* (list
+   agents/teams/workflows; `GET /api/webhooks/event-types` "call this first; do not hard-code
+   the catalogue", §8/§10.1). The architecture already plans to retire `agents.yaml` for the
+   dynamic resolver (`SirmaAIAgentResolver`, on-demand inventory re-sync). **P3 should finish
+   that migration and make startup non-fatal** (discover + cache with TTL per §10.6), removing
+   the static-registry dependency entirely rather than just guarding it.
+2. **Scope the provider abstraction to EU Solicit's *usage*, not AgenticSAI's surface.**
+   AgenticSAI is a rich platform (Agents/Teams/Workflows, Storage Resources, MCP, Policies,
+   Voice, Traces, Standard Webhooks). A drop-in clone is unrealistic, so the `AIProvider`
+   interface (D1 "swappable") must be defined around what EU Solicit actually consumes —
+   **agent run (sync/SSE/async-poll), KB upload+semantic-search, webhook events, and tenant
+   Project provisioning**. A second provider then satisfies that narrower contract (possibly by
+   composing several services or a self-hosted stack), which makes "swappable" realistic.
+3. **Credential boundary nuance for isolation.** Webhook *subscription management* uses an
+   operator-issued **`bearer-token`** (guide §8), higher-privilege than the per-project
+   `X-API-Key`. The gateway holds this operator credential — it must be vaulted gateway-side
+   and never exposed to domain services. Add to the P4 isolation/credential review.
+4. **Idempotency on run submission.** Guide §4.3: `POST` runs are not inherently idempotent —
+   the async-run path should carry a client-side dedupe/correlation key. Confirm
+   `submit_agent_run_async` does (P3 hardening).
+
+### 8.4 Net effect on the plan
+No phase is added or removed. **P2** also retargets the external base-URL defaults to
+`agenticsai.endigitalx.com`. **P3** absorbs: finishing the dynamic-resolver migration +
+non-fatal startup (retiring `agents.yaml`), scoping the `AIProvider` interface to EU Solicit's
+usage, and the idempotency-key hardening. **P4** adds the operator-bearer-token vaulting to the
+credential/isolation review. The strict-isolation and optional+swappable goals remain sound and
+are, if anything, better-supported now that the contract is confirmed to be a clean, versioned,
+project-scoped REST surface.
