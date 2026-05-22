@@ -25,7 +25,7 @@
 1. **Confirm the deploy timing correlates with the incident**:
    ```bash
    # Check deploy time from Helm history
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      echo "=== $svc ===" && helm history $svc -n eusolicit --max 3
    done
    ```
@@ -139,7 +139,7 @@
 
 5. **All service health endpoints return 200**:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      kubectl exec -n eusolicit deploy/$svc -- curl -sf http://localhost:8000/health && echo "$svc: OK"
    done
    ```

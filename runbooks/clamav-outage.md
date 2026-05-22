@@ -9,7 +9,7 @@
 
 > **SLA-EXEMPT notice**: ClamAV is a security-scanner component. A ClamAV outage degrades
 > the file-upload feature (proposal attachments, ESPD documents) but does NOT constitute
-> a platform outage per the Epic 4 KraftData isolation precedent applied to ClamAV.
+> a platform outage per the Epic 4 AgenticSAI isolation precedent applied to ClamAV.
 > The platform owns ClamAV restart/recovery; ClamAV scan failures during the outage window
 > are captured in the decision tree below (queue vs. reject).
 > See `severity-definitions.md` SLA-scope table.

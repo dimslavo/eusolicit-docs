@@ -49,9 +49,9 @@
    - `kubectl logs -n eusolicit job/<service>-migrate --tail=50`
    - If yes and the migration added/removed an index → evaluate plan regression.
 
-5. **Check AI-Gateway TTFB** for KraftData-dependent endpoints:
-   - `kubectl logs -n eusolicit deploy/ai-gateway --since=10m | grep 'kraftdata'`
-   - If AI-Gateway TTFB elevated → **SLA-EXEMPT** per architecture.md line 762 → follow `kraftdata-outage.md`.
+5. **Check agenticsai-gateway TTFB** for AgenticSAI-dependent endpoints:
+   - `kubectl logs -n eusolicit deploy/agenticsai-gateway --since=10m | grep 'agenticsai'`
+   - If agenticsai-gateway TTFB elevated → **SLA-EXEMPT** per architecture.md line 762 → follow `agenticsai-outage.md`.
 
 6. **Check HPA state**: is the service at max replicas?
    ```bash
@@ -87,9 +87,9 @@
 2. After load subsides, let HPA scale back. Investigate root cause (load spike from a customer? bot traffic?).
 3. If sustained load growth → capacity planning ticket (sprint follow-up).
 
-### Branch C — AI-Gateway / KraftData TTFB (SLA-EXEMPT path)
+### Branch C — agenticsai-gateway / AgenticSAI TTFB (SLA-EXEMPT path)
 
-→ Follow `kraftdata-outage.md`. This is SLA-EXEMPT per architecture.md line 762.
+→ Follow `agenticsai-outage.md`. This is SLA-EXEMPT per architecture.md line 762.
 
 ---
 
@@ -129,7 +129,7 @@ If §Resolution steps worsen latency (e.g., index creation causes more I/O under
 
 - `error-budget-burn.md` — burn-rate alert (may co-fire with this)
 - `deploy-rollback.md` — Helm rollback + Alembic downgrade
-- `kraftdata-outage.md` — AI-Gateway TTFB (SLA-EXEMPT)
+- `agenticsai-outage.md` — agenticsai-gateway TTFB (SLA-EXEMPT)
 - `pg-failover.md` — if DB health is the root cause
 - `rds-replica-lag.md` — if replica lag is causing read traffic to overflow to primary
 - Story 21-1 `load-test-results.md` — baseline p95 numbers for sanity comparison

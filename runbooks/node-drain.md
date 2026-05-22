@@ -85,7 +85,7 @@
    ```bash
    # Run in parallel in a separate terminal during drain
    while true; do
-     for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+     for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
        STATUS=$(kubectl get deploy/$svc -n eusolicit -o jsonpath='{.status.readyReplicas}' 2>/dev/null)
        echo "$svc ready=$STATUS"
      done
@@ -135,7 +135,7 @@ This is **correct PDB behavior** — the runbook should NOT override PDB protect
    All `READY` counts must be ≥ 1 (never 0) during drain.
 
 2. **All services return to `minReplicas`** after drain completes:
-   - client-api: 2 replicas; admin-api: 2; ai-gateway: 2; data-pipeline: 2; notification: 2; integrations-api: 2.
+   - client-api: 2 replicas; admin-api: 2; agenticsai-gateway: 2; data-pipeline: 2; notification: 2; integrations-api: 2.
 
 3. **HPA functions correctly**: if drain caused scale-out, HPA should scale back down after traffic normalises.
 

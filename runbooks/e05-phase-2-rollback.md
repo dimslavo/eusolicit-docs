@@ -23,7 +23,7 @@
 
 | Signal | Severity | Action |
 |---|---|---|
-| DLQ depth growing: `redis-cli XLEN sirmaai.workflow.completed.dlq` > 0 | SEV-2 | Investigate; rollback if DLQ is growing for the cut-over source |
+| DLQ depth growing: `redis-cli XLEN agenticsai.workflow.completed.dlq` > 0 | SEV-2 | Investigate; rollback if DLQ is growing for the cut-over source |
 | `pipeline_opportunities_total{source_type='aop'}` write rate < 50% of pre-cutover baseline | SEV-2 | Rollback AOP only |
 | `pipeline_workflow_events_total{outcome='publish_failure'}` spike for cut-over source | SEV-2 | Rollback the specific source |
 | On-call paged for `pipeline_equivalence_gate_status < 1` immediately after cutover | SEV-3 | Check if `insufficient_data` (expected after cutover) vs `red` (needs rollback) |
@@ -118,7 +118,7 @@ docker compose restart data-pipeline-beat
 Set `PIPELINE_EQUIVALENCE_SHADOW_<SOURCE>=true` and restart the data-pipeline
 consumer process.
 
-After this point, SirmaAI N8N events for the source land under the **shadow**
+After this point, AgenticSAI N8N events for the source land under the **shadow**
 `source_type` (`aop_n8n` / `ted_n8n` / `eu_grants_n8n`) again, and Celery
 crawler writes resume under the canonical `source_type` (`aop` / `ted` / `eu_grants`).
 
@@ -283,7 +283,7 @@ After rollback:
 2. New `pipeline.crawler_runs` row with `status='completed'` within 1 h.
 3. `pipeline.opportunities` shows new rows under `source_type='<source>_n8n'`
    (shadow restored) within 1 h.
-4. DLQ depth returns to 0: `redis-cli XLEN sirmaai.workflow.completed.dlq`.
+4. DLQ depth returns to 0: `redis-cli XLEN agenticsai.workflow.completed.dlq`.
 5. No continued error spikes in `data_pipeline` service logs.
 
 ---
@@ -295,4 +295,4 @@ After rollback:
 - `deploy-rollback.md` — general service deploy rollback
 - S05.22 implementation: `eusolicit-docs/implementation-artifacts/5-22-phase-1-equivalence-test-harness.md`
 - S05.23 implementation: `eusolicit-docs/implementation-artifacts/5-23-phase-2-cutover-runbook-and-rollback.md`
-- Architecture amendment §5.2 (staged rollback): `eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-sirmaai.md`
+- Architecture amendment §5.2 (staged rollback): `eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-agenticsai.md`

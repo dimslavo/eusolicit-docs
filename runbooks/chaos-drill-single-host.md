@@ -253,37 +253,37 @@ Variant of Drill 1 — same `docker kill` mechanic but targeted at observability
 
 ---
 
-## Drill 6 — Network partition vs SirmaAI (≤ 15 min) — closes pe-04 AC4
+## Drill 6 — Network partition vs AgenticSAI (≤ 15 min) — closes pe-04 AC4
 
-Verifies the SirmaAI circuit-breaker + tenant-visible degraded-mode banner (E04 amendment S04.27 / E28 S28.07).
+Verifies the AgenticSAI circuit-breaker + tenant-visible degraded-mode banner (E04 amendment S04.27 / E28 S28.07).
 
 > **Dependency:** AC4 verification of the tenant-visible banner requires E28 S28.07 to have landed. If running this drill BEFORE E28 lands, AC4 closure is conditional: circuit-breaker open + degraded-mode log evidence alone satisfies the minimum bar; banner verification is deferred until E28 ships.
 
 ```bash
 # 1. Capture baseline: circuit-breaker state should be 'closed' / healthy
-curl -s http://127.0.0.1:18004/metrics | grep -E "sirmaai_circuit_breaker_state|sirmaai_outbound_requests_total"
+curl -s http://127.0.0.1:18004/metrics | grep -E "agenticsai_circuit_breaker_state|agenticsai_outbound_requests_total"
 
-# 2. Resolve SirmaAI host to IPs (both A and AAAA if dual-stack)
+# 2. Resolve AgenticSAI host to IPs (both A and AAAA if dual-stack)
 HOST=agenticsai.endigitalx.com
-SIRMAAI_IPV4=$(dig +short A "$HOST")
-SIRMAAI_IPV6=$(dig +short AAAA "$HOST")
-echo "Will block egress to: ${SIRMAAI_IPV4} ${SIRMAAI_IPV6}"
+AGENTICSAI_IPV4=$(dig +short A "$HOST")
+AGENTICSAI_IPV6=$(dig +short AAAA "$HOST")
+echo "Will block egress to: ${AGENTICSAI_IPV4} ${AGENTICSAI_IPV6}"
 
 # 3. Apply egress block (requires sudo on www1)
 T0=$(date +%s)
-for IP in $SIRMAAI_IPV4; do
+for IP in $AGENTICSAI_IPV4; do
   sudo iptables -I OUTPUT -d "$IP" -j REJECT --reject-with icmp-net-unreachable
 done
-for IP in $SIRMAAI_IPV6; do
+for IP in $AGENTICSAI_IPV6; do
   sudo ip6tables -I OUTPUT -d "$IP" -j REJECT --reject-with icmp6-no-route 2>/dev/null || true
 done
 
-# 4. Force some outbound traffic to SirmaAI to trigger circuit-breaker
-#    Trigger via an admin-API endpoint that calls sirmaai-gateway (or wait for next scheduled run).
+# 4. Force some outbound traffic to AgenticSAI to trigger circuit-breaker
+#    Trigger via an admin-API endpoint that calls agenticsai-gateway (or wait for next scheduled run).
 #    Watch the breaker state transition:
 for i in $(seq 1 60); do
   STATE=$(curl -s http://127.0.0.1:18004/metrics | \
-          awk '/^sirmaai_circuit_breaker_state/ {print $2}')
+          awk '/^agenticsai_circuit_breaker_state/ {print $2}')
   echo "$(date +%H:%M:%S) breaker_state=${STATE}"
   if [ "${STATE%.*}" = "1" ] || [ "${STATE%.*}" = "2" ]; then  # 1=open, 2=half-open
     T1=$(date +%s)
@@ -299,15 +299,15 @@ docker exec eusolicit-app-redis-1 redis-cli XREVRANGE notification.degraded_mode
 # 6. (Post-E28 S28.07) Verify tenant-visible banner
 #    Hit the system-status endpoint that the frontend layout polls:
 curl -s http://127.0.0.1:18001/api/v1/system/status | jq '.degraded_mode'
-# Expected: { "degraded_mode": true, "since": "...", "feature": "sirmaai_ai_analysis" }
+# Expected: { "degraded_mode": true, "since": "...", "feature": "agenticsai_ai_analysis" }
 
 # (Manual) Open client app in a browser; verify banner renders within 1min.
 
 # 7. Restore connectivity
-for IP in $SIRMAAI_IPV4; do
+for IP in $AGENTICSAI_IPV4; do
   sudo iptables -D OUTPUT -d "$IP" -j REJECT --reject-with icmp-net-unreachable 2>/dev/null || true
 done
-for IP in $SIRMAAI_IPV6; do
+for IP in $AGENTICSAI_IPV6; do
   sudo ip6tables -D OUTPUT -d "$IP" -j REJECT --reject-with icmp6-no-route 2>/dev/null || true
 done
 T_RECOVER=$(date +%s)
@@ -315,7 +315,7 @@ T_RECOVER=$(date +%s)
 # 8. Watch breaker re-close + banner clear (1-min hysteresis per S28.07)
 for i in $(seq 1 30); do
   STATE=$(curl -s http://127.0.0.1:18004/metrics | \
-          awk '/^sirmaai_circuit_breaker_state/ {print $2}')
+          awk '/^agenticsai_circuit_breaker_state/ {print $2}')
   echo "$(date +%H:%M:%S) breaker_state=${STATE}"
   if [ "${STATE%.*}" = "0" ]; then  # 0=closed
     T_HEAL=$(date +%s)
@@ -331,7 +331,7 @@ done
 2. `platform.degraded_mode` (or equivalent) event lands on Redis Streams
 3. (Post-E28 S28.07) Tenant-visible banner renders within 1min of degraded-mode event
 4. On partition removal, circuit-breaker recovers and banner clears within 2min hysteresis
-5. No silent failures — every SirmaAI call attempt during the partition logs a structured error referencing the circuit state
+5. No silent failures — every AgenticSAI call attempt during the partition logs a structured error referencing the circuit state
 
 If E28 has NOT landed: AC4 closes conditionally on points 1, 2, 4, 5; point 3 deferred and re-drilled post-E28.
 
@@ -345,7 +345,7 @@ Run drills in this order within a single drill window (or across multiple if nee
 3. **Drill 3** (postgres crash) — stateful but recoverable
 4. **Drill 4** (redis AOF) — stateful; offset-preservation matters
 5. **Drill 5** (observability restart-loop) — depends on Drills 1-4 being clean (otherwise alerts will be drowned)
-6. **Drill 6** (SirmaAI partition) — most disruptive to user-facing AI features; do last
+6. **Drill 6** (AgenticSAI partition) — most disruptive to user-facing AI features; do last
 
 
 ---
@@ -359,7 +359,7 @@ Run drills in this order within a single drill window (or across multiple if nee
 | TBD | Drill 3 (postgres crash) | — | — | — |
 | TBD | Drill 4 (redis AOF) | — | — | — |
 | TBD | Drill 5 (observability restart-loop) | — | — | — |
-| TBD | Drill 6 (SirmaAI partition) | — | — | — |
+| TBD | Drill 6 (AgenticSAI partition) | — | — | — |
 
 After each drill, append a row. After all six pass — covering pe-04 AC1-AC4 — the rescoped `pe-04-chaos-drill-execution` entry in sprint-status can flip to `done`.
 

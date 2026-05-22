@@ -41,8 +41,8 @@
    ```
    If p95 > 0.2s → follow `high-latency.md`.
 
-5. **Verify it is NOT KraftData-isolated burn**: check `slo_target="kraftdata-dependent"` label.
-   If alert has `slo_target="kraftdata-dependent"` → **SLA-EXEMPT** — follow `kraftdata-outage.md` instead.
+5. **Verify it is NOT AgenticSAI-isolated burn**: check `slo_target="agenticsai-dependent"` label.
+   If alert has `slo_target="agenticsai-dependent"` → **SLA-EXEMPT** — follow `agenticsai-outage.md` instead.
 
 ---
 
@@ -106,7 +106,7 @@ If §Resolution steps worsen the situation:
 - `pg-failover.md` — PostgreSQL Multi-AZ failover
 - `redis-failover.md` — Redis ElastiCache failover
 - `deploy-rollback.md` — Helm release rollback
-- `kraftdata-outage.md` — KraftData SLA-EXEMPT burn
+- `agenticsai-outage.md` — AgenticSAI SLA-EXEMPT burn
 - `severity-definitions.md` — SEV-1/2 response SLAs
 - PE.05 `alerting-rules.yaml` lines 39–68 — alert definitions
 - Grafana `platform-slo.json` — 4-window burn-rate panel

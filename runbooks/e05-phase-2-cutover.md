@@ -19,7 +19,7 @@ to execute this runbook is:
 - The AC4 rolling helper (see §Resolution Step 0) confirms `gate_status='green'`,
   `days_observed >= 7`, `total_baseline >= 350`.
 - S05.20 N8N templates and S05.21 consumer are healthy (no DLQ entries in
-  `sirmaai.workflow.completed.dlq`, no recent errors in `data_pipeline` logs).
+  `agenticsai.workflow.completed.dlq`, no recent errors in `data_pipeline` logs).
 
 If none of these conditions are met, do NOT execute this runbook. See
 `n8n-equivalence-investigation.md` for investigation guidance.
@@ -350,7 +350,7 @@ PIPELINE_CELERY_CRAWL_AOP_ENABLED=false python -c \
 Set `PIPELINE_EQUIVALENCE_SHADOW_<SOURCE>=false` and restart the data-pipeline
 consumer process (not Beat — the consumer is the S05.21 workflow event handler).
 
-After this point, new SirmaAI `workflow.completed` events for this source will
+After this point, new AgenticSAI `workflow.completed` events for this source will
 land in `pipeline.opportunities` under the **canonical** `source_type` (`aop`,
 `ted`, or `eu_grants`) rather than the shadow discriminator (`aop_n8n`, `ted_n8n`,
 `eu_grants_n8n`). This is the **whole purpose** of the env-flag flip.
@@ -416,7 +416,7 @@ Monitor the following Grafana panels for 24 hours:
 
 - `pipeline_workflow_events_total{source_type, outcome}` — event consumption rate
 - `pipeline_opportunities_total{source_type, action}` — opportunity write rate
-- DLQ depth: `redis-cli XLEN sirmaai.workflow.completed.dlq` (should be 0)
+- DLQ depth: `redis-cli XLEN agenticsai.workflow.completed.dlq` (should be 0)
 - Error rate in `data_pipeline` service logs
 
 **Abort / rollback triggers** during soak:
@@ -448,7 +448,7 @@ Do NOT skip the 24 h soak between sources.
 2. **EU Grants** → 24 h soak → mark complete
 3. **TED** → 24 h soak → mark complete (final Phase-2 completion)
 
-After all three sources are cut over and soaked, the E05 SirmaAI re-platform
+After all three sources are cut over and soaked, the E05 AgenticSAI re-platform
 Phase-2 is complete. Legacy crawler modules (`crawl_aop.py`, `crawl_ted.py`,
 `crawl_eu_grants.py`) are scheduled for deletion in S05.30.
 
@@ -489,7 +489,7 @@ source has its own kill-switch and its own rollback path.
 - S05.22 implementation: `eusolicit-docs/implementation-artifacts/5-22-phase-1-equivalence-test-harness.md`
 - S05.23 implementation: `eusolicit-docs/implementation-artifacts/5-23-phase-2-cutover-runbook-and-rollback.md`
 - S05.30 (future): Legacy Celery crawler deletion story
-- Architecture amendment: `eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-sirmaai.md` §5.3
+- Architecture amendment: `eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-agenticsai.md` §5.3
 
 ---
 

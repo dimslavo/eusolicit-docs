@@ -1,6 +1,6 @@
-# Runbook: SirmaAI Webhook Ingress (`api.eusolicit.com`)
+# Runbook: AgenticSAI Webhook Ingress (`api.eusolicit.com`)
 
-**Severity**: SEV-2 (public ingress down blocks all SirmaAI webhook delivery)
+**Severity**: SEV-2 (public ingress down blocks all AgenticSAI webhook delivery)
 **Last updated**: 2026-05-14
 **Story**: S04.29 — Public Ingress for Webhook Receiver
 
@@ -9,23 +9,23 @@
 ## Purpose
 
 This runbook covers enabling, operating, and rolling back the public nginx ingress
-that routes `https://api.eusolicit.com/webhooks/sirmaai` to the `sirmaai-gateway`
+that routes `https://api.eusolicit.com/webhooks/agenticsai` to the `agenticsai-gateway`
 container (port 18004) on www1.
 
-The S04.25 receiver (`POST /webhooks/sirmaai`) implements HMAC-over-raw-bytes
+The S04.25 receiver (`POST /webhooks/agenticsai`) implements HMAC-over-raw-bytes
 signature verification, 7-day Redis idempotency, and a DLQ table — this runbook
 covers the **transport layer only** (nginx + TLS). Application-layer incidents
 should start from the S04.25 receiver code and its Prometheus counters.
 
 By design, `api.eusolicit.com` exposes **exactly one path**:
-- `POST /webhooks/sirmaai` → `http://127.0.0.1:18004/webhooks/sirmaai`
+- `POST /webhooks/agenticsai` → `http://127.0.0.1:18004/webhooks/agenticsai`
 - Every other URI on `api.eusolicit.com` → `HTTP 404` (explicit catch-all; no upstream)
 
 ---
 
 ## When to Use
 
-- **First-time enabling SirmaAI inbound webhooks** — run §Pre-flight → §Deploy.
+- **First-time enabling AgenticSAI inbound webhooks** — run §Pre-flight → §Deploy.
 - **Reverting the public ingress after a security incident** — run §Rollback.
 - **DR rebuild Phase 2 cert-issuance step** (in conjunction with
   [`www1-rebuild.md`](www1-rebuild.md)) — add `-d api.eusolicit.com` to the
@@ -60,7 +60,7 @@ will fail and certbot will abort, leaving the cert unchanged.
 > action)"). This runbook documents the required record; provisioning it at the
 > registrar is the operator's responsibility.
 
-### 2. Container health — sirmaai-gateway on port 18004
+### 2. Container health — agenticsai-gateway on port 18004
 
 ```bash
 ssh debian@www1.endigitalx.com 'curl -sf http://127.0.0.1:18004/healthz'
@@ -70,14 +70,14 @@ ssh debian@www1.endigitalx.com 'curl -sf http://127.0.0.1:18004/healthz'
 [`runbooks/container-restart-loop.md`](container-restart-loop.md) before
 proceeding. A healthy container is required for the smoke test (§Deploy step 6).
 
-### 3. SirmaAI gateway flag
+### 3. AgenticSAI gateway flag
 
 ```bash
 ssh debian@www1.endigitalx.com \
-  'grep SIRMAAI_GATEWAY_ENABLED /home/debian/eusolicit-overrides/.env.prod'
+  'grep AGENTICSAI_GATEWAY_ENABLED /home/debian/eusolicit-overrides/.env.prod'
 ```
 
-**Expected**: `SIRMAAI_GATEWAY_ENABLED=true`. If false, the receiver returns 503
+**Expected**: `AGENTICSAI_GATEWAY_ENABLED=true`. If false, the receiver returns 503
 and the smoke test will incorrectly appear as an ingress failure. Flip the flag
 and redeploy the gateway per the S04.20 cutover plan before running the smoke test.
 
@@ -126,7 +126,7 @@ sudo nginx -t
 # step 4). Brief TLS window: api.eusolicit.com :443 is now active but the
 # Let's Encrypt cert does NOT yet include the api.eusolicit.com SAN — any TLS
 # handshake during steps 3-5 fails cert-name validation. Run steps 4 + 5
-# promptly; configure SirmaAI to deliver webhooks ONLY after step 5 completes.
+# promptly; configure AgenticSAI to deliver webhooks ONLY after step 5 completes.
 sudo systemctl reload nginx
 
 # ── Step 4: Extend cert SAN (one-time — first enable of api.eusolicit.com) ───
@@ -150,7 +150,7 @@ sudo certbot certonly --webroot -w /var/www/certbot --expand \
 sudo systemctl reload nginx
 
 # ── Step 6: Smoke test — verify the webhook path is reachable ────────────────
-curl -sv https://api.eusolicit.com/webhooks/sirmaai \
+curl -sv https://api.eusolicit.com/webhooks/agenticsai \
   -X POST \
   -H 'webhook-id: smoke-test-12345' \
   -H "webhook-timestamp: $(date +%s)" \
@@ -162,11 +162,11 @@ curl -sv https://api.eusolicit.com/webhooks/sirmaai \
 #   (a) nginx terminated TLS and routed to the gateway
 #   (b) the gateway parsed the request headers
 #   (c) S04.25's signature verification fired
-# A 503 response means SIRMAAI_GATEWAY_ENABLED=false in .env.prod, OR the env
+# A 503 response means AGENTICSAI_GATEWAY_ENABLED=false in .env.prod, OR the env
 # var was changed but the container was not restarted (env is loaded at
 # container startup, not live-refreshed). Diagnostic: confirm §Pre-flight
 # check 3 flag is true, then restart:
-#   docker compose -f docker-compose.prod.yml restart sirmaai-gateway
+#   docker compose -f docker-compose.prod.yml restart agenticsai-gateway
 # A 502/504 or connection-refused means nginx cannot reach 127.0.0.1:18004
 # — debug per §Failure modes row 3.
 
@@ -190,20 +190,20 @@ curl -sv https://www.eusolicit.com/ai/healthz
 
 ---
 
-## Verify End-to-End (Operator Action — SirmaAI Admin UI)
+## Verify End-to-End (Operator Action — AgenticSAI Admin UI)
 
-After completing §Deploy, verify the full path from SirmaAI's delivery agent:
+After completing §Deploy, verify the full path from AgenticSAI's delivery agent:
 
-1. Log into the SirmaAI admin console at `agenticsai.endigitalx.com`.
+1. Log into the AgenticSAI admin console at `agenticsai.endigitalx.com`.
 2. Navigate to the webhook configuration for the EU Solicit subscription.
-3. Trigger a test delivery pointed at `https://api.eusolicit.com/webhooks/sirmaai`.
+3. Trigger a test delivery pointed at `https://api.eusolicit.com/webhooks/agenticsai`.
 4. **Expected**: HTTP 200 response from the receiver + a row inserted in
    `gateway.webhook_log` (visible via the admin API or psql).
 5. Verify the test delivery's `webhook-id` appears in the Redis idempotency cache:
    ```bash
    ssh debian@www1.endigitalx.com \
      'docker compose -f docker-compose.prod.yml exec redis \
-        redis-cli GET "sirmaai:webhook:dedup:<webhook-id>"'
+        redis-cli GET "agenticsai:webhook:dedup:<webhook-id>"'
    ```
    **Expected**: `1` (the idempotency key set by S04.25's dedup logic).
 
@@ -249,7 +249,7 @@ sudo cp /tmp/eusolicit.com.pre-s04.29 /etc/nginx/sites-available/eusolicit.com
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-After rollback, `https://api.eusolicit.com/webhooks/sirmaai` will return 502 (no
+After rollback, `https://api.eusolicit.com/webhooks/agenticsai` will return 502 (no
 nginx server block for that host). The cert SAN stays — harmless unless the
 operator explicitly decides to remove it (non-trivial, not covered here).
 
@@ -261,11 +261,11 @@ operator explicitly decides to remove it (non-trivial, not covered here).
 |---|---|---|
 | `nginx -t` syntax error after `sudo cp` | Hand-edit drift in `/etc/nginx` | `diff /etc/nginx/sites-available/eusolicit.com infra/nginx/eusolicit.com` to find divergence; re-cp from repo |
 | `certbot --expand` fails ACME challenge | DNS for `api.eusolicit.com` not propagated | `dig +short api.eusolicit.com` from a third-party resolver; wait + retry. Cert is unaffected — old cert still valid during wait |
-| `curl https://api.eusolicit.com/webhooks/sirmaai` → 502 | `sirmaai-gateway` container down on port 18004 | `docker compose -f docker-compose.prod.yml ps sirmaai-gateway`; chain to [`runbooks/container-restart-loop.md`](container-restart-loop.md) |
-| `curl https://api.eusolicit.com/webhooks/sirmaai` → 503 | `SIRMAAI_GATEWAY_ENABLED=false` in `.env.prod` | Flip flag, redeploy gateway per S04.20 cutover plan |
+| `curl https://api.eusolicit.com/webhooks/agenticsai` → 502 | `agenticsai-gateway` container down on port 18004 | `docker compose -f docker-compose.prod.yml ps agenticsai-gateway`; chain to [`runbooks/container-restart-loop.md`](container-restart-loop.md) |
+| `curl https://api.eusolicit.com/webhooks/agenticsai` → 503 | `AGENTICSAI_GATEWAY_ENABLED=false` in `.env.prod` | Flip flag, redeploy gateway per S04.20 cutover plan |
 | TLS `unknown CA` / cert mismatch on `api.eusolicit.com` | SAN expansion didn't complete | Re-run `certbot certonly --webroot -w /var/www/certbot --expand` with all four `-d` flags; `sudo systemctl reload nginx` |
-| `curl https://api.eusolicit.com/webhooks/sirmaai` → 404 | Server block not reloaded, or wrong `server_name` | `sudo nginx -t` → confirm `api.eusolicit.com` block is present; `sudo systemctl reload nginx` |
-| SirmaAI delivery reports 200 but no row in `gateway.webhook_log` | Application-layer HMAC failure before DB write | Check sirmaai-gateway logs; S04.25 receiver may be logging `invalid_signature` — verify SirmaAI webhook secret matches `SIRMAAI_WEBHOOK_SECRET` in `.env.prod` |
+| `curl https://api.eusolicit.com/webhooks/agenticsai` → 404 | Server block not reloaded, or wrong `server_name` | `sudo nginx -t` → confirm `api.eusolicit.com` block is present; `sudo systemctl reload nginx` |
+| AgenticSAI delivery reports 200 but no row in `gateway.webhook_log` | Application-layer HMAC failure before DB write | Check agenticsai-gateway logs; S04.25 receiver may be logging `invalid_signature` — verify AgenticSAI webhook secret matches `AGENTICSAI_WEBHOOK_SECRET` in `.env.prod` |
 | `docker compose exec` fails on Redis verify | Redis container not running | `docker compose -f docker-compose.prod.yml up -d redis`; chain to [`runbooks/docker-daemon-recovery.md`](docker-daemon-recovery.md) |
 
 ---
@@ -274,10 +274,10 @@ operator explicitly decides to remove it (non-trivial, not covered here).
 
 - **Story**: [`eusolicit-docs/implementation-artifacts/4-29-public-ingress-for-webhook-receiver.md`](../implementation-artifacts/4-29-public-ingress-for-webhook-receiver.md)
 - **Receiver story (S04.25)**: [`eusolicit-docs/implementation-artifacts/4-25-standard-webhooks-receiver.md`](../implementation-artifacts/4-25-standard-webhooks-receiver.md)
-- **Epic definition (S04.29 + AC line 485)**: [`eusolicit-docs/planning-artifacts/epics/E04-ai-gateway-service.md`](../planning-artifacts/epics/E04-ai-gateway-service.md)
-- **Architecture amendment §3.4 + §5.1**: [`eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-sirmaai.md`](../planning-artifacts/architecture-amendment-2026-05-12-sirmaai.md)
+- **Epic definition (S04.29 + AC line 485)**: [`eusolicit-docs/planning-artifacts/epics/E04-agenticsai-gateway-service.md`](../planning-artifacts/epics/E04-agenticsai-gateway-service.md)
+- **Architecture amendment §3.4 + §5.1**: [`eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-agenticsai.md`](../planning-artifacts/architecture-amendment-2026-05-12-agenticsai.md)
 - **DR rebuild runbook**: [`eusolicit-docs/runbooks/www1-rebuild.md`](www1-rebuild.md)
-- **SirmaAI key rotation runbook**: [`eusolicit-docs/runbooks/sirmaai-key-rotation.md`](sirmaai-key-rotation.md)
+- **AgenticSAI key rotation runbook**: [`eusolicit-docs/runbooks/agenticsai-key-rotation.md`](agenticsai-key-rotation.md)
 - **Container restart loop**: [`eusolicit-docs/runbooks/container-restart-loop.md`](container-restart-loop.md)
 - **Docker daemon recovery**: [`eusolicit-docs/runbooks/docker-daemon-recovery.md`](docker-daemon-recovery.md)
 - **Deploy manual discipline**: project memory `project_deploy_nginx_manual.md`

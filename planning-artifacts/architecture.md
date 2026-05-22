@@ -15,24 +15,24 @@ inputDocuments:
   - "/home/debian/Projects/eusolicit/eusolicit-docs/project-context.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/architecture-evaluation-2026-04-25.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/prd-amendment-2026-04-25.md"
-  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-sirmaai.md"
-  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/prd-amendment-2026-05-12-sirmaai.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/architecture-amendment-2026-05-12-agenticsai.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/prd-amendment-2026-05-12-agenticsai.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md"
 revalidationInputs:
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-04-30.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-03.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-04.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/implementation-readiness-report-2026-05-03.md"
-  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-12-sirmaai.md"
+  - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-12-agenticsai.md"
   - "/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/sprint-change-proposal-2026-05-13-pe-orphan-cleanup.md"
-revalidationOutcome: "v3.0 — folds in 2026-05-12 SirmaAI integration pivot (ADRs 018/019/020 + ADR-004 addendum + topology rewrite + new tables + run-state reconciler). v2.0 archived to architecture.v2.0.bak.md. Foundational invariants unchanged (schema isolation, two-layer resilience, per-route Depends(), SSE lifecycle, fire-and-forget audit, event-bus discipline)."
+revalidationOutcome: "v3.0 — folds in 2026-05-12 AgenticSAI integration pivot (ADRs 018/019/020 + ADR-004 addendum + topology rewrite + new tables + run-state reconciler). v2.0 archived to architecture.v2.0.bak.md. Foundational invariants unchanged (schema isolation, two-layer resilience, per-route Depends(), SSE lifecycle, fire-and-forget audit, event-bus discipline)."
 ---
 
 # EU Solicit — Architecture Document
 
 **Author:** Winston (System Architect)
 **Date:** 2026-04-27 (v2.0); 2026-05-14 (v3.0 consolidation)
-**Status:** Living document — updated through epic retrospectives. **v3.0** consolidates the 2026-05-12 SirmaAI integration pivot (ADRs 018/019/020) into v2.0; the prior v2.0 is preserved at `architecture.v2.0.bak.md`. v2.0 (2026-04-27) superseded v1.x and incorporated the 2026-04-25 PRD amendment (multi-client workspaces, per-bid SKU, Pro+ tier, `integrations-api`, Trust Center, 99.9% SLA, outcome telemetry). v3.0 reshapes the AI/agent surface from a thin KraftData proxy to a **SirmaAI-as-substrate** topology with per-tenant Project, shared org-scoped N8N, and split canonical-data ownership (structured in EU Solicit Postgres, unstructured in SirmaAI storage-resources).
+**Status:** Living document — updated through epic retrospectives. **v3.0** consolidates the 2026-05-12 AgenticSAI integration pivot (ADRs 018/019/020) into v2.0; the prior v2.0 is preserved at `architecture.v2.0.bak.md`. v2.0 (2026-04-27) superseded v1.x and incorporated the 2026-04-25 PRD amendment (multi-client workspaces, per-bid SKU, Pro+ tier, `integrations-api`, Trust Center, 99.9% SLA, outcome telemetry). v3.0 reshapes the AI/agent surface from a thin AgenticSAI proxy to a **AgenticSAI-as-substrate** topology with per-tenant Project, shared org-scoped N8N, and split canonical-data ownership (structured in EU Solicit Postgres, unstructured in AgenticSAI storage-resources).
 
 ---
 
@@ -44,11 +44,11 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 
 - **Domain-driven microservices** behind a single public API surface, sharing one PostgreSQL instance with **schema-per-service logical isolation**.
 - **Event-driven asynchrony** via Redis Streams (custom `EventPublisher`/`EventConsumer` abstraction with at-least-once delivery and DLQ).
-- **Human-in-the-loop AI orchestration with SirmaAI as the agentic substrate** (per ADR-018, 2026-05-12): a per-tenant SirmaAI Project owns agent definitions, runs, traces, memories, and the knowledge base; **`sirmaai-gateway`** (renamed from `ai-gateway`) brokers EU Solicit ↔ SirmaAI calls, holds tenant↔Project mapping, hosts the Standard Webhooks receiver, and reconciles run state. **N8N** (shared org-scoped, provisioned by SirmaAI for the EU Solicit Organisation) orchestrates multi-step workflows with agents as native steps. The user always reviews/approves AI output.
+- **Human-in-the-loop AI orchestration with AgenticSAI as the agentic substrate** (per ADR-018, 2026-05-12): a per-tenant AgenticSAI Project owns agent definitions, runs, traces, memories, and the knowledge base; **`agenticsai-gateway`** brokers EU Solicit ↔ AgenticSAI calls, holds tenant↔Project mapping, hosts the Standard Webhooks receiver, and reconciles run state. **N8N** (shared org-scoped, provisioned by AgenticSAI for the EU Solicit Organisation) orchestrates multi-step workflows with agents as native steps. The user always reviews/approves AI output.
 - **Multi-tenant by design**: every tenant-bound row carries `company_id` (tenant root) and (post-Epic 14) `workspace_id` (sub-tenant for client-engagement isolation by consulting firms).
-- **Two-substrate canonical-data model** (per ADR-019, 2026-05-12): structured records (opportunities, proposals, billing, RBAC) canonical in EU Solicit Postgres; unstructured artefacts (tenders, profiles, past proposals, ESPD templates, rubrics) canonical in SirmaAI storage-resources per tenant Project. Tenant operations (provisioning, archive, Right-to-Erasure, export) traverse both substrates with explicit cross-substrate completion proof in `shared.audit_log`.
+- **Two-substrate canonical-data model** (per ADR-019, 2026-05-12): structured records (opportunities, proposals, billing, RBAC) canonical in EU Solicit Postgres; unstructured artefacts (tenders, profiles, past proposals, ESPD templates, rubrics) canonical in AgenticSAI storage-resources per tenant Project. Tenant operations (provisioning, archive, Right-to-Erasure, export) traverse both substrates with explicit cross-substrate completion proof in `shared.audit_log`.
 - **Strict separation of customer-facing and internal admin surfaces**: a separate `admin-api` + `apps/admin` deployment, IP-allowlisted and MFA-gated.
-- **Resilient outbound integration**: every external HTTP call is wrapped in `circuit_breaker(retry(http_factory))` with explicit `httpx` timeouts (see ADR-004 + 2026-05-12 SirmaAI addendum).
+- **Resilient outbound integration**: every external HTTP call is wrapped in `circuit_breaker(retry(http_factory))` with explicit `httpx` timeouts (see ADR-004 + 2026-05-12 AgenticSAI addendum).
 - **Observability-first**: structlog JSON → Loki, Prometheus metrics, Jaeger traces. Every service exports `/metrics`, `/health`, and `/admin/*` introspection endpoints.
 
 ### 1.2 Architectural Drivers (from PRD)
@@ -58,7 +58,7 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 | AI generation TTFB < 500ms (NFR-2) | PRD §NFR | SSE streaming, single-point error sanitization, pre-generation quota check before HTTP 200 headers |
 | API p95 < 200ms (NFR-1) | PRD §NFR | Async I/O end-to-end, Redis cache for tier policy, fire-and-forget audit writes |
 | Launch posture: **best-effort availability** per ADR-010 (2026-05-11). RTO ≤ 4h / RPO ≤ 24h. Original NFR-14 targets (99.5% MVP / 99.9% post-amendment) **deferred to a future Phase-2 HA-migration epic**; no public SLA promised at launch. | PRD §NFR + amendment + ADR-010 | Single Docker host on `www1.endigitalx.com`; `pg_basebackup` + WAL archiving + Hetzner Storage Box off-site replication (Epic 22 onprem-01); Redis AOF + RDB persistence (Epic 22 onprem-02); `restart: unless-stopped` + healthchecks; Trust Center "Service is in beta. Best-effort availability." disclosure (E23). HPA/PDB/Multi-AZ/Sentinel removed in pivot — see ADR-010 §Removed. |
-| EU-only data residency (Domain-Specific) | PRD §Domain | On-prem single-host `www1.endigitalx.com` (per ADR-010); SirmaAI EU-region storage resources only for the EU Solicit Organisation — **contractually confirmed** as launch-blocking due-diligence (see §11.3 risk #1). |
+| EU-only data residency (Domain-Specific) | PRD §Domain | On-prem single-host `www1.endigitalx.com` (per ADR-010); AgenticSAI EU-region storage resources only for the EU Solicit Organisation — **contractually confirmed** as launch-blocking due-diligence (see §11.3 risk #1). |
 | Zero cross-tenant leakage (NFR-7) | PRD §NFR | DB schema isolation + row-level `company_id`/`workspace_id` scoping + RBAC `Depends()` factories + cross-tenant negative tests as story ACs |
 | GDPR + ZOP + WCAG 2.1 AA | PRD §Domain | Immutable audit log, encryption at rest (AES-256) and in transit (TLS 1.3), right-to-erasure flow, accessibility-first UI primitives |
 | 10K active companies / 1M opportunities at <20% degradation (NFR-13) | PRD §NFR | Horizontal scaling, read replicas, materialized views with `REFRESH CONCURRENTLY`, atomic Redis Lua for usage metering |
@@ -94,7 +94,7 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
                      │        │         │        │        │                 │
                      ▼        ▼         ▼        ▼        ▼                 │
               ┌──────────┐┌────────┐┌───────────┐┌──────┐┌──────────┐      │
-              │client-api││admin-  ││sirmaai-   ││data- ││integ-    │      │
+              │client-api││admin-  ││agenticsai-   ││data- ││integ-    │      │
               │  :8001   ││api     ││gateway    ││pipe- ││rations-  │◄─────┤
               │ FastAPI  ││:8002   ││:8004      ││line  ││api :8007 │      │
               │ + Stripe │└────────┘│ (renamed) ││:8003 │└────┬─────┘      │
@@ -107,7 +107,7 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
                    │                      │         │         │            │
                    │                      ▼         ▼         ▼            │
                    │       ╔═══════════════════════════════════════════╗  │
-                   │       ║              SirmaAI (EXTERNAL)            ║  │
+                   │       ║              AgenticSAI (EXTERNAL)            ║  │
                    │       ║      https://agenticsai.endigitalx.com/   ║  │
                    │       ║                                            ║  │
                    │       ║  ┌──────────────────────────────────────┐ ║  │
@@ -133,14 +133,14 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
                    │       ║  Webhooks (Standard Webhooks spec):       ║  │
                    │       ║   workflow.completed                       ║  │
                    │       ║   agent.run.completed                      ║──┴──► HTTPS in to
-                   │       ║   storage.file.processed                   ║      sirmaai-gateway
-                   │       ║   policy.violation                         ║      /webhooks/sirmaai
+                   │       ║   storage.file.processed                   ║      agenticsai-gateway
+                   │       ║   policy.violation                         ║      /webhooks/agenticsai
                    │       ╚═══════════════════════════════════════════╝
                    │
                    │                                  ┌────────────┐
                    │                                  │ Microsoft  │
                    │                                  │ Dynamics + │◄── via MCP from
-                   │                                  │ HubSpot    │    SirmaAI agents
+                   │                                  │ HubSpot    │    AgenticSAI agents
                    │                                  │ (CRM)      │    (Pipedrive/SF
                    │                                  └────────────┘     deferred)
                    │
@@ -175,10 +175,10 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
         │         pipeline_role, notification_role, integrations_role,     │
         │         migration_role (DDL only)                                │
         │                                                                  │
-        │  NEW (per 2026-05-12 SirmaAI pivot):                             │
-        │   client.sirmaai_projects        (tenant↔Project mapping)       │
-        │   client.sirmaai_kb_files        (artefact metadata + SHA256)   │
-        │   client.sirmaai_mcp_servers     (MCP registration state)       │
+        │  NEW (per 2026-05-12 AgenticSAI pivot):                             │
+        │   client.agenticsai_projects        (tenant↔Project mapping)       │
+        │   client.agenticsai_kb_files        (artefact metadata + SHA256)   │
+        │   client.agenticsai_mcp_servers     (MCP registration state)       │
         │   gateway.webhook_subscriptions  (Standard Webhooks subs)       │
         │   gateway.workflow_runs          (run lifecycle + reconciler)   │
         └─────────────────────────────────────────────────────────────────┘
@@ -186,10 +186,10 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
         ┌─────────────────────────────────────────────────────────────────┐
         │   Local object storage on www1 (Trust Center artefacts)         │
         │   - Tender raw downloads cached briefly before upload to        │
-        │     SirmaAI storage-resources                                   │
+        │     AgenticSAI storage-resources                                   │
         │   - Trust Center artefacts (signed URLs)                        │
         │   NOTE: S3/MinIO no longer canonical for tender/proposal        │
-        │   content (per ADR-019 — SirmaAI KB is canonical)               │
+        │   content (per ADR-019 — AgenticSAI KB is canonical)               │
         └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -199,10 +199,10 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 |---|---|---|---|
 | `client-api` | 8001 | `client` (rw), `pipeline` (read-only via dual-session) | Primary user-facing API: auth, RBAC, workspaces, opportunities (read), proposals, ESPD, billing, calendar, analytics, per-bid metering |
 | `admin-api` | 8002 | `admin` (rw), `client` (read-only) | Internal admin portal API: tenant management, compliance frameworks, crawler oversight, pricing-tier configuration |
-| `data-pipeline` | 8003 | `pipeline` (rw) | **Re-scoped (2026-05-12).** Webhook event router + opportunity normaliser + canonical `pipeline.opportunities` writer. Crawler responsibility (AOP/TED/EUGrants) moves to N8N workflow templates calling SirmaAI crawler agents; per-pipeline `ai_gateway_client` retry module retired. Retains: `crawler_runs` history (read-only), `opportunities.ingested` Redis Streams publication |
-| `sirmaai-gateway` (renamed from `ai-gateway`) | 8004 | `gateway` (rw) | Single broker for SirmaAI. Tenant↔Project mapping cache (Fernet-encrypted per-Project api-keys), Standard Webhooks receiver, async-run + job-poll, run-status reconciler (5-min cadence), SSE proxy for streaming agent runs. **Retires (2026-05-12):** `agents.yaml` logical-name registry, hard-coded KraftData routes |
+| `data-pipeline` | 8003 | `pipeline` (rw) | **Re-scoped (2026-05-12).** Webhook event router + opportunity normaliser + canonical `pipeline.opportunities` writer. Crawler responsibility (AOP/TED/EUGrants) moves to N8N workflow templates calling AgenticSAI crawler agents; per-pipeline `ai_gateway_client` retry module retired. Retains: `crawler_runs` history (read-only), `opportunities.ingested` Redis Streams publication |
+| `agenticsai-gateway` | 8004 | `gateway` (rw) | Single broker for AgenticSAI. Tenant↔Project mapping cache (Fernet-encrypted per-Project api-keys), Standard Webhooks receiver, async-run + job-poll, run-status reconciler (5-min cadence), SSE proxy for streaming agent runs. **Retires (2026-05-12):** `agents.yaml` logical-name registry, hard-coded AgenticSAI routes |
 | `notification` | 8005 | `notification` (rw) | Redis Streams consumer. Email/in-app/Slack/Teams delivery, sub-processor change DPAs, onboarding-stall alerts, materialized-view refresh orchestration |
-| `integrations-api` | 8007 | `integrations` (rw), `client.crm_connections` (read-only) | **Re-scoped (2026-05-12).** OAuth callback hosting for Dynamics 365 + HubSpot; Fernet token storage in `client.crm_connections`; MCP-server registration + token-injection to SirmaAI; token rotation Celery Beat. Slack/Teams incoming-webhook templates **retained**. **Retires:** HubSpot/Pipedrive/Salesforce direct HTTP adapters, per-provider sync Celery queues for CRM (Slack/Teams Celery queues retained) |
+| `integrations-api` | 8007 | `integrations` (rw), `client.crm_connections` (read-only) | **Re-scoped (2026-05-12).** OAuth callback hosting for Dynamics 365 + HubSpot; Fernet token storage in `client.crm_connections`; MCP-server registration + token-injection to AgenticSAI; token rotation Celery Beat. Slack/Teams incoming-webhook templates **retained**. **Retires:** HubSpot/Pipedrive/Salesforce direct HTTP adapters, per-provider sync Celery queues for CRM (Slack/Teams Celery queues retained) |
 | `enterprise-api` | (gateway) | proxied | Public REST API for Enterprise tier. Routes through `client-api` with `X-API-Key` auth and stricter rate limits |
 
 **Frontend apps** (`frontend/apps/`):
@@ -221,7 +221,7 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 
 - `eusolicit-common` — `BaseServiceSettings`, structlog setup, exception handlers, middleware (request ID, tenant scope, IP allowlist), `EventBus` (Redis Streams).
 - `eusolicit-models` — Cross-service Pydantic DTOs, `StrEnum` enums, Redis Stream event schemas.
-- `eusolicit-sirmaai` (renamed from `eusolicit-kraftdata`, 2026-05-12) — Typed Python client for SirmaAI Org/Project/Agent/Team/Workflow/Storage/MCP/Webhook APIs. Generated from `eusolicit-docs/sirmaai-reference-docs/api-docs v3.json`. Pins SirmaAI base URL via env (`SIRMAAI_BASE_URL`). Boring-tech directive: thin generated client + a handful of hand-written convenience wrappers — no business logic in the client package.
+- `eusolicit-agenticsai` — Typed Python client for AgenticSAI Org/Project/Agent/Team/Workflow/Storage/MCP/Webhook APIs. Generated from `eusolicit-docs/agenticsai-reference-docs/api-docs v3.json`. Pins AgenticSAI base URL via env (`AGENTICSAI_BASE_URL`). Boring-tech directive: thin generated client + a handful of hand-written convenience wrappers — no business logic in the client package.
 - `eusolicit-test-utils` — Canonical test fixtures (`UserFactory`, `register_and_verify_with_role`, `create_company_pair`, `ServiceClient`, RBAC helpers). **Mandatory** — bespoke fixture rebuilds are a BLOCKING code review finding (project-context Epic 14).
 
 ---
@@ -275,20 +275,20 @@ EU Solicit is a multi-tenant SaaS platform that automates the lifecycle of EU pu
 
 | Component | Choice | Rationale |
 |---|---|---|
-| **SirmaAI agentic substrate** | external managed at `https://agenticsai.endigitalx.com/` | Multi-agent runtime (per-Project): agents, teams, workflows, vector storage-resources (KB), traces, memories, eval-runs, policies. Per ADR-018 |
-| **Tenancy mapping** | Singleton EU Solicit Org + Project-per-company (Topology A) | ADR-018. `client.sirmaai_projects` table holds (`company_id ↔ sirmaai_project_id`, Fernet-encrypted api-key, n8n-subdomain, agent_map JSONB) |
-| **`sirmaai-gateway` abstraction** | in-house FastAPI service | Single broker per ADR-018: tenant↔Project mapping cache, per-Project api-key vault, Standard Webhooks receiver, run-state reconciler, SSE proxy. Logical agent names resolved per `(eusolicit_logical_name, sirmaai_project_id)` from `agent_map` |
-| **Calling conventions** | `SirmaaiGatewayClient.run_agent(logical_name, payload, company_id)` (sync), `run_agent_stream(...)` (SSE), `submit_agent_run_async(...)` + `get_job_status(job_id)` (async-poll) | Frozen contract. Flat 503 body `{"message", "code": "AGENT_UNAVAILABLE"}` retained (Epic 11 standard). `X-Caller-Service` header retained. **No client-side retry**, gateway owns retry/backoff per ADR-004 |
+| **AgenticSAI agentic substrate** | external managed at `https://agenticsai.endigitalx.com/` | Multi-agent runtime (per-Project): agents, teams, workflows, vector storage-resources (KB), traces, memories, eval-runs, policies. Per ADR-018 |
+| **Tenancy mapping** | Singleton EU Solicit Org + Project-per-company (Topology A) | ADR-018. `client.agenticsai_projects` table holds (`company_id ↔ agenticsai_project_id`, Fernet-encrypted api-key, n8n-subdomain, agent_map JSONB) |
+| **`agenticsai-gateway` abstraction** | in-house FastAPI service | Single broker per ADR-018: tenant↔Project mapping cache, per-Project api-key vault, Standard Webhooks receiver, run-state reconciler, SSE proxy. Logical agent names resolved per `(eusolicit_logical_name, agenticsai_project_id)` from `agent_map` |
+| **Calling conventions** | `AgenticsaiGatewayClient.run_agent(logical_name, payload, company_id)` (sync), `run_agent_stream(...)` (SSE), `submit_agent_run_async(...)` + `get_job_status(job_id)` (async-poll) | Frozen contract. Flat 503 body `{"message", "code": "AGENT_UNAVAILABLE"}` retained (Epic 11 standard). `X-Caller-Service` header retained. **No client-side retry**, gateway owns retry/backoff per ADR-004 |
 | **N8N orchestration** | shared org-scoped (one instance for EU Solicit Org) | Workflow templates parameterised by `projectId`. Per-template versioning (semver) + staged rollout (canary tenant → 10% → 100%) per ADR-018 *Consequences*. Templates are production code: PR review + rollback plan |
-| **Knowledge Base** | SirmaAI storage-resources per Project | Per ADR-019. Artefacts canonical in SirmaAI; EU Solicit holds `(sirmaai_storage_resource_id, sirmaai_file_id, sha256)` metadata only |
-| **CRM tooling** | SirmaAI MCP servers per Project (Dynamics + HubSpot v1) | Per ADR-020. OAuth tokens custodied in EU Solicit Fernet vault, injected into MCP-server config at registration + rotation |
-| **Webhooks (SirmaAI → EU Solicit)** | Standard Webhooks specification | Subscribed event types: `workflow.completed`, `agent.run.completed`, `storage.file.processed`, `policy.violation`. HMAC SHA-256 verified via `hmac.compare_digest()`. 7-day Redis idempotency cache. DLQ for poison events |
-| **Run-state reconciliation** | scheduled job in `sirmaai-gateway`, 5-min cadence | Polls `GET /jobs/{jobId}/status` for non-terminal rows in `gateway.workflow_runs` and converges to terminal. **Reconciler is authoritative**; webhooks are latency optimisation. SirmaAI is the second critical external dependency (after Stripe) — silent run loss is unacceptable |
-| **Streaming (SSE)** | unchanged per ADR-005 | SSE lifecycle invariants (quota check before `StreamingResponse`, generator closed in finally, terminal event, fresh `session_factory`, single-point error sanitization, `except asyncio.CancelledError: raise`) all retained. Upstream URL shifts to SirmaAI `/agents/{id}/run/stream` |
+| **Knowledge Base** | AgenticSAI storage-resources per Project | Per ADR-019. Artefacts canonical in AgenticSAI; EU Solicit holds `(agenticsai_storage_resource_id, agenticsai_file_id, sha256)` metadata only |
+| **CRM tooling** | AgenticSAI MCP servers per Project (Dynamics + HubSpot v1) | Per ADR-020. OAuth tokens custodied in EU Solicit Fernet vault, injected into MCP-server config at registration + rotation |
+| **Webhooks (AgenticSAI → EU Solicit)** | Standard Webhooks specification | Subscribed event types: `workflow.completed`, `agent.run.completed`, `storage.file.processed`, `policy.violation`. HMAC SHA-256 verified via `hmac.compare_digest()`. 7-day Redis idempotency cache. DLQ for poison events |
+| **Run-state reconciliation** | scheduled job in `agenticsai-gateway`, 5-min cadence | Polls `GET /jobs/{jobId}/status` for non-terminal rows in `gateway.workflow_runs` and converges to terminal. **Reconciler is authoritative**; webhooks are latency optimisation. AgenticSAI is the second critical external dependency (after Stripe) — silent run loss is unacceptable |
+| **Streaming (SSE)** | unchanged per ADR-005 | SSE lifecycle invariants (quota check before `StreamingResponse`, generator closed in finally, terminal event, fresh `session_factory`, single-point error sanitization, `except asyncio.CancelledError: raise`) all retained. Upstream URL shifts to AgenticSAI `/agents/{id}/run/stream` |
 
 #### 3.4.1 N8N workflow template source-of-truth
 
-N8N workflow templates are **canonical in EU Solicit's Git repo** at `eusolicit-app/infra/n8n-templates/<workflow-name>-v<semver>.json` (exported JSON from SirmaAI N8N). Templates are versioned (semver-tagged) and PR-reviewed like production code. Deploy mechanism: a deploy-time script (`scripts/sync_n8n_templates.py`) diffs committed JSON against the SirmaAI N8N instance via the SirmaAI N8N API and applies updates; refuses to deploy on drift unless `--force` flag is set (with audit log). Rollback: revert the commit + re-run the script to restore the previous template version. Per-tenant feature flag (`enable_n8n_workflow_<source>_<version>`) gates which version a tenant runs against (per E05 amendment).
+N8N workflow templates are **canonical in EU Solicit's Git repo** at `eusolicit-app/infra/n8n-templates/<workflow-name>-v<semver>.json` (exported JSON from AgenticSAI N8N). Templates are versioned (semver-tagged) and PR-reviewed like production code. Deploy mechanism: a deploy-time script (`scripts/sync_n8n_templates.py`) diffs committed JSON against the AgenticSAI N8N instance via the AgenticSAI N8N API and applies updates; refuses to deploy on drift unless `--force` flag is set (with audit log). Rollback: revert the commit + re-run the script to restore the previous template version. Per-tenant feature flag (`enable_n8n_workflow_<source>_<version>`) gates which version a tenant runs against (per E05 amendment).
 
 ### 3.5 Auth & Security
 
@@ -315,7 +315,7 @@ One PostgreSQL 16 instance, six service schemas + `shared` + (post-Epic 17) `int
 | `client` | `client-api` | Tenant root. Companies, users, workspaces, memberships, RBAC, proposals, opportunities (denormalized snapshot from pipeline), documents, content blocks, billing, subscriptions, add-ons, ESPDs, calendar tokens, CRM connections (token vault) |
 | `admin` | `admin-api` | Compliance frameworks, pricing-tier policies, internal user accounts, system flags |
 | `pipeline` | `data-pipeline` | Source procurement records (AOP, TED), enrichment queue, crawler runs, raw documents pre-ingestion |
-| `gateway` | `sirmaai-gateway` (renamed from `ai-gateway`, 2026-05-12) | Agent execution logs, prompt template versions, evaluation scorecards, rate-limit & circuit-breaker state mirrors, SirmaAI webhook subscriptions, workflow-run reconciliation state |
+| `gateway` | `agenticsai-gateway` | Agent execution logs, prompt template versions, evaluation scorecards, rate-limit & circuit-breaker state mirrors, AgenticSAI webhook subscriptions, workflow-run reconciliation state |
 | `notification` | `notification` | Email templates, delivery records, in-app notification feed, materialized views for analytics, webhook dispatch logs |
 | `integrations` (NEW) | `integrations-api` | CRM sync logs, conflict logs, webhook subscriptions; **token vault stays in `client.crm_connections`** for billing scope (Epic 17 design decision) |
 | `shared` | `migration_role` (DDL) — read by all | Immutable `audit_log` (append-only), global lookups (CPV codes, country codes) |
@@ -529,7 +529,7 @@ CREATE TABLE client.content_blocks (                             -- shared boile
 );
 
 -- =====================================================================
--- AI GATEWAY (Epic 4)
+-- AGENTICSAI GATEWAY (Epic 4)
 -- =====================================================================
 
 CREATE TABLE gateway.agent_runs (
@@ -585,58 +585,58 @@ CREATE TABLE shared.audit_log (
 -- (Epic 13 canonical form — never await on TTFB path).
 
 -- =====================================================================
--- SIRMAAI TENANT MAPPING (per ADR-018, 2026-05-12)
+-- AGENTICSAI TENANT MAPPING (per ADR-018, 2026-05-12)
 -- =====================================================================
 
-CREATE TABLE client.sirmaai_projects (
+CREATE TABLE client.agenticsai_projects (
     id                    UUID PRIMARY KEY,
     company_id            UUID NOT NULL UNIQUE REFERENCES client.companies(id),
-    sirmaai_org_id        TEXT NOT NULL,                    -- the singleton EU Solicit Org
-    sirmaai_project_id    TEXT NOT NULL UNIQUE,
+    agenticsai_org_id        TEXT NOT NULL,                    -- the singleton EU Solicit Org
+    agenticsai_project_id    TEXT NOT NULL UNIQUE,
     api_key_encrypted     BYTEA NOT NULL,                   -- Fernet, Epic 9 canonical module
     api_key_rotated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     n8n_subdomain         TEXT,                              -- nullable; org-shared but project-routed
-    agent_map             JSONB NOT NULL DEFAULT '{}',      -- {logical_name: sirmaai_agent_uuid}
+    agent_map             JSONB NOT NULL DEFAULT '{}',      -- {logical_name: agenticsai_agent_uuid}
     provisioning_status   TEXT NOT NULL DEFAULT 'pending',  -- pending | provisioned | failed | archived
     provisioning_error    TEXT,                              -- last error if failed
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at           TIMESTAMPTZ
 );
-CREATE INDEX ix_sirmaai_projects_status ON client.sirmaai_projects(provisioning_status)
+CREATE INDEX ix_agenticsai_projects_status ON client.agenticsai_projects(provisioning_status)
     WHERE provisioning_status != 'provisioned';   -- partial: hot rows only
 
 -- =====================================================================
--- KB ARTEFACT METADATA (per ADR-019 — bodies live in SirmaAI)
+-- KB ARTEFACT METADATA (per ADR-019 — bodies live in AgenticSAI)
 -- =====================================================================
 
-CREATE TABLE client.sirmaai_kb_files (
+CREATE TABLE client.agenticsai_kb_files (
     id                          UUID PRIMARY KEY,
     company_id                  UUID NOT NULL REFERENCES client.companies(id),
-    sirmaai_storage_resource_id TEXT NOT NULL,
-    sirmaai_file_id             TEXT NOT NULL UNIQUE,
+    agenticsai_storage_resource_id TEXT NOT NULL,
+    agenticsai_file_id             TEXT NOT NULL UNIQUE,
     filename                    TEXT NOT NULL,
     content_type                TEXT NOT NULL,
     size_bytes                  BIGINT NOT NULL,
     sha256                      TEXT NOT NULL,                   -- for reconciliation
     artefact_category           TEXT NOT NULL,                   -- tender|profile|proposal|espd_template|rubric|other
-    parsed_text_available_at    TIMESTAMPTZ,                     -- nullable; set when SirmaAI completes processing
+    parsed_text_available_at    TIMESTAMPTZ,                     -- nullable; set when AgenticSAI completes processing
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at                 TIMESTAMPTZ
 );
-CREATE INDEX ix_sirmaai_kb_files_company_category
-    ON client.sirmaai_kb_files (company_id, artefact_category)
+CREATE INDEX ix_agenticsai_kb_files_company_category
+    ON client.agenticsai_kb_files (company_id, artefact_category)
     WHERE archived_at IS NULL;
 
 -- =====================================================================
 -- CRM MCP REGISTRATION (per ADR-020)
 -- =====================================================================
 
-CREATE TABLE client.sirmaai_mcp_servers (
+CREATE TABLE client.agenticsai_mcp_servers (
     id                          UUID PRIMARY KEY,
     company_id                  UUID NOT NULL REFERENCES client.companies(id),
     provider                    TEXT NOT NULL,                  -- dynamics365|hubspot (v1); pipedrive|salesforce post-launch
-    sirmaai_mcp_server_id       TEXT NOT NULL UNIQUE,
+    agenticsai_mcp_server_id       TEXT NOT NULL UNIQUE,
     crm_connection_id           UUID REFERENCES client.crm_connections(id),  -- token source
     status                      TEXT NOT NULL DEFAULT 'inactive',  -- inactive|registered|error
     last_token_pushed_at        TIMESTAMPTZ,
@@ -652,7 +652,7 @@ CREATE TABLE client.sirmaai_mcp_servers (
 
 CREATE TABLE gateway.webhook_subscriptions (
     id                          UUID PRIMARY KEY,
-    sirmaai_subscription_id     TEXT NOT NULL UNIQUE,
+    agenticsai_subscription_id     TEXT NOT NULL UNIQUE,
     event_types                 TEXT[] NOT NULL,                -- subscribed Standard Webhooks event types
     hmac_secret_encrypted       BYTEA NOT NULL,                 -- Fernet
     hmac_rotated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -663,8 +663,8 @@ CREATE TABLE gateway.workflow_runs (
     id                          UUID PRIMARY KEY,
     company_id                  UUID NOT NULL REFERENCES client.companies(id),
     eusolicit_run_id            UUID NOT NULL UNIQUE,           -- our correlation id
-    sirmaai_run_id              TEXT,                            -- null until SirmaAI assigns
-    sirmaai_job_id              TEXT,                            -- async-run job id, if applicable
+    agenticsai_run_id              TEXT,                            -- null until AgenticSAI assigns
+    agenticsai_job_id              TEXT,                            -- async-run job id, if applicable
     run_type                    TEXT NOT NULL,                  -- agent|team|workflow
     status                      TEXT NOT NULL,                  -- pending|running|completed|failed|cancelled
     started_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -678,12 +678,12 @@ CREATE INDEX ix_workflow_runs_nonterminal
     WHERE status IN ('pending','running');  -- partial: reconciler scan target
 ```
 
-**Design notes (SirmaAI tables):**
+**Design notes (AgenticSAI tables):**
 
-- `client.sirmaai_projects.agent_map JSONB` is the **adapter pattern** retiring `agents.yaml`: logical names survive in EU Solicit code (`run_agent("proposal_drafter", ...)`), per-tenant resolution at call time. Cheap, debuggable.
+- `client.agenticsai_projects.agent_map JSONB` is the **adapter pattern** retiring `agents.yaml`: logical names survive in EU Solicit code (`run_agent("proposal_drafter", ...)`), per-tenant resolution at call time. Cheap, debuggable.
 - Partial indexes on `provisioning_status != 'provisioned'` and `status IN ('pending','running')`: hot rows only. The 5-min reconciler scans this index; full-table scans on `workflow_runs` would be a real cost at scale.
-- `gateway.workflow_runs.payload_excerpt JSONB` is redacted, **bounded size** (≤16KB) — for forensics on failed runs. Full payloads live in SirmaAI's traces; we keep a breadcrumb.
-- No FKs from `client.sirmaai_projects` or `gateway.workflow_runs` to anything in `pipeline` or `gateway` schemas beyond `client.companies` — schema-isolation invariant (ADR-001) preserved.
+- `gateway.workflow_runs.payload_excerpt JSONB` is redacted, **bounded size** (≤16KB) — for forensics on failed runs. Full payloads live in AgenticSAI's traces; we keep a breadcrumb.
+- No FKs from `client.agenticsai_projects` or `gateway.workflow_runs` to anything in `pipeline` or `gateway` schemas beyond `client.companies` — schema-isolation invariant (ADR-001) preserved.
 
 ### 4.3 Materialized Views (Epic 19)
 
@@ -709,10 +709,10 @@ Refresh cadence: hourly for milestones, daily for outcome and reuse stats. Orche
 - **Atomic usage metering**: `_USAGE_LUA` script (`GET + conditional INCR + EXPIRE` in single Lua) is mandatory for any rate-limit/quota counter. **testcontainers Redis** (not fakeredis) for atomicity proof; concurrency proof asserts `len(set(results)) == N` not `max == N` (Epic 15).
 - **Migration safety**: any downgrade recreating a UNIQUE/PK constraint must include a regression test inserting ≥2 rows under the same grouping key before downgrade (Epic 11).
 - **Determinism**: lists derived from frozensets for SQL `IN()` clauses must be **explicit literals** (`["pro_plus","enterprise"]`), not `list(frozenset)` — non-deterministic order across Python versions (Epic 15).
-- **Per-Project SirmaAI API key as tenant credential boundary** (ADR-018, 2026-05-12): Fernet-encrypted at rest in `client.sirmaai_projects.api_key_encrypted`. Rotation on 90-day cadence with overlap: new key issued → smoke test → old key revoked. Rotation event publishes `sirmaai.key_rotated` to Redis Streams for downstream observability.
-- **Per-Project agent-name resolution** (ADR-018 *Consequences*): `agent_map JSONB` on `client.sirmaai_projects`. Logical-name lookup at call time; missing key triggers re-sync against SirmaAI Project agent inventory before falling back to 503.
-- **KB artefact integrity via SHA-256 reconciliation** (ADR-019): `client.sirmaai_kb_files.sha256` recorded at upload; nightly reconciliation against SirmaAI inventory; mismatches → admin alert + audit entry.
-- **Cross-substrate Right-to-Erasure** (ADR-019): erasure flow has two ACK steps in `shared.audit_log` (`erasure_step: postgres_rows_deleted`, `erasure_step: sirmaai_files_deleted`); erasure not certified complete until both present.
+- **Per-Project AgenticSAI API key as tenant credential boundary** (ADR-018, 2026-05-12): Fernet-encrypted at rest in `client.agenticsai_projects.api_key_encrypted`. Rotation on 90-day cadence with overlap: new key issued → smoke test → old key revoked. Rotation event publishes `agenticsai.key_rotated` to Redis Streams for downstream observability.
+- **Per-Project agent-name resolution** (ADR-018 *Consequences*): `agent_map JSONB` on `client.agenticsai_projects`. Logical-name lookup at call time; missing key triggers re-sync against AgenticSAI Project agent inventory before falling back to 503.
+- **KB artefact integrity via SHA-256 reconciliation** (ADR-019): `client.agenticsai_kb_files.sha256` recorded at upload; nightly reconciliation against AgenticSAI inventory; mismatches → admin alert + audit entry.
+- **Cross-substrate Right-to-Erasure** (ADR-019): erasure flow has two ACK steps in `shared.audit_log` (`erasure_step: postgres_rows_deleted`, `erasure_step: agenticsai_files_deleted`); erasure not certified complete until both present.
 - **Workflow-run reconciliation as authoritative** (ADR-018 *Consequences*): `gateway.workflow_runs.status` is converged by the 5-min reconciler polling `GET /jobs/{jobId}/status`; webhooks are latency optimisations and may be lost without correctness impact. Test design must include `webhook_dropped, reconciler_recovers` scenario. Both webhook and reconciler may converge the same row — use `UPDATE ... WHERE status IN ('pending','running')` guards rather than blind state writes.
 
 ---
@@ -728,14 +728,14 @@ Refresh cadence: hourly for milestones, daily for outcome and reuse stats. Orche
 | `https://app.eusolicit.com/trust/*` | Public (no auth) | — | Static-rendered Next.js (Epic 18); MDX + sub-processors YAML; PDF artefacts via signed S3 URLs |
 | `https://admin.eusolicit.com/*` (`apps/admin` + `admin-api`) | Internal ops | RS256 JWT + MFA + IP allowlist middleware | All admin endpoints VPN-restricted |
 | Stripe webhooks | Stripe | ECDSA on raw body, fail-closed | `webhook_events` UNIQUE-constraint dedup |
-| **SirmaAI** (`https://agenticsai.endigitalx.com/`) | Outbound + inbound webhooks | Per-Project api-key (Bearer) outbound; HMAC SHA-256 inbound (Standard Webhooks spec) | All outbound wrapped in `circuit_breaker(retry(http_factory))` with explicit `httpx` timeout. Logical-name circuit-breaker keys = `(eusolicit_logical_name, sirmaai_project_id)`. Inbound webhooks: signature verified via `hmac.compare_digest()`, 7-day idempotency cache, DLQ for poison events. Per ADR-018 |
-| AOP / TED / Stripe / VIES / Google OAuth / Microsoft Dynamics / HubSpot / Slack / MS Teams (Pipedrive/Salesforce deferred) | Outbound | Provider-specific | All wrapped in `circuit_breaker(retry(http_factory))`. Dynamics + HubSpot are invoked via SirmaAI MCP servers (per ADR-020); EU Solicit's direct HTTP only used by OAuth-callback flow + token-rotation push to SirmaAI secrets |
+| **AgenticSAI** (`https://agenticsai.endigitalx.com/`) | Outbound + inbound webhooks | Per-Project api-key (Bearer) outbound; HMAC SHA-256 inbound (Standard Webhooks spec) | All outbound wrapped in `circuit_breaker(retry(http_factory))` with explicit `httpx` timeout. Logical-name circuit-breaker keys = `(eusolicit_logical_name, agenticsai_project_id)`. Inbound webhooks: signature verified via `hmac.compare_digest()`, 7-day idempotency cache, DLQ for poison events. Per ADR-018 |
+| AOP / TED / Stripe / VIES / Google OAuth / Microsoft Dynamics / HubSpot / Slack / MS Teams (Pipedrive/Salesforce deferred) | Outbound | Provider-specific | All wrapped in `circuit_breaker(retry(http_factory))`. Dynamics + HubSpot are invoked via AgenticSAI MCP servers (per ADR-020); EU Solicit's direct HTTP only used by OAuth-callback flow + token-rotation push to AgenticSAI secrets |
 
 ### 5.2 Internal APIs
 
 | Caller | Callee | Mechanism | Notes |
 |---|---|---|---|
-| `client-api`, `admin-api` | `sirmaai-gateway` (renamed from `ai-gateway`, 2026-05-12) | Internal REST (cluster DNS) | `SirmaaiGatewayClient.run_agent(logical_name, payload, company_id)` + `X-Caller-Service` header. Flat 503 body `{"message", "code"}` (Epic 11 standard). Async-poll variant for long runs: `submit_agent_run_async` + `get_job_status` |
+| `client-api`, `admin-api` | `agenticsai-gateway` | Internal REST (cluster DNS) | `AgenticsaiGatewayClient.run_agent(logical_name, payload, company_id)` + `X-Caller-Service` header. Flat 503 body `{"message", "code"}` (Epic 11 standard). Async-poll variant for long runs: `submit_agent_run_async` + `get_job_status` |
 | `client-api` | `pipeline` schema | **Read-only async session** (`get_pipeline_readonly_session`) | Dual-session pattern (Epic 6); separate `MetaData(schema=...)`; **no FK** across schemas |
 | `data-pipeline`, `client-api`, `notification` | each other | Redis Streams events | At-least-once; consumer groups; DLQ; idempotent handlers |
 | `notification` | external email/Slack/Teams | Outbound REST | Per-provider circuit breaker |
@@ -754,21 +754,21 @@ Stream → consumer → semantics:
 - `crm.connection_created` / `crm.sync_failed` → `notification` (workspace alerts; Epic 17)
 - `onboarding.milestone_reached` → analytics + CSM stall tracker (Epic 19)
 - `tenant.provisioned` (NEW 2026-05-12; published by `client-api` after E24 S24.02) → `notification` (welcome email enriched with KB-upload CTA), `client-api` (UI badge update for provisioning completion)
-- `sirmaai.key_rotated` (NEW 2026-05-12; published by `sirmaai-gateway` after E04 S04.22 rotation) → `sirmaai-gateway` mapping cache invalidation, `notification` (admin audit notification on rotation)
+- `agenticsai.key_rotated` (NEW 2026-05-12; published by `agenticsai-gateway` after E04 S04.22 rotation) → `agenticsai-gateway` mapping cache invalidation, `notification` (admin audit notification on rotation)
 
-**SirmaAI inbound webhooks → internal Redis Streams** (per ADR-018, Standard Webhooks spec):
+**AgenticSAI inbound webhooks → internal Redis Streams** (per ADR-018, Standard Webhooks spec):
 
-- SirmaAI `workflow.completed` → internal `sirmaai.workflow.completed` → `data-pipeline` (opportunity-ingestion completion handler), `client-api` (user-facing notification)
-- SirmaAI `agent.run.completed` → internal `sirmaai.agent.run.completed` → `gateway` (workflow_runs status converge), `notification` (user-facing run-completion alerts)
-- SirmaAI `storage.file.processed` → internal `sirmaai.kb.file.processed` → `client-api` (set `client.sirmaai_kb_files.parsed_text_available_at`)
-- SirmaAI `policy.violation` → internal `sirmaai.policy.violation` → `notification` (admin alert), `shared.audit_log` (immutable record)
+- AgenticSAI `workflow.completed` → internal `agenticsai.workflow.completed` → `data-pipeline` (opportunity-ingestion completion handler), `client-api` (user-facing notification)
+- AgenticSAI `agent.run.completed` → internal `agenticsai.agent.run.completed` → `gateway` (workflow_runs status converge), `notification` (user-facing run-completion alerts)
+- AgenticSAI `storage.file.processed` → internal `agenticsai.kb.file.processed` → `client-api` (set `client.agenticsai_kb_files.parsed_text_available_at`)
+- AgenticSAI `policy.violation` → internal `agenticsai.policy.violation` → `notification` (admin alert), `shared.audit_log` (immutable record)
 
 **Event handler discipline** (project-context):
 
 - Narrow `except` clauses — never swallow `celery.exceptions.Retry` or `asyncio.CancelledError` (Epic 9, Epic 13).
 - Idempotency mandatory: every handler keys on a stable event_id, uses dedup table or SETNX.
 - 4xx errors must NOT increment circuit-breaker failure counters (Epic 5 OBS-001 fix).
-- **SirmaAI-origin events must be idempotent against the reconciler** — both webhook and reconciler may converge the same `workflow_runs` row. Use `UPDATE ... WHERE status IN ('pending','running')` guards rather than blind state writes.
+- **AgenticSAI-origin events must be idempotent against the reconciler** — both webhook and reconciler may converge the same `workflow_runs` row. Use `UPDATE ... WHERE status IN ('pending','running')` guards rather than blind state writes.
 
 ---
 
@@ -792,8 +792,8 @@ Stream → consumer → semantics:
 - **Ingress**: host nginx on www1 (TLS 1.3, certbot-managed Let's Encrypt). HSTS preload. Reverse-proxy to per-service ports (8001/8002/8004/8005/8007). nginx config under `infra/nginx/` in repo; deploy is a manual `sudo cp` on www1 (per project memory: nginx + certbot are manual, not in `deploy.yml`).
 - **Database**: PostgreSQL 16 as a single container with host-mounted volume. **No Multi-AZ; no read replica.** Daily logical backup (`pg_dump`) + WAL archiving to `/home/docker/backups/eusolicit/`, replicated off-site to **Hetzner Storage Box** (EU residency). PITR window: 7 days from latest base backup.
 - **Redis**: Redis 7 as a single container with AOF + RDB persistence. **No Sentinel.** Separate logical DB indices: `0` for application cache/streams, `1` for tests.
-- **Object storage**: local volume on www1 for Trust Center artefacts (Git-tracked PDFs + WeasyPrint output). Tender raw downloads cached briefly on disk before upload to SirmaAI storage-resources (per ADR-019 — SirmaAI KB is canonical, S3 is no longer in production scope).
-- **Secrets**: sourced from `/home/docker/eusolicit-overrides/.env.prod` on www1 with file-permission isolation; not a managed secrets store. Includes DB credentials, Stripe keys, per-Project SirmaAI API keys (Fernet-encrypted in `client.sirmaai_projects.api_key_encrypted`), Standard Webhooks HMAC secrets, OAuth tokens for Dynamics + HubSpot. Rotation cadences in ADR-004 / ADR-018 / ADR-020.
+- **Object storage**: local volume on www1 for Trust Center artefacts (Git-tracked PDFs + WeasyPrint output). Tender raw downloads cached briefly on disk before upload to AgenticSAI storage-resources (per ADR-019 — AgenticSAI KB is canonical, S3 is no longer in production scope).
+- **Secrets**: sourced from `/home/docker/eusolicit-overrides/.env.prod` on www1 with file-permission isolation; not a managed secrets store. Includes DB credentials, Stripe keys, per-Project AgenticSAI API keys (Fernet-encrypted in `client.agenticsai_projects.api_key_encrypted`), Standard Webhooks HMAC secrets, OAuth tokens for Dynamics + HubSpot. Rotation cadences in ADR-004 / ADR-018 / ADR-020.
 - **CDN**: CloudFlare in front of the public `/trust/*` route only (per Trust Center §ADR-011). The authenticated app routes are not CDN-fronted at launch.
 - **DNS**: provider's nameservers; no Route53.
 - **Paging**: email + Telegram bot (PagerDuty cancelled, per ADR-010).
@@ -819,7 +819,7 @@ Pipelines in `.github/workflows/`:
 - **Metrics**: Prometheus scraping `/metrics` on every service. Custom `CollectorRegistry` per service (avoids global-state test pollution). Mandatory metrics (project-context retros):
   - REST p50/p95/p99 latency histograms
   - SSE TTFB histogram (target <500ms)
-  - Outbound provider call latency + error rate (Stripe, SirmaAI, VIES, AOP, TED, Dynamics, HubSpot, Slack, Teams)
+  - Outbound provider call latency + error rate (Stripe, AgenticSAI, VIES, AOP, TED, Dynamics, HubSpot, Slack, Teams)
   - Circuit-breaker state gauge per provider
   - Webhook processing latency histogram (Epic 8)
   - `billing_usage_sync_drift_total` gauge, active-tier distribution gauge, trial-to-paid conversion counter (Epic 8 retro)
@@ -833,7 +833,7 @@ Pipelines in `.github/workflows/`:
 
 - **Backups** (per ADR-010): daily `pg_dump` + WAL archiving to `/home/docker/backups/eusolicit/` on www1; nightly `rsync` to Hetzner Storage Box (EU residency). Redis AOF + RDB persistence. **No cross-region replication** (residency); single-host = single point of failure for compute.
 - **DR**: documented runbook (Epic 22 onprem-* stories). RTO ≤ 4h (NFR-17); RPO ≤ 24h (NFR-15) — **gated on backup-restore drill measurement**. Annual DR test mandatory; 99.9% SLA promise withdrawn for launch ("Service is in beta. Best-effort availability.")
-- **SirmaAI substrate** (per ADR-019): unstructured artefacts (tenders, profiles, past proposals, ESPD templates, rubrics) live in SirmaAI storage-resources, not on www1. EU residency for the SirmaAI EU Solicit Organisation is a contractual prerequisite (§11.3 risk #1). Cross-substrate erasure requires both `postgres_rows_deleted` and `sirmaai_files_deleted` ACKs in `shared.audit_log`.
+- **AgenticSAI substrate** (per ADR-019): unstructured artefacts (tenders, profiles, past proposals, ESPD templates, rubrics) live in AgenticSAI storage-resources, not on www1. EU residency for the AgenticSAI EU Solicit Organisation is a contractual prerequisite (§11.3 risk #1). Cross-substrate erasure requires both `postgres_rows_deleted` and `agenticsai_files_deleted` ACKs in `shared.audit_log`.
 - **Right-to-erasure (GDPR Art. 17)**: User-data soft-delete cascade to all tenant-scoped tables; audit log retention preserved under Art. 17.3.b legal-obligation exception (documented in Trust Center). Audit entries reference IDs only — never free-form PII.
 
 ---
@@ -865,12 +865,12 @@ The ADRs below are the foundational decisions; each has been validated through o
 
 ### ADR-004 — Two-layer outbound resilience: `circuit_breaker(retry(http_factory))`
 
-**Status:** Accepted (Epic 4, reused Epic 5/8/9/15); 2026-05-12 SirmaAI addendum below.
-**Decision:** All outbound HTTP calls (SirmaAI, Stripe, VIES, AOP, TED, HubSpot, Microsoft Dynamics, Slack, Teams, calendar) use composed resilience: outer **circuit breaker** wrapping inner **exponential backoff retry** wrapping the typed `httpx` client factory. Explicit `httpx` timeouts mandatory.
+**Status:** Accepted (Epic 4, reused Epic 5/8/9/15); 2026-05-12 AgenticSAI addendum below.
+**Decision:** All outbound HTTP calls (AgenticSAI, Stripe, VIES, AOP, TED, HubSpot, Microsoft Dynamics, Slack, Teams, calendar) use composed resilience: outer **circuit breaker** wrapping inner **exponential backoff retry** wrapping the typed `httpx` client factory. Explicit `httpx` timeouts mandatory.
 **Rationale:** Keeps protections layered correctly — circuit breaker counts only network/5xx failures (4xx must NOT increment failure counter, Epic 5 OBS-001), retry handles transient network hiccups, factory ensures a single typed client per provider.
 **Consequences:** Stripe must adopt this pattern in `billing_service.py` and `vies_service.py` (Epic 8 carry-forward). Open-circuit fallback varies per call: payment paths fail-closed; AI-summary paths fail-open with degraded result; VIES fails-open to `vat_validation_status: pending`.
 
-> **Addendum 2026-05-12 (per ADR-018):** Outbound calls to **SirmaAI** (replacing prior "KraftData" framing) use the same two-layer composition. The pattern is unchanged. Logical-name keys for circuit-breaker buckets shift from agent-name-from-yaml-registry (retired) to a composite of `(eusolicit_logical_name, sirmaai_project_id)` resolved at call time by `sirmaai-gateway`. Open-circuit fallback for AI paths remains **fail-open with degraded result + tenant-visible banner** for outages >5 minutes; payment-path circuit breakers (Stripe) remain **fail-closed**.
+> **Addendum 2026-05-12 (per ADR-018):** Outbound calls to **AgenticSAI** (replacing prior "AgenticSAI" framing) use the same two-layer composition. The pattern is unchanged. Logical-name keys for circuit-breaker buckets shift from agent-name-from-yaml-registry (retired) to a composite of `(eusolicit_logical_name, agenticsai_project_id)` resolved at call time by `agenticsai-gateway`. Open-circuit fallback for AI paths remains **fail-open with degraded result + tenant-visible banner** for outages >5 minutes; payment-path circuit breakers (Stripe) remain **fail-closed**.
 
 ### ADR-005 — Streaming AI via Server-Sent Events with strict lifecycle controls
 
@@ -911,7 +911,7 @@ The ADRs below are the foundational decisions; each has been validated through o
 ### ADR-009 — `integrations-api` as a separate service
 
 **Status:** Accepted (Epic 16/17, ratified 2026-04-25)
-**Decision:** Net-new service `integrations-api` (port 8007) for HubSpot/Salesforce/Pipedrive/Slack/Teams. Reasons mirroring AI Gateway split:
+**Decision:** Net-new service `integrations-api` (port 8007) for HubSpot/Salesforce/Pipedrive/Slack/Teams. Reasons mirroring agenticsai-gateway split:
 
 1. Blast radius: provider outages or rate-limits don't cascade into `client-api`.
 2. Per-provider rate-limit characteristics warrant per-provider Celery worker queues.
@@ -951,15 +951,15 @@ Slack/Teams (incoming-webhook templates) ships **before** CRM (bi-directional sy
 > **Status:** Accepted (Epic 21, Plan 2026-04-25), **superseded 2026-05-11**.
 > **Decision:** Migrate to managed Multi-AZ RDS (Aurora candidate; RDS Postgres baseline) and managed Redis with Sentinel. PDBs with `minAvailable: 1` and ≥2 replicas per service in production. SLO dashboards with error-budget burn-rate alerting. PagerDuty on-call rotation with runbook density. **Do not publish 99.9% SLA before infra uplift completes** (Phase A → B → C).
 > **Rationale:** Patroni-on-K8s is operational debt for a small team. Managed databases with documented Multi-AZ failover semantics are auditable and predictable.
-> **Consequences:** ~+€250–600/mo run rate. k6 baseline closure (PE.01) is the **first** Epic 21 story — has been deferred 6 epics; cannot publish any SLO without it. KraftData incidents excluded from SLA scope (isolated by AI Gateway circuit breaker).
+> **Consequences:** ~+€250–600/mo run rate. k6 baseline closure (PE.01) is the **first** Epic 21 story — has been deferred 6 epics; cannot publish any SLO without it. AgenticSAI incidents excluded from SLA scope (isolated by agenticsai-gateway circuit breaker).
 
 **Implementation status (2026-05-04):** Story 21-2 closed. Production RDS Multi-AZ provisioned (eu-central-1, db.r6g.large, 35d backup retention, Performance Insights enabled). Migration `M_PE02_opportunities_tsv_gin_index` shipped (data-pipeline rev 003). FTS plan flipped from `Seq Scan` to `Bitmap Index Scan on ix_opportunities_tsv` — see `implementation-artifacts/load-test-results.md` §EXPLAIN ANALYZE Results — Post-PE.02 Migration for verbatim evidence. Multi-AZ failover drill (staging) documented in `implementation-artifacts/pe-02-cutover-runbook.md` §Failover Drill Results; production drill pending operator-on-call execution per D-1 pre-recorded deviation.
 
 **Implementation status (2026-05-04) — PE.03 (Story 21-3):** Story 21-3 closed (dev pass). Production ElastiCache for Redis Replication Group provisioned via Terraform (eu-central-1, cache.r6g.large × 3 nodes Multi-AZ + automatic failover, cluster-mode-disabled, 7d snapshot retention, at-rest + transit encryption with auth_token via Secrets Manager per AP-GUARD-11). Per-service Redis connection strings via External Secrets Operator (Shape A — extending Story 21-2 `externalsecret.yaml` pattern; activates via `.Values.externalSecret.redis.enabled`). All `redis-py` `from_url` call sites hardened with `socket_keepalive=True` + `health_check_interval=30` (pool_pre_ping equivalent) + `retry=Retry(ExponentialBackoff(cap=10, base=1), 3)` + `retry_on_error=[ConnectionError, TimeoutError]` + `socket_connect_timeout=5` + `socket_timeout=10`. Both Celery celery_app.py files updated with `broker_connection_retry_on_startup=True` + `broker_transport_options` resilience keys. Multi-AZ failover drill and production cutover deferred to operator-action follow-up per D-1 pre-recorded deviation; §Failover Drill Results and §Staging Rehearsal Timing to be populated by operator. See `implementation-artifacts/pe-03-cutover-runbook.md` for the canonical cutover runbook + §Connection Audit (15 sites, all hardened) + §ESO Wiring Decision (Shape A chosen) + §Failover Drill Steps (procedure pre-documented for operator execution).
 
-**Implementation status (2026-05-05) — PE.04 (Story 21-4):** Story 21-4 dev pass. PDB `minAvailable: 1` enforced across all 6 production services (client-api, admin-api, ai-gateway, data-pipeline, notification, integrations-api); HPA `minReplicas` floors per epic line 105 met (admin-api 1→2, notification 1→2; integrations-api new at 2; client-api/ai-gateway/data-pipeline already at floors). NEW `infra/helm/values/integrations-api.yaml` Helm values file per ADR-009 (port 8007). CI lint gate `scripts/check_helm_pdb_and_minreplicas.py` + `scripts/pe04_min_replica_floors.py` added — rejects future values files without HA primitives; runs on every push and PR. Chaos-drill runbook pre-documented at `implementation-artifacts/pe-04-chaos-drill-runbook.md` (§Drain Procedure + §Per-Service Drill + §PDB-Behaviour Evidence + §HPA Sizing Review + §Network-Policy Verification); live staging drill deferred to operator-on-call execution per D-1. NetworkPolicy HA verification: all 7 values files use `podSelector`/`namespaceSelector`/`ipBlock`/`to: []` — no literal pod IPs (verified). nginx-ingress PDB verification commands documented in runbook §Pre-flight; conditional override file at `infra/helm/values/ingress-nginx-overrides.yaml`. **SLA-publication gate `PE.01 + PE.02 + PE.03 + PE.04` advances to 4/4 done** from a code-and-config standpoint (PE.05 SLO dashboards + PE.06 on-call rotation are parallel/non-gating per epic line 20).
+**Implementation status (2026-05-05) — PE.04 (Story 21-4):** Story 21-4 dev pass. PDB `minAvailable: 1` enforced across all 6 production services (client-api, admin-api, agenticsai-gateway, data-pipeline, notification, integrations-api); HPA `minReplicas` floors per epic line 105 met (admin-api 1→2, notification 1→2; integrations-api new at 2; client-api/agenticsai-gateway/data-pipeline already at floors). NEW `infra/helm/values/integrations-api.yaml` Helm values file per ADR-009 (port 8007). CI lint gate `scripts/check_helm_pdb_and_minreplicas.py` + `scripts/pe04_min_replica_floors.py` added — rejects future values files without HA primitives; runs on every push and PR. Chaos-drill runbook pre-documented at `implementation-artifacts/pe-04-chaos-drill-runbook.md` (§Drain Procedure + §Per-Service Drill + §PDB-Behaviour Evidence + §HPA Sizing Review + §Network-Policy Verification); live staging drill deferred to operator-on-call execution per D-1. NetworkPolicy HA verification: all 7 values files use `podSelector`/`namespaceSelector`/`ipBlock`/`to: []` — no literal pod IPs (verified). nginx-ingress PDB verification commands documented in runbook §Pre-flight; conditional override file at `infra/helm/values/ingress-nginx-overrides.yaml`. **SLA-publication gate `PE.01 + PE.02 + PE.03 + PE.04` advances to 4/4 done** from a code-and-config standpoint (PE.05 SLO dashboards + PE.06 on-call rotation are parallel/non-gating per epic line 20).
 
-**Implementation status (2026-05-05) — PE.05 (Story 21-5):** Story 21-5 dev pass. Per-service `/metrics` endpoints wired via shared `eusolicit_common.observability` middleware (5 services: client-api, admin-api, ai-gateway, notification, enterprise-api); existing data-pipeline `PIPELINE_METRICS_REGISTRY` (Story 5.12) and integrations-api `METRICS_REGISTRY` (Story 17.0) preserved verbatim with HTTP-layer histograms added additively. All 4 mandatory HTTP metrics include `slo_target` label (`"platform"` / `"kraftdata-dependent"`) per AC-6.4 + architecture.md line 762 KraftData isolation. Celery worker metrics wired via per-service `metrics_signals.py` modules (data-pipeline + notification) with `task_prerun` / `task_postrun` / `task_failure` / `task_retry` signal handlers + beat task queue-depth poll every 30s. Redis metrics via CloudWatch exporter (`AWS/ElastiCache`). Postgres metrics via CloudWatch exporter (`AWS/RDS`) + dedicated `postgres-exporter` Helm release authenticated as `monitoring_role`. Grafana dashboards committed as JSON at `infra/observability/grafana/dashboards/` (7 per-service + 1 cross-cutting `platform-slo.json` with 4-window multi-burn-rate layout per Google SRE Workbook §5.2). Prometheus recording + alerting rules at `infra/observability/prometheus/rules/` (plain AMP format). Alertmanager routing config at `infra/observability/alertmanager/alertmanager.yaml` (page → PagerDuty, ticket → Slack, info → null; secrets via ESO). AMP+AMG provisioned via `infra/terraform/modules/monitoring/`. `/metrics` contract regression test at `tests/unit/test_metrics_endpoint_contract.py` covering all 7 services (146 pass / 18 skip / 0 fail). Burn-rate e2e test (`tests/observability/test_alert_burn_rate_e2e.py`) deferred to live staging operator action per D-2. Observability runbook at `implementation-artifacts/pe-05-observability-runbook.md`.
+**Implementation status (2026-05-05) — PE.05 (Story 21-5):** Story 21-5 dev pass. Per-service `/metrics` endpoints wired via shared `eusolicit_common.observability` middleware (5 services: client-api, admin-api, agenticsai-gateway, notification, enterprise-api); existing data-pipeline `PIPELINE_METRICS_REGISTRY` (Story 5.12) and integrations-api `METRICS_REGISTRY` (Story 17.0) preserved verbatim with HTTP-layer histograms added additively. All 4 mandatory HTTP metrics include `slo_target` label (`"platform"` / `"agenticsai-dependent"`) per AC-6.4 + architecture.md line 762 AgenticSAI isolation. Celery worker metrics wired via per-service `metrics_signals.py` modules (data-pipeline + notification) with `task_prerun` / `task_postrun` / `task_failure` / `task_retry` signal handlers + beat task queue-depth poll every 30s. Redis metrics via CloudWatch exporter (`AWS/ElastiCache`). Postgres metrics via CloudWatch exporter (`AWS/RDS`) + dedicated `postgres-exporter` Helm release authenticated as `monitoring_role`. Grafana dashboards committed as JSON at `infra/observability/grafana/dashboards/` (7 per-service + 1 cross-cutting `platform-slo.json` with 4-window multi-burn-rate layout per Google SRE Workbook §5.2). Prometheus recording + alerting rules at `infra/observability/prometheus/rules/` (plain AMP format). Alertmanager routing config at `infra/observability/alertmanager/alertmanager.yaml` (page → PagerDuty, ticket → Slack, info → null; secrets via ESO). AMP+AMG provisioned via `infra/terraform/modules/monitoring/`. `/metrics` contract regression test at `tests/unit/test_metrics_endpoint_contract.py` covering all 7 services (146 pass / 18 skip / 0 fail). Burn-rate e2e test (`tests/observability/test_alert_burn_rate_e2e.py`) deferred to live staging operator action per D-2. Observability runbook at `implementation-artifacts/pe-05-observability-runbook.md`.
 
 ### ADR-011 — Trust Center as static-rendered Next.js, not a CMS
 
@@ -1012,11 +1012,11 @@ ATDD checklists for export/render stories must assert "function uses `run_in_exe
 **Decision:** When a hardening epic has multiple independent concerns (e.g. observability, security, idempotency, perf), use a **coordinator story** that owns end-to-end AC acceptance and the close-out gate, plus narrow sub-stories that each deliver one slice. Coordinator cannot be `done` until all sub-stories' ACs are GREEN.
 **Rationale:** Prevents mega-story scope explosion; preserves traceability per concern; close-out gate ensures no slice gets dropped.
 
-### ADR-018 — SirmaAI as agentic substrate, Topology A (singleton Org, Project-per-company)
+### ADR-018 — AgenticSAI as agentic substrate, Topology A (singleton Org, Project-per-company)
 
-**Status:** Accepted (2026-05-12). Supersedes §3.4 framing of "AI Gateway abstraction" as the integration locus. ADR-018 narrows the gateway's responsibility from "broker every KraftData call" to "broker every SirmaAI call, hold per-tenant mapping, host webhooks, reconcile run state."
+**Status:** Accepted (2026-05-12). Supersedes §3.4 framing of "agenticsai-gateway abstraction" as the integration locus. ADR-018 narrows the gateway's responsibility from "broker every AgenticSAI call" to "broker every AgenticSAI call, hold per-tenant mapping, host webhooks, reconcile run state."
 
-**Decision.** EU Solicit delegates its agent runtime to **SirmaAI** (at `https://agenticsai.endigitalx.com/`, the production deployment of the platform formerly known as KraftData). Tenancy is modelled as **Topology A**: a **single SirmaAI Organisation** owned by EU Solicit, with **one SirmaAI Project per EU Solicit company**. Per-Project API keys are the tenant credential boundary, stored Fernet-encrypted in `client.sirmaai_projects.api_key_encrypted`. SirmaAI-provisioned N8N runs at the Organisation level — **one shared N8N instance** for the whole platform, workflow templates parameterised by `projectId`.
+**Decision.** EU Solicit delegates its agent runtime to **AgenticSAI** (at `https://agenticsai.endigitalx.com/`). Tenancy is modelled as **Topology A**: a **single AgenticSAI Organisation** owned by EU Solicit, with **one AgenticSAI Project per EU Solicit company**. Per-Project API keys are the tenant credential boundary, stored Fernet-encrypted in `client.agenticsai_projects.api_key_encrypted`. AgenticSAI-provisioned N8N runs at the Organisation level — **one shared N8N instance** for the whole platform, workflow templates parameterised by `projectId`.
 
 **Options considered.**
 
@@ -1026,50 +1026,50 @@ ATDD checklists for export/render stories must assert "function uses `run_in_exe
 | B. Org-per-company | N Orgs + N Projects | High — per-Org overhead | Org-scope (incl. N8N + rate-limits + audit) | Per-tenant | Rejected — cost + provisioning surface |
 | C. Hybrid by tier | Free/Starter → A; Pro/Enterprise → B | Medium | Mixed | Mixed | Rejected — two code paths, tier-upgrade migration is hostile |
 
-**Rationale.** *Boring choice for the boring question.* Topology B is the "right" answer if money were free and SirmaAI were our crown jewel; it isn't. We're a single-team platform with a single-host on-prem launch (ADR-010). Operating N N8N instances and N billing relationships in lockstep with EU Solicit's company lifecycle is operational debt that doesn't buy what the product needs at launch. Project-level isolation in SirmaAI is genuine — agents, KB vector stores, traces, memories, eval-runs, policies, and run logs are all Project-scoped. The N8N concession is the only meaningful give. *Per-Project API key as tenant boundary* fits the existing Fernet pattern (ADR-009 / Epic 9). Rule of Three holds: company secrets, OAuth tokens, SirmaAI keys — third use of the pattern is the trigger to elevate it from "vendor-specific" to "canonical Fernet vault" in the project context.
+**Rationale.** *Boring choice for the boring question.* Topology B is the "right" answer if money were free and AgenticSAI were our crown jewel; it isn't. We're a single-team platform with a single-host on-prem launch (ADR-010). Operating N N8N instances and N billing relationships in lockstep with EU Solicit's company lifecycle is operational debt that doesn't buy what the product needs at launch. Project-level isolation in AgenticSAI is genuine — agents, KB vector stores, traces, memories, eval-runs, policies, and run logs are all Project-scoped. The N8N concession is the only meaningful give. *Per-Project API key as tenant boundary* fits the existing Fernet pattern (ADR-009 / Epic 9). Rule of Three holds: company secrets, OAuth tokens, AgenticSAI keys — third use of the pattern is the trigger to elevate it from "vendor-specific" to "canonical Fernet vault" in the project context.
 
 **Consequences.**
 
 - *N8N as shared infrastructure is a known blast-radius concession.* One badly-authored workflow template can affect every tenant simultaneously. Mitigation: workflow versioning + staged rollout (canary tenants → 10% → 100%) + per-tenant feature flag gate on new template versions. **Story AC in E26**, not hand-wave. Treating workflow templates as production code (PR review, semver, rollback plan) is non-negotiable.
-- *SirmaAI is now the second critical external dependency* (after Stripe). EU Solicit's effective availability becomes `min(EU Solicit, SirmaAI)` for any user flow that crosses the boundary. Mitigation: run-state reconciler is authoritative; async-run + job-poll model means transient SirmaAI outages don't lose runs; graceful-degradation UX banner ("AI analysis temporarily unavailable") for outages >5 minutes.
-- *Tenant provisioning becomes synchronous with company create.* Auto-create SirmaAI Project + seed KB + register MCP stubs within 30s of company create (FR-45). Failure → reconciliation path with retry; admin-API "re-provision" endpoint for manual recovery.
-- *EU residency is now an ownership-split question.* EU Solicit data on www1 is EU; SirmaAI residency for the EU Solicit Organisation must be **contractually confirmed**. See §11.3 risk row #1 update.
-- *The `agents.yaml` logical-name registry retires.* SirmaAI Projects own agent identity natively. Logical agent names survive as an **adapter pattern**: `sirmaai-gateway` resolves `("proposal_drafter", project_id)` → SirmaAI agent UUID via a per-Project agent-name index built at provisioning time. The lookup table lives in `client.sirmaai_projects.agent_map` JSONB.
+- *AgenticSAI is now the second critical external dependency* (after Stripe). EU Solicit's effective availability becomes `min(EU Solicit, AgenticSAI)` for any user flow that crosses the boundary. Mitigation: run-state reconciler is authoritative; async-run + job-poll model means transient AgenticSAI outages don't lose runs; graceful-degradation UX banner ("AI analysis temporarily unavailable") for outages >5 minutes.
+- *Tenant provisioning becomes synchronous with company create.* Auto-create AgenticSAI Project + seed KB + register MCP stubs within 30s of company create (FR-45). Failure → reconciliation path with retry; admin-API "re-provision" endpoint for manual recovery.
+- *EU residency is now an ownership-split question.* EU Solicit data on www1 is EU; AgenticSAI residency for the EU Solicit Organisation must be **contractually confirmed**. See §11.3 risk row #1 update.
+- *The `agents.yaml` logical-name registry retires.* AgenticSAI Projects own agent identity natively. Logical agent names survive as an **adapter pattern**: `agenticsai-gateway` resolves `("proposal_drafter", project_id)` → AgenticSAI agent UUID via a per-Project agent-name index built at provisioning time. The lookup table lives in `client.agenticsai_projects.agent_map` JSONB.
 
-### ADR-019 — Knowledge Base ownership split: SirmaAI canonical for unstructured artefacts, EU Solicit canonical for structured records
+### ADR-019 — Knowledge Base ownership split: AgenticSAI canonical for unstructured artefacts, EU Solicit canonical for structured records
 
 **Status:** Accepted (2026-05-12)
 
 **Decision.** EU Solicit's data tier is **split by content type**:
 
 - **EU Solicit Postgres remains canonical for structured records**: opportunities, proposals, ESPD profiles, compliance frameworks, billing, subscriptions, users, companies, workspaces, memberships, audit log.
-- **SirmaAI storage-resources is canonical for unstructured artefacts**: tender PDFs, ESPD template documents, company profile documents (org charts, capability statements, certifications), past proposals (uploaded as reference), qualification rubrics.
+- **AgenticSAI storage-resources is canonical for unstructured artefacts**: tender PDFs, ESPD template documents, company profile documents (org charts, capability statements, certifications), past proposals (uploaded as reference), qualification rubrics.
 
-Vector embeddings and parsed-text representations live exclusively in SirmaAI; EU Solicit holds metadata pointers (`sirmaai_file_id`, `sirmaai_storage_resource_id`, `parsed_text_available_at`) but not the artefact bodies after upload.
+Vector embeddings and parsed-text representations live exclusively in AgenticSAI; EU Solicit holds metadata pointers (`agenticsai_file_id`, `agenticsai_storage_resource_id`, `parsed_text_available_at`) but not the artefact bodies after upload.
 
 **Options considered.**
 
 | Option | Where artefacts live | Search | Agent grounding | Decision |
 |---|---|---|---|---|
-| **A. KB canonical in SirmaAI** | SirmaAI storage-resources only | SirmaAI semantic search | Native (agents read KB in Project scope) | **Selected** |
-| B. Dual write (EU Solicit S3 + SirmaAI KB) | Both | SirmaAI for semantic, S3 for raw retrieval | Native | Rejected — sync gap risk, double cost |
-| C. KB canonical in EU Solicit S3 + agents pull at runtime | S3 | Custom semantic layer | Per-agent custom retriever | Rejected — re-implements what SirmaAI does natively |
+| **A. KB canonical in AgenticSAI** | AgenticSAI storage-resources only | AgenticSAI semantic search | Native (agents read KB in Project scope) | **Selected** |
+| B. Dual write (EU Solicit S3 + AgenticSAI KB) | Both | AgenticSAI for semantic, S3 for raw retrieval | Native | Rejected — sync gap risk, double cost |
+| C. KB canonical in EU Solicit S3 + agents pull at runtime | S3 | Custom semantic layer | Per-agent custom retriever | Rejected — re-implements what AgenticSAI does natively |
 
-**Rationale.** *The platform that does the inference should own the index it queries.* Mirroring artefacts in EU Solicit S3 buys nothing the user notices and costs us: storage duplication, sync drift, two retention policies, two delete paths for Right-to-Erasure. SirmaAI's storage-resources gives parsed-text download (`/files/{fileId}/parsed-text/download`) and signed-URL file download — both are sufficient for any EU Solicit-side use case (re-export, audit, legal hold). *Right-to-Erasure (GDPR Art. 17) needs an explicit cross-substrate path.* When a tenant exercises erasure: EU Solicit Postgres rows are deleted/anonymised in the existing flow; **a sibling job must call SirmaAI `DELETE /storage-resources/{id}/files/{fileId}` for every artefact in the tenant's Project**. Story AC in E24 archival flow.
+**Rationale.** *The platform that does the inference should own the index it queries.* Mirroring artefacts in EU Solicit S3 buys nothing the user notices and costs us: storage duplication, sync drift, two retention policies, two delete paths for Right-to-Erasure. AgenticSAI's storage-resources gives parsed-text download (`/files/{fileId}/parsed-text/download`) and signed-URL file download — both are sufficient for any EU Solicit-side use case (re-export, audit, legal hold). *Right-to-Erasure (GDPR Art. 17) needs an explicit cross-substrate path.* When a tenant exercises erasure: EU Solicit Postgres rows are deleted/anonymised in the existing flow; **a sibling job must call AgenticSAI `DELETE /storage-resources/{id}/files/{fileId}` for every artefact in the tenant's Project**. Story AC in E24 archival flow.
 
 **Consequences.**
 
 - *No more in-house parsed-text or vector indexing for unstructured content.* Saves the build of a separate retrieval substrate — and saves the bug surface that comes with it.
-- *Right-to-Erasure traverses two substrates.* New cross-substrate erasure-completion proof required in audit log: `erasure_step: postgres_rows_deleted`, `erasure_step: sirmaai_files_deleted`. Single missing step = erasure not certified.
-- *Data export for tenant offboarding crosses two substrates.* Export job pulls structured records from EU Solicit Postgres + iterates SirmaAI `/storage-resources/{id}/files` to fetch artefacts and parsed text. Bundled into a single tarball. New endpoint: `POST /api/v1/companies/{id}/export-archive`.
-- *Operational pain shifts to "what if SirmaAI loses a file?"* Mitigation: pre-upload SHA-256 hash recorded in `client.sirmaai_kb_files.sha256`; periodic reconciliation job verifies SirmaAI inventory against the EU Solicit hash table. Mismatch → admin alert. Storage-resources analogue of the run-state reconciler.
-- *Local-dev story is uglier.* `make up` cannot stand up a fake SirmaAI cheaply. Two options: (1) point local dev at SirmaAI staging with a shared dev Org; (2) write a `sirmaai-mock` thin FastAPI that implements the dozen endpoints we care about with in-memory state. Recommendation: **(1) for early E24/E25/E26 work, (2) later when test-isolation pain forces it**. Don't pre-build the mock.
+- *Right-to-Erasure traverses two substrates.* New cross-substrate erasure-completion proof required in audit log: `erasure_step: postgres_rows_deleted`, `erasure_step: agenticsai_files_deleted`. Single missing step = erasure not certified.
+- *Data export for tenant offboarding crosses two substrates.* Export job pulls structured records from EU Solicit Postgres + iterates AgenticSAI `/storage-resources/{id}/files` to fetch artefacts and parsed text. Bundled into a single tarball. New endpoint: `POST /api/v1/companies/{id}/export-archive`.
+- *Operational pain shifts to "what if AgenticSAI loses a file?"* Mitigation: pre-upload SHA-256 hash recorded in `client.agenticsai_kb_files.sha256`; periodic reconciliation job verifies AgenticSAI inventory against the EU Solicit hash table. Mismatch → admin alert. Storage-resources analogue of the run-state reconciler.
+- *Local-dev story is uglier.* `make up` cannot stand up a fake AgenticSAI cheaply. Two options: (1) point local dev at AgenticSAI staging with a shared dev Org; (2) write a `agenticsai-mock` thin FastAPI that implements the dozen endpoints we care about with in-memory state. Recommendation: **(1) for early E24/E25/E26 work, (2) later when test-isolation pain forces it**. Don't pre-build the mock.
 
-### ADR-020 — CRM integration via SirmaAI MCP servers (Dynamics 365 + HubSpot v1; Pipedrive + Salesforce deferred)
+### ADR-020 — CRM integration via AgenticSAI MCP servers (Dynamics 365 + HubSpot v1; Pipedrive + Salesforce deferred)
 
 **Status:** Accepted (2026-05-12). Supersedes §3.4 and ADR-009's CRM-related scope (HubSpot → Pipedrive → Salesforce as direct adapters in `integrations-api`). ADR-009 itself **remains accepted** for Slack/Teams + `integrations` schema + OAuth callback hosting; CRM-specific direct-adapter language is retired by this ADR.
 
-**Decision.** CRM connectivity in v1 ships as **two MCP servers per SirmaAI Project**: **Microsoft Dynamics 365** and **HubSpot**. Each MCP server exposes a stable tool surface — `find_account`, `create_deal`, `update_deal_stage`, `enrich_contact`, `attach_note` — callable by SirmaAI agents during qualification, lifecycle transitions, and on-demand enrichment. EU Solicit hosts the OAuth callback and stores access + refresh tokens Fernet-encrypted in `client.crm_connections` (existing table). Tokens are injected into the MCP-server configuration **at registration time** (and on rotation) via SirmaAI's `secrets` API; SirmaAI's secrets store becomes a downstream extension of EU Solicit's trust boundary for these credentials.
+**Decision.** CRM connectivity in v1 ships as **two MCP servers per AgenticSAI Project**: **Microsoft Dynamics 365** and **HubSpot**. Each MCP server exposes a stable tool surface — `find_account`, `create_deal`, `update_deal_stage`, `enrich_contact`, `attach_note` — callable by AgenticSAI agents during qualification, lifecycle transitions, and on-demand enrichment. EU Solicit hosts the OAuth callback and stores access + refresh tokens Fernet-encrypted in `client.crm_connections` (existing table). Tokens are injected into the MCP-server configuration **at registration time** (and on rotation) via AgenticSAI's `secrets` API; AgenticSAI's secrets store becomes a downstream extension of EU Solicit's trust boundary for these credentials.
 
 **Pipedrive** and **Salesforce** are deferred to post-launch as additional MCP-server registrations following the same pattern (no architectural change required).
 
@@ -1077,18 +1077,18 @@ Vector embeddings and parsed-text representations live exclusively in SirmaAI; E
 
 | Option | Where CRM HTTP lives | Agent integration | Per-provider rate-limit state | Decision |
 |---|---|---|---|---|
-| **A. MCP server per provider, per Project** | SirmaAI MCP server | Native (agent invokes MCP tool) | SirmaAI-side | **Selected** |
-| B. Direct adapter in `integrations-api` (the v1 plan) | EU Solicit `integrations-api` | Indirect — agent → ai-gateway → integrations-api | EU Solicit-side, per-provider Celery queues | Rejected — agents can't enrich in-flight |
+| **A. MCP server per provider, per Project** | AgenticSAI MCP server | Native (agent invokes MCP tool) | AgenticSAI-side | **Selected** |
+| B. Direct adapter in `integrations-api` (the v1 plan) | EU Solicit `integrations-api` | Indirect — agent → agenticsai-gateway → integrations-api | EU Solicit-side, per-provider Celery queues | Rejected — agents can't enrich in-flight |
 | C. N8N HTTP-request nodes in workflows | N8N (org-shared) | Workflow-step only | N8N-side | Rejected — agents need tool access, not workflow steps; credential isolation harder in shared N8N |
 
 **Rationale.** *Agents need to enrich leads during qualification, not after it.* In Option B, qualification → workflow ends → separate enrichment step → workflow restarts → re-qualification with enriched data. Round-trip + state machinery + sync drift. In Option A, the qualification agent calls `enrich_contact` mid-run, gets richer context, and folds it into the same output. The bid/no-bid recommendation comes out the other side already-enriched. *Pipedrive + Salesforce deferral is a v1 scope call, not a permanent architectural cut.* The previous E17 plan correctly identified Salesforce as a deal-blocker for the Loopio-shaped competitive set. With on-prem launch ADR-010 in beta posture and the 8–10 week launch slip from the pivot, Salesforce is a Phase 2 add — same pattern, additional MCP server registration, no contract change. **Dynamics 365 is net-new** to the plan and reflects the rebrand opportunity for the v1 enterprise pursuit list.
 
 **Consequences.**
 
-- *OAuth tokens leave EU Solicit's Fernet vault into SirmaAI's secrets store at registration.* Deliberate trust-boundary expansion: EU Solicit remains the custodian (rotation, revocation, audit) but SirmaAI gets a copy needed for MCP-server runtime. Rotation must be **double-sided**: rotate in EU Solicit's vault → push to SirmaAI secrets → verify reachability → revoke old token. Per FR-53.
-- *Conflict resolution remains Last-Write-Wins (LWW) with audit.* Repurposes the existing `integrations.conflict_log` table; conflict source changes from "EU Solicit direct adapter vs CRM" to "SirmaAI MCP tool call vs CRM webhook reflection." Same shape.
-- *Per-provider rate limits now belong to SirmaAI.* EU Solicit's existing per-provider circuit-breaker + Celery-queue machinery for CRM (`integrations-api` S17.00) **retires for these two providers**. The two-layer resilience pattern (ADR-004) applies to the EU Solicit → SirmaAI call only.
-- *Audit trail spans two substrates.* MCP-tool invocations are traced inside SirmaAI (per-Project traces); EU Solicit's `shared.audit_log` records the trigger (`agent_run_initiated`, `mcp_tool_invoked_via_agent`) and the user-visible outcome. Both are retrievable.
+- *OAuth tokens leave EU Solicit's Fernet vault into AgenticSAI's secrets store at registration.* Deliberate trust-boundary expansion: EU Solicit remains the custodian (rotation, revocation, audit) but AgenticSAI gets a copy needed for MCP-server runtime. Rotation must be **double-sided**: rotate in EU Solicit's vault → push to AgenticSAI secrets → verify reachability → revoke old token. Per FR-53.
+- *Conflict resolution remains Last-Write-Wins (LWW) with audit.* Repurposes the existing `integrations.conflict_log` table; conflict source changes from "EU Solicit direct adapter vs CRM" to "AgenticSAI MCP tool call vs CRM webhook reflection." Same shape.
+- *Per-provider rate limits now belong to AgenticSAI.* EU Solicit's existing per-provider circuit-breaker + Celery-queue machinery for CRM (`integrations-api` S17.00) **retires for these two providers**. The two-layer resilience pattern (ADR-004) applies to the EU Solicit → AgenticSAI call only.
+- *Audit trail spans two substrates.* MCP-tool invocations are traced inside AgenticSAI (per-Project traces); EU Solicit's `shared.audit_log` records the trigger (`agent_run_initiated`, `mcp_tool_invoked_via_agent`) and the user-visible outcome. Both are retrievable.
 - *Slack / Teams remain native EU Solicit integrations* (per ADR-009, unchanged). They are notification surfaces, not agent-callable tools. If we ever expose them as agent tools, that's a separate MCP-server addition — same pattern.
 
 ---
@@ -1104,8 +1104,8 @@ Tenant context propagates through every layer:
 3. `WorkspaceScope` `Depends()` factory injects `workspace_id` into the request scope; mismatch with route `{workspaceId}` → 404 (existence leakage protection — Epic 9, Epic 14).
 4. SQLAlchemy queries always filter by `workspace_id` (and `company_id` where applicable) — bare-table queries without scope are a BLOCKING review finding.
 5. Stripe metadata stores `company_id` and `workspace_id` so webhook handlers can scope updates correctly.
-6. **SirmaAI Project scope** (per ADR-018) propagates as a sixth tenant-context dimension: `sirmaai-gateway` resolves `(company_id) → sirmaai_project_id + api_key` from the `client.sirmaai_projects` cache (Redis-backed, 5-min TTL, invalidated on key rotation event). Every outbound SirmaAI call carries the per-Project bearer token; **a request with a mismatched Project token is a server-side bug, not a tenant-isolation violation** — the api-key is the tenant boundary at the SirmaAI side.
-7. **KB artefact upload scope**: artefact uploads from `client-api` to SirmaAI `storage-resources` use the calling company's Project api-key. `client.sirmaai_kb_files` rows carry `company_id` and are scoped by the existing RBAC `Depends()` factories (Epic 2 pattern, unchanged).
+6. **AgenticSAI Project scope** (per ADR-018) propagates as a sixth tenant-context dimension: `agenticsai-gateway` resolves `(company_id) → agenticsai_project_id + api_key` from the `client.agenticsai_projects` cache (Redis-backed, 5-min TTL, invalidated on key rotation event). Every outbound AgenticSAI call carries the per-Project bearer token; **a request with a mismatched Project token is a server-side bug, not a tenant-isolation violation** — the api-key is the tenant boundary at the AgenticSAI side.
+7. **KB artefact upload scope**: artefact uploads from `client-api` to AgenticSAI `storage-resources` use the calling company's Project api-key. `client.agenticsai_kb_files` rows carry `company_id` and are scoped by the existing RBAC `Depends()` factories (Epic 2 pattern, unchanged).
 8. **MCP-tool invocations** carry the Project scope implicitly — agents run inside the Project; MCP tools the agent calls execute against that Project's MCP-server config (which holds *this* tenant's OAuth tokens, not a sibling tenant's). Cross-tenant negative tests for MCP invocations are a story AC in E27.
 
 ### 8.2 Authentication & Authorization Flow
@@ -1185,7 +1185,7 @@ eusolicit-app/
 │   ├── client-api/                    # :8001 — primary user-facing FastAPI
 │   ├── admin-api/                     # :8002 — internal admin FastAPI
 │   ├── data-pipeline/                 # :8003 — Celery + FastAPI ingestion
-│   ├── sirmaai-gateway/               # :8004 — SirmaAI broker (renamed 2026-05-12 from ai-gateway)
+│   ├── agenticsai-gateway/               # :8004 — AgenticSAI broker (renamed 2026-05-12 from agenticsai-gateway)
 │   ├── notification/                  # :8005 — email/Slack/Teams + materialized-view refresh
 │   ├── enterprise-api/                # public REST proxy (gateway routes through client-api)
 │   └── integrations-api/              # :8007 — CRM + Slack/Teams (Epic 16/17)
@@ -1193,7 +1193,7 @@ eusolicit-app/
 ├── packages/                          # Shared Python packages
 │   ├── eusolicit-common/              # BaseServiceSettings, structlog, EventBus, middleware
 │   ├── eusolicit-models/              # Cross-service Pydantic DTOs, Redis Stream event schemas
-│   ├── eusolicit-sirmaai/             # Typed SirmaAI client (renamed 2026-05-12 from eusolicit-kraftdata)
+│   ├── eusolicit-agenticsai/             # Typed AgenticSAI client (renamed 2026-05-12 from eusolicit-agenticsai)
 │   └── eusolicit-test-utils/          # Canonical fixtures (UserFactory, ServiceClient, etc.)
 │
 ├── frontend/
@@ -1209,7 +1209,7 @@ eusolicit-app/
 ├── infra/
 │   ├── nginx/                         # host-nginx config for www1 (per ADR-010)
 │   ├── postgres/                      # init scripts (schema + role provisioning)
-│   ├── n8n-templates/                 # SirmaAI N8N workflow JSON, semver-tagged (per §3.4.1)
+│   ├── n8n-templates/                 # AgenticSAI N8N workflow JSON, semver-tagged (per §3.4.1)
 │   ├── stripe-config.yaml             # Stripe Price IDs, products, tiers
 │   └── trust/artefacts/               # Trust Center PDFs (legal-curated, Git-tracked)
 │   # NOTE: helm/ + terraform/ removed in 2026-05-11 on-prem pivot (ADR-010);
@@ -1298,10 +1298,10 @@ Patterns and anti-patterns are codified in `eusolicit-docs/planning-artifacts/pr
 ### 11.1 Architecture validation
 
 - **Coherence:** Decisions, technology stack, schema layout, and patterns are mutually consistent. Epics 1–15 have shipped on this architecture without redesign — five extensions of existing patterns; no foundational rewrites.
-- **Requirements coverage:** Every PRD FR maps to a service or ADR (FR-1..14 → `client-api` + Stripe; FR-15..20 → `data-pipeline` + `client-api` + N8N workflows; FR-21..25 → `sirmaai-gateway`; FR-26..33 → `client-api` + `sirmaai-gateway`; FR-34..39 → `client-api` + `admin-api`; FR-40..44 → `notification` + `admin-api`; FR-45..55 → `sirmaai-gateway` + `client-api` + `integrations-api` per ADR-018/019/020). NFRs are addressed via specific ADRs (NFR-1/2 → ADR-005, ADR-014; NFR-7 → ADR-001/002/007; NFR-14 → ADR-010; NFR-15/17 → §6.5; NFR-21..23 → §6.3, §10; NFR-24..26 → ADR-018 + §11.3 risks #11/#12).
+- **Requirements coverage:** Every PRD FR maps to a service or ADR (FR-1..14 → `client-api` + Stripe; FR-15..20 → `data-pipeline` + `client-api` + N8N workflows; FR-21..25 → `agenticsai-gateway`; FR-26..33 → `client-api` + `agenticsai-gateway`; FR-34..39 → `client-api` + `admin-api`; FR-40..44 → `notification` + `admin-api`; FR-45..55 → `agenticsai-gateway` + `client-api` + `integrations-api` per ADR-018/019/020). NFRs are addressed via specific ADRs (NFR-1/2 → ADR-005, ADR-014; NFR-7 → ADR-001/002/007; NFR-14 → ADR-010; NFR-15/17 → §6.5; NFR-21..23 → §6.3, §10; NFR-24..26 → ADR-018 + §11.3 risks #11/#12).
 - **Implementation readiness:** Mature project context, canonical fixtures, established CI gates. Ready.
 - **2026-05-04 re-validation pass (autopilot):** Re-checked v2.0 against four post-2026-04-27 sprint-change proposals (v17 of 04-30; v18 of 05-03; v19 of 05-04) and IR-v3 (05-03). All four documents explicitly state "no PRD/architecture/epics/ux-spec edits required" — pure sequencing/process interventions. Epic 18 (Trust Center) implementation introduces `eusolicit_common.document_generation.weasyprint_renderer`, `infra/trust/artefacts.yaml`, `eusolicit_common.aws.s3_client`, and the public route `GET /api/v1/trust/artefacts/{slug}` (302 → signed S3) — all conform to ADR-011 (static-rendered Trust Center) and the existing public-route ingress + S3 artefact pipeline already documented in §5.1 / §6.5; no new ADR required. Sole architecture-adjacent risk note: WeasyPrint, markdown-it-py, python-frontmatter shipped unscanned because `inj-01` (Dependabot configuration) remains a deferred carry-forward — already tracked in §11.2 item 2 and §11.3 item N/A; remains a process/tooling gate, not an architecture change. **No content changes to §1–§10 required.**
-- **2026-05-12 SirmaAI pivot pass (v3.0 consolidation):** Re-validated coherence and requirements coverage against the post-pivot architecture. PRD amendment (`prd-amendment-2026-05-12-sirmaai.md`) introduces FR-45 through FR-55 and NFR-24 through NFR-26; each maps to a service/epic/ADR per the traceability matrix in that document. Architecture readiness for the post-pivot scope is **DEFERRED PENDING `bmad-check-implementation-readiness`** against the modified E04/E05/E11/E17 + new E24-E28 epic set. No retreat from the underlying invariants (schema isolation, two-layer resilience, per-route Depends(), SSE lifecycle, fire-and-forget audit, event-bus discipline) — the pivot reshapes the upstream surface, not the platform's spine. Cross-document consistency check: PRD FR-45 ↔ ADR-018 + `client.sirmaai_projects` ✓; FR-49..52 (KB) ↔ ADR-019 + `client.sirmaai_kb_files` ✓; FR-53 (CRM via MCP) ↔ ADR-020 + `client.sirmaai_mcp_servers` ✓; FR-54..55 (webhooks + reconciler) ↔ ADR-018 + `gateway.webhook_subscriptions` + `gateway.workflow_runs` ✓; NFR-24 (key rotation) ↔ §4.4 + `api_key_rotated_at` ✓; NFR-26 (SirmaAI as external dep) ↔ §11.3 risk #12 ✓.
+- **2026-05-12 AgenticSAI pivot pass (v3.0 consolidation):** Re-validated coherence and requirements coverage against the post-pivot architecture. PRD amendment (`prd-amendment-2026-05-12-agenticsai.md`) introduces FR-45 through FR-55 and NFR-24 through NFR-26; each maps to a service/epic/ADR per the traceability matrix in that document. Architecture readiness for the post-pivot scope is **DEFERRED PENDING `bmad-check-implementation-readiness`** against the modified E04/E05/E11/E17 + new E24-E28 epic set. No retreat from the underlying invariants (schema isolation, two-layer resilience, per-route Depends(), SSE lifecycle, fire-and-forget audit, event-bus discipline) — the pivot reshapes the upstream surface, not the platform's spine. Cross-document consistency check: PRD FR-45 ↔ ADR-018 + `client.agenticsai_projects` ✓; FR-49..52 (KB) ↔ ADR-019 + `client.agenticsai_kb_files` ✓; FR-53 (CRM via MCP) ↔ ADR-020 + `client.agenticsai_mcp_servers` ✓; FR-54..55 (webhooks + reconciler) ↔ ADR-018 + `gateway.webhook_subscriptions` + `gateway.workflow_runs` ✓; NFR-24 (key rotation) ↔ §4.4 + `api_key_rotated_at` ✓; NFR-26 (AgenticSAI as external dep) ↔ §11.3 risk #12 ✓.
 
 ### 11.2 Open carry-forwards (highest priority)
 
@@ -1317,8 +1317,8 @@ Five items have crossed multiple epic boundaries and now block the next NFR/SLA 
 
 | # | Risk | Mitigation |
 |---|---|---|
-| 1 | **SirmaAI EU data residency / GDPR sub-processor evidence** (2026-05-12 update) | **Launch-blocking**: contractually confirm EU-only data residency for the EU Solicit Organisation, including storage-resources, traces, and N8N execution. Add SirmaAI to the sub-processor list with the confirmed residency posture. ADR-010 on-prem pivot's GDPR rationale is wasted if SirmaAI residency cannot be confirmed |
-| 2 | Vector store cost scaling under per-workspace partitioning | Per ADR-019, vector storage is SirmaAI-side; confirm SirmaAI billing model; consider tenant-scoped vector stores with workspace-tagged content as fallback |
+| 1 | **AgenticSAI EU data residency / GDPR sub-processor evidence** (2026-05-12 update) | **Launch-blocking**: contractually confirm EU-only data residency for the EU Solicit Organisation, including storage-resources, traces, and N8N execution. Add AgenticSAI to the sub-processor list with the confirmed residency posture. ADR-010 on-prem pivot's GDPR rationale is wasted if AgenticSAI residency cannot be confirmed |
+| 2 | Vector store cost scaling under per-workspace partitioning | Per ADR-019, vector storage is AgenticSAI-side; confirm AgenticSAI billing model; consider tenant-scoped vector stores with workspace-tagged content as fallback |
 | 3 | External collaborator GDPR data flow (DPA chain-of-processing) | Update DPA template; flag in legal review |
 | 4 | Stripe per-bid SKU + EU VAT MOSS reporting | Confirm Stripe Tax product configuration |
 | 5 | BGN settlement preference for BG buyers | Confirm Stripe currency setup early in Epic 15 |
@@ -1326,12 +1326,12 @@ Five items have crossed multiple epic boundaries and now block the next NFR/SLA 
 | 7 | Workspace deletion vs. GDPR Right to Erasure | Document Art. 17.3.b legal-obligation exception; ensure audit entries reference IDs not free-form PII |
 | 8 | Cross-workspace data leakage in shared content blocks | `tenant_scope=true` only on explicit user opt-in; PII detection at upload (Epic 19/20) |
 | 9 | k6 baseline closure on critical path | First Epic 21 story (PE.01) |
-| 10 | CRM provider rate-limit surprises at scale (Slack/Teams; CRM moved to SirmaAI MCP per ADR-020) | Per-provider Celery queue with backoff for Slack/Teams; "rate-limit reached, paused" UX state |
+| 10 | CRM provider rate-limit surprises at scale (Slack/Teams; CRM moved to AgenticSAI MCP per ADR-020) | Per-provider Celery queue with backoff for Slack/Teams; "rate-limit reached, paused" UX state |
 | 11 | **N8N org-scope blast radius** (per ADR-018) | One badly-authored workflow template can affect every tenant. Mitigation: workflow versioning (semver) + canary-tenant + 10% + 100% staged rollout + per-tenant feature flag gate on new template versions. **Story AC in E26**, not hand-wave |
-| 12 | **SirmaAI as second critical external dependency** | Effective availability = `min(EU Solicit, SirmaAI)`. Mitigations: run-state reconciler is authoritative; async-run + job-poll preserves runs across transient outages; tenant-visible degraded-mode banner on outages >5 minutes; AI summary paths fail-open with degraded result, payment paths remain fail-closed |
-| 13 | **SirmaAI secrets-store as extended trust boundary** (per ADR-020) | OAuth tokens for Dynamics + HubSpot leave EU Solicit's Fernet vault into SirmaAI secrets at MCP registration. Mitigations: rotation is double-sided (EU Solicit vault → SirmaAI push → verify → old-key revoke); audit log records both sides; periodic verification job (weekly) confirms SirmaAI MCP-server config reachability |
-| 14 | **Cross-substrate Right-to-Erasure completion** (per ADR-019) | Erasure spans EU Solicit Postgres + SirmaAI storage-resources. Risk: partial erasure → compliance breach. Mitigation: two-ACK audit-log pattern (`erasure_step: postgres_rows_deleted`, `erasure_step: sirmaai_files_deleted`); erasure not certified until both present; nightly job sweeps for stale erasure rows missing the second ACK |
-| 15 | **Tenant provisioning failure modes** (per ADR-018, FR-45) | SirmaAI unavailable at company create → `provisioning_status='pending'` with retry. Bounded retry window (24h); after that, admin-flagged for manual recovery. UX: trial-tier signups can land in `pending` and degrade gracefully (no AI features until provisioned), paid signups must block at billing until provisioning succeeds |
+| 12 | **AgenticSAI as second critical external dependency** | Effective availability = `min(EU Solicit, AgenticSAI)`. Mitigations: run-state reconciler is authoritative; async-run + job-poll preserves runs across transient outages; tenant-visible degraded-mode banner on outages >5 minutes; AI summary paths fail-open with degraded result, payment paths remain fail-closed |
+| 13 | **AgenticSAI secrets-store as extended trust boundary** (per ADR-020) | OAuth tokens for Dynamics + HubSpot leave EU Solicit's Fernet vault into AgenticSAI secrets at MCP registration. Mitigations: rotation is double-sided (EU Solicit vault → AgenticSAI push → verify → old-key revoke); audit log records both sides; periodic verification job (weekly) confirms AgenticSAI MCP-server config reachability |
+| 14 | **Cross-substrate Right-to-Erasure completion** (per ADR-019) | Erasure spans EU Solicit Postgres + AgenticSAI storage-resources. Risk: partial erasure → compliance breach. Mitigation: two-ACK audit-log pattern (`erasure_step: postgres_rows_deleted`, `erasure_step: agenticsai_files_deleted`); erasure not certified until both present; nightly job sweeps for stale erasure rows missing the second ACK |
+| 15 | **Tenant provisioning failure modes** (per ADR-018, FR-45) | AgenticSAI unavailable at company create → `provisioning_status='pending'` with retry. Bounded retry window (24h); after that, admin-flagged for manual recovery. UX: trial-tier signups can land in `pending` and degrade gracefully (no AI features until provisioned), paid signups must block at billing until provisioning succeeds |
 
 ---
 
@@ -1344,7 +1344,7 @@ Five items have crossed multiple epic boundaries and now block the next NFR/SLA 
 | **Strengths** | Proven patterns; coherent stack; living project-context; strict gate discipline (when followed) |
 | **Watch-outs** | Carry-forward backlog; sprint-status integrity; TEA execution discipline |
 | **Net-new for v2.0** | Workspaces (Epic 14), Per-bid SKU + Pro+ (Epic 15), `integrations-api` (Epics 16/17), Trust Center + ISO 27001 prep (Epic 18 + parallel programme), Outcome Telemetry (Epic 19), NPS (Epic 20), Platform Reliability (Epic 21) |
-| **Net-new for v3.0 (2026-05-12 SirmaAI pivot)** | ADR-018 SirmaAI Topology A; ADR-019 KB ownership split; ADR-020 CRM via MCP servers; ADR-004 SirmaAI addendum; `sirmaai-gateway` (renamed from `ai-gateway`); 5 new tables (`client.sirmaai_projects`, `client.sirmaai_kb_files`, `client.sirmaai_mcp_servers`, `gateway.webhook_subscriptions`, `gateway.workflow_runs`); Standard Webhooks receiver + 5-min run-state reconciler; N8N templates as production code with semver+canary rollout (E04/E05/E11/E17 refactor + new E24-E28) |
+| **Net-new for v3.0 (2026-05-12 AgenticSAI pivot)** | ADR-018 AgenticSAI Topology A; ADR-019 KB ownership split; ADR-020 CRM via MCP servers; ADR-004 AgenticSAI addendum; `agenticsai-gateway`; 5 new tables (`client.agenticsai_projects`, `client.agenticsai_kb_files`, `client.agenticsai_mcp_servers`, `gateway.webhook_subscriptions`, `gateway.workflow_runs`); Standard Webhooks receiver + 5-min run-state reconciler; N8N templates as production code with semver+canary rollout (E04/E05/E11/E17 refactor + new E24-E28) |
 
 ### Implementation Handoff — for AI Agents and Developers
 
@@ -1354,4 +1354,4 @@ Five items have crossed multiple epic boundaries and now block the next NFR/SLA 
 
 ---
 
-**End of Architecture Document v3.0** (2026-05-14 consolidation of v2.0 + 2026-05-12 SirmaAI amendment). Prior v2.0 archived to `architecture.v2.0.bak.md`. Standalone amendment at `architecture-amendment-2026-05-12-sirmaai.md` is now historical — all content folded into the sections above.
+**End of Architecture Document v3.0** (2026-05-14 consolidation of v2.0 + 2026-05-12 AgenticSAI amendment). Prior v2.0 archived to `architecture.v2.0.bak.md`. Standalone amendment at `architecture-amendment-2026-05-12-agenticsai.md` is now historical — all content folded into the sections above.
