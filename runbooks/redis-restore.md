@@ -104,7 +104,7 @@ T0=$(date +%s)
 docker compose -f /home/debian/Projects/eusolicit/eusolicit-app/docker-compose.prod.yml restart redis
 
 # 4. Watch reconnect on the 6 services
-for svc in client-api admin-api data-pipeline ai-gateway notification integrations-api; do
+for svc in client-api admin-api data-pipeline agenticsai-gateway notification integrations-api; do
   docker logs --since=30s --tail=5 "eusolicit-app-${svc}-1" 2>&1 | grep -iE "redis|reconnect" || true
 done
 

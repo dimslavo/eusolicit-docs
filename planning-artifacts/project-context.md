@@ -1063,3 +1063,11 @@
 ## Anti-Patterns
 
 - Discovered in Epic 4: ` | 7 (E04A-AP01..AP07) | 2 critical / 4 high / 1 medium |
+
+## Patterns
+
+- Discovered in Epic 11: ` | 8 | high |
+
+## Anti-Patterns
+
+- Discovered in Epic 11: ` | 9 | critical (3) |

@@ -54,9 +54,9 @@ sudo certbot --nginx --expand \
   --email <ops-email> --agree-tos --no-eff-email
 ```
 > **Note (S04.29):** `-d api.eusolicit.com` is required so the rebuilt cert covers
-> the SirmaAI webhook ingress from the start. DNS for `api.eusolicit.com` must
+> the AgenticSAI webhook ingress from the start. DNS for `api.eusolicit.com` must
 > resolve to the new www1 IP BEFORE this step or the ACME challenge will fail.
-> See: [`eusolicit-docs/runbooks/sirmaai-webhook-ingress.md`](sirmaai-webhook-ingress.md) §Pre-flight check 1.
+> See: [`eusolicit-docs/runbooks/agenticsai-webhook-ingress.md`](agenticsai-webhook-ingress.md) §Pre-flight check 1.
 
 Verify:
 ```bash

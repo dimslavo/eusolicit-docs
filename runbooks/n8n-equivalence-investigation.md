@@ -12,7 +12,7 @@ This runbook explains how to read and act on the daily equivalence diff results 
 `pipeline.equivalence_runs` produced by the S05.22 Phase-1 harness.
 
 The harness runs daily at **03:00 UTC** and compares the legacy Celery crawl output
-(`source_type ∈ {aop, ted, eu_grants}`) against the N8N/SirmaAI shadow output
+(`source_type ∈ {aop, ted, eu_grants}`) against the N8N/AgenticSAI shadow output
 (`source_type ∈ {aop_n8n, ted_n8n, eu_grants_n8n}`) for the rolling 7-day window.
 
 The Phase-2 kill-switch in S05.23 can only be flipped when the rolling gate is **green**
@@ -157,8 +157,8 @@ LIMIT 20;
 
 ```bash
 # Check the DLQ stream in Redis (DB 0)
-redis-cli XLEN sirmaai.workflow.completed.dlq
-redis-cli XRANGE sirmaai.workflow.completed.dlq - + COUNT 5
+redis-cli XLEN agenticsai.workflow.completed.dlq
+redis-cli XRANGE agenticsai.workflow.completed.dlq - + COUNT 5
 ```
 
 Or query the DLQ table if a persistent DLQ was configured:
@@ -172,7 +172,7 @@ LIMIT 20;
 
 **Step 3 — Is the N8N template running on schedule?**
 
-In the SirmaAI console (`https://agenticsai.endigitalx.com/`), check the workflow run
+In the AgenticSAI console (`https://agenticsai.endigitalx.com/`), check the workflow run
 history for the relevant template (AOP / TED / EU-Grants). Compare timestamps against
 `pipeline.crawler_runs` for the same window.
 

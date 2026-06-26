@@ -49,7 +49,7 @@ Add a new rule (or edit existing) for branch pattern `main`:
      - `CI / check (client-api)`
      - `CI / check (admin-api)`
      - `CI / check (data-pipeline)`
-     - `CI / check (ai-gateway)`
+     - `CI / check (agenticsai-gateway)`
      - `CI / check (notification)`
      - `CI / check (integrations-api)`
      - `CI / check (eusolicit-common)`

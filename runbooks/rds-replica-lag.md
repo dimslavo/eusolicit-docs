@@ -102,7 +102,7 @@
 
 2. **All services reconnect** (if failover was triggered): check service health endpoints:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      kubectl exec -n eusolicit deploy/$svc -- curl -s http://localhost:${PORT}/health | grep '"status":"ok"'
    done
    ```

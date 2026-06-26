@@ -1,7 +1,7 @@
 # N8N Staged Rollout — Operator Runbook
 
 **Story:** 5.24 — N8N Staged Rollout Enforcement  
-**Service:** admin-api (management), sirmaai-gateway (evaluation)  
+**Service:** admin-api (management), agenticsai-gateway (evaluation)  
 **Table:** `client.feature_flags`  
 **Last updated:** 2026-05-15
 
@@ -14,7 +14,7 @@ tenants receive a new workflow version (e.g. `crawl-aop-v2`).  When a workflow
 starts, its first node calls:
 
 ```
-GET http://sirmaai-gateway:8004/api/internal/sirmaai/feature-flags/check
+GET http://agenticsai-gateway:8004/api/internal/agenticsai/feature-flags/check
     ?company_id=<UUID>&flag_name=<flag>
     Authorization: X-Internal-Secret: <N8N_INTERNAL_SECRET>
 ```
@@ -36,7 +36,7 @@ Three rollout tiers are supported:
 
 - Admin API JWT for the `platform_admin` role (`ADMIN_API_JWT_SECRET`).
 - `company_id` UUIDs of target tenants (from admin UI or DB query).
-- N8N internal secret configured: `N8N_INTERNAL_SECRET` env var on sirmaai-gateway.
+- N8N internal secret configured: `N8N_INTERNAL_SECRET` env var on agenticsai-gateway.
 
 ---
 
@@ -60,7 +60,7 @@ curl -s -X POST http://admin-api:8002/api/v1/admin/feature-flags \
 Verify the flag is evaluated correctly:
 
 ```bash
-curl -s "http://sirmaai-gateway:8004/api/internal/sirmaai/feature-flags/check\
+curl -s "http://agenticsai-gateway:8004/api/internal/agenticsai/feature-flags/check\
 ?company_id=<COMPANY_UUID>&flag_name=n8n_workflow_crawl_aop_v2" \
   -H "X-Internal-Secret: <N8N_INTERNAL_SECRET>"
 # Expected: {"enabled": true}
@@ -184,16 +184,16 @@ the safe (previous-stable) path.
    bucket = md5(company_id.bytes)[:4] big-endian % 100
    enabled = bucket < rollout_percentage
    ```
-4. Check sirmaai-gateway logs for `feature_flag.evaluated` or `feature_flag.not_found`.
+4. Check agenticsai-gateway logs for `feature_flag.evaluated` or `feature_flag.not_found`.
 
 ### Gateway returns 401 on the internal endpoint
 
 The `N8N_INTERNAL_SECRET` env var is not set or doesn't match the value
 configured in the N8N workflow.  Update the workflow's HTTP Request node headers
-and/or set the env var on sirmaai-gateway and restart.
+and/or set the env var on agenticsai-gateway and restart.
 
 ### Gateway returns 503
 
-The sirmaai-gateway database session factory is unavailable (DB down or not
+The agenticsai-gateway database session factory is unavailable (DB down or not
 initialised).  Check `make infra` is running and the gateway can reach PostgreSQL.
 N8N should route to the safe path automatically in this case.

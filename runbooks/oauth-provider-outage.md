@@ -9,7 +9,7 @@
 
 > **SLA-EXEMPT notice**: Google OAuth and Microsoft OAuth are upstream identity providers.
 > OAuth provider outages are **explicitly excluded from the platform 99.9% SLA scope** per the
-> Epic 4 KraftData isolation precedent applied to OAuth providers (architecture.md line 762 pattern).
+> Epic 4 AgenticSAI isolation precedent applied to OAuth providers (architecture.md line 762 pattern).
 > The platform owns the fallback-to-email-password path; the OAuth provider's availability
 > itself is not in the platform SLA.
 > See `severity-definitions.md` SLA-scope table.
@@ -23,7 +23,7 @@
 | Google OAuth login failure rate elevated (`/auth/google/callback` returning 500/503) | client-api logs |
 | Microsoft OAuth login failure rate elevated (`/auth/microsoft/callback` returning 500/503) | client-api + calendar-sync logs |
 | Customer reports of "cannot log in with Google" or "cannot log in with Microsoft" | Support channel |
-| Epic 9 calendar-sync degradation — Google Calendar sync failing | ai-gateway / integrations-api logs |
+| Epic 9 calendar-sync degradation — Google Calendar sync failing | agenticsai-gateway / integrations-api logs |
 | OAuth provider status page reporting an incident | Google: https://status.google.com / Microsoft: https://status.microsoft.com |
 | JWT token refresh failures (sessions expiring during active use) | client-api logs → token refresh endpoint |
 

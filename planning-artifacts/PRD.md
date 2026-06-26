@@ -29,7 +29,7 @@ classification:
 
 EU Solicit is a SaaS platform designed to automate the full lifecycle of public procurement and EU grant applications. It targets Bulgarian and EU-wide opportunities, aiming to replace manual tender monitoring, fragmented tooling, and expensive bid consultants with a single, AI-powered platform. The vision is to democratize access to public procurement by providing an affordable, AI-driven system that automates the entire bidding lifecycle for companies of all sizes.
 
-The core differentiator is a unified, end-to-end workflow powered by KraftData's sophisticated multi-agent AI system. This approach replaces a fragmented market of single-point solutions and manual consulting services. The core insight is that modern Agentic AI is now capable of handling the complex, unstructured data and nuanced analytical tasks of tender evaluation and proposal writing, which previously required significant, high-cost human expertise.
+The core differentiator is a unified, end-to-end workflow powered by AgenticSAI's sophisticated multi-agent AI system. This approach replaces a fragmented market of single-point solutions and manual consulting services. The core insight is that modern Agentic AI is now capable of handling the complex, unstructured data and nuanced analytical tasks of tender evaluation and proposal writing, which previously required significant, high-cost human expertise.
 
 ## Project Classification
 
@@ -77,7 +77,7 @@ The project will be developed in phases to de-risk the investment, validate the 
 
 *   **MVP Approach:** Problem-Solving MVP. The primary goal is to validate that an AI-assisted workflow can dramatically reduce the time and effort required to produce a competitive bid. We will focus on the "speed and quality" value proposition for the Professional User persona (Elena).
 *   **Target Market:** The initial market is small-to-medium sized Bulgarian consulting firms and businesses bidding on national public tenders.
-*   **Resource Requirements:** The MVP can be delivered by a single full-stack development team (4-6 engineers), a product manager, and a UI/UX designer, leveraging the managed services of the KraftData AI platform.
+*   **Resource Requirements:** The MVP can be delivered by a single full-stack development team (4-6 engineers), a product manager, and a UI/UX designer, leveraging the managed services of the AgenticSAI AI platform.
 
 ### Phase 1: MVP Feature Set
 

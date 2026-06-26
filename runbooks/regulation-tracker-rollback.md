@@ -10,7 +10,7 @@
 
 This runbook describes how to roll back from the N8N-based regulation tracker workflow to the legacy Celery Beat task.
 
-The rollout is controlled by the `regulation-tracker-n8n` feature flag (managed via the sirmaai-gateway internal feature-flag service). When this flag is active, the N8N workflow runs. When it is inactive, the N8N workflow exits via the graceful "Skipped (Flag Off)" branch, and the legacy Celery Beat task at `services/admin-api/src/admin_api/tasks/regulation_tracker.py` continues as the system of record.
+The rollout is controlled by the `regulation-tracker-n8n` feature flag (managed via the agenticsai-gateway internal feature-flag service). When this flag is active, the N8N workflow runs. When it is inactive, the N8N workflow exits via the graceful "Skipped (Flag Off)" branch, and the legacy Celery Beat task at `services/admin-api/src/admin_api/tasks/regulation_tracker.py` continues as the system of record.
 
 > **Rollback window:** The legacy Celery task (`run_regulation_tracker_task`) is marked
 > **DEPRECATED** in Story 11.21 and is scheduled for removal in the S04.30 cleanup pass.
@@ -44,17 +44,17 @@ curl -s -X PUT \
 ```
 
 All subsequent N8N workflow executions will see `{"enabled": false}` from the
-sirmaai-gateway feature-flag check and exit via the graceful skip path.
+agenticsai-gateway feature-flag check and exit via the graceful skip path.
 
 ---
 
 ## Step 2: Verify Rollback
 
-**2a. Confirm the flag is inactive via sirmaai-gateway:**
+**2a. Confirm the flag is inactive via agenticsai-gateway:**
 
 ```bash
 curl -s \
-  "http://sirmaai-gateway:8004/api/internal/sirmaai/feature-flags/check?flag_name=regulation-tracker-n8n&company_id=<PLATFORM_ORG_COMPANY_ID>" \
+  "http://agenticsai-gateway:8004/api/internal/agenticsai/feature-flags/check?flag_name=regulation-tracker-n8n&company_id=<PLATFORM_ORG_COMPANY_ID>" \
   -H "X-Internal-Secret: <N8N_INTERNAL_SECRET>"
 # Expected: {"enabled": false}
 ```

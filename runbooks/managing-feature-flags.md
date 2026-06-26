@@ -1,7 +1,7 @@
 # Managing Feature Flags — Operator Runbook
 
 **Story:** 5.24 — N8N Staged Rollout Enforcement  
-**Service:** admin-api (management), sirmaai-gateway (evaluation)  
+**Service:** admin-api (management), agenticsai-gateway (evaluation)  
 **Table:** `client.feature_flags`  
 **Last updated:** 2026-05-15
 
@@ -11,11 +11,11 @@
 
 EU Solicit uses a **feature flag gate** in every N8N workflow to control which
 tenants receive a new workflow version (e.g. `crawl-aop-v2`).  When an N8N
-workflow starts, its first HTTP node calls the sirmaai-gateway to evaluate
+workflow starts, its first HTTP node calls the agenticsai-gateway to evaluate
 whether the new logic should run for the current tenant:
 
 ```
-GET http://sirmaai-gateway:8004/api/internal/sirmaai/feature-flags/check
+GET http://agenticsai-gateway:8004/api/internal/agenticsai/feature-flags/check
     ?company_id=<UUID>&flag_name=<flag>
     X-Internal-Secret: <N8N_INTERNAL_SECRET>
 ```
@@ -38,7 +38,7 @@ Three rollout tiers are supported:
 
 - Admin API JWT for the `platform_admin` role (`ADMIN_API_JWT_SECRET`).
 - `company_id` UUIDs of target tenants (from admin UI or DB query).
-- N8N internal secret configured: `N8N_INTERNAL_SECRET` env var on sirmaai-gateway.
+- N8N internal secret configured: `N8N_INTERNAL_SECRET` env var on agenticsai-gateway.
 
 ---
 
@@ -61,7 +61,7 @@ curl -s -X POST http://admin-api:8002/api/v1/admin/feature-flags \
 Verify:
 
 ```bash
-curl -s "http://sirmaai-gateway:8004/api/internal/sirmaai/feature-flags/check\
+curl -s "http://agenticsai-gateway:8004/api/internal/agenticsai/feature-flags/check\
 ?company_id=<COMPANY_UUID>&flag_name=crawl_aop_v2" \
   -H "X-Internal-Secret: <N8N_INTERNAL_SECRET>"
 # Expected: {"enabled": true}
@@ -221,18 +221,18 @@ Increasing `rollout_percentage` never un-enables a previously enabled company
    bucket = md5(company_id.bytes)[:4] big-endian % 100
    enabled = bucket < rollout_percentage
    ```
-4. Check sirmaai-gateway logs for `feature_flag.evaluated` or `feature_flag.not_found`.
+4. Check agenticsai-gateway logs for `feature_flag.evaluated` or `feature_flag.not_found`.
 
 ### Gateway returns 401 on the internal endpoint
 
-The `N8N_INTERNAL_SECRET` env var is not set on sirmaai-gateway, or the value
+The `N8N_INTERNAL_SECRET` env var is not set on agenticsai-gateway, or the value
 in the N8N workflow's `X-Internal-Secret` header does not match. Update the
 workflow header expression (`{{$env.N8N_INTERNAL_SECRET}}`) and/or set the env
-var on sirmaai-gateway and restart.
+var on agenticsai-gateway and restart.
 
 ### Gateway returns 503
 
-The sirmaai-gateway cannot reach PostgreSQL. Check `make infra` is running and
+The agenticsai-gateway cannot reach PostgreSQL. Check `make infra` is running and
 the gateway's `DATABASE_URL` is correct. N8N routes to the safe skip path on 503.
 
 ---
@@ -241,5 +241,5 @@ the gateway's `DATABASE_URL` is correct. N8N routes to the safe skip path on 503
 
 - **Detailed rollout guide:** `eusolicit-docs/runbooks/n8n-staged-rollout.md`
 - **Migration 075:** `eusolicit-app/services/client-api/alembic/versions/075_create_feature_flags.py`
-- **Gateway endpoint:** `eusolicit-app/services/sirmaai-gateway/src/sirmaai_gateway/routers/feature_flags.py`
+- **Gateway endpoint:** `eusolicit-app/services/agenticsai-gateway/src/agenticsai_gateway/routers/feature_flags.py`
 - **Evaluation logic:** `eusolicit-app/packages/eusolicit-common/src/eusolicit_common/feature_flags.py`

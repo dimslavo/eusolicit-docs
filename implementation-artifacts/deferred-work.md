@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of story 24-01-sirmaai-projects-schema-and-provisioning-state-machine (2026-05-25)
+
+- **`retry_count` unbounded + non-atomic increment** — `transition()` increments `retry_count` via Python read-modify-write (`project.retry_count += 1`) with no `SELECT … FOR UPDATE`, version column, or atomic SQL, and no max-retry ceiling. Two concurrent `failed→pending` transitions lose an increment (lost update) and can double-provision; the count can also grow toward INT4 overflow. Retry orchestration + locking is a downstream concern (the caller owns the transaction/commit). Revisit when the provisioning retry loop is built.
+- **`kb_files` relationship bleeds in from story 075** — `services/client-api/src/client_api/models/sirmaai_project.py` adds a `kb_files` relationship with `back_populates="project"` and a top-level `from .sirmaai_kb_file import SirmaAIKbFile`. This belongs to story 075 (sirmaai_kb_file), not 24-01; the `back_populates` counterpart and circular-import safety were not verified in this review's scope. Verify under 075.
+- **Migration 077 not re-run-safe** — bare `ADD COLUMN` / `CREATE TABLE` (no `IF NOT EXISTS`) and `downgrade()` `DROP` without `IF EXISTS`. A partial prior run or double downgrade errors instead of being a clean no-op. Matches existing Alembic norms, so deferred; tighten if migration idempotency becomes a project standard.
+
 ## Deferred from: code review of story 6-12-document-upload-component (2026-04-17)
 
 - **Orphaned S3 files on confirm failure** — If `confirmDocumentUpload` fails after a successful S3 PUT, the file exists on S3 but is never confirmed or scanned. Requires server-side orphan cleanup (TTL-based S3 lifecycle rule) or client-side confirm retry logic.

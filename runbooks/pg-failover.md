@@ -40,7 +40,7 @@
 
 3. **Check per-service reconnect status**:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      echo "=== $svc ===" && kubectl logs -n eusolicit deploy/$svc --since=5m | grep -E "(connection|reconnect|error)" | tail -5
    done
    ```
@@ -66,7 +66,7 @@ AWS Multi-AZ handles promotion automatically. The platform engineer's job is ver
    Look for pod restarts (normal; connection pool re-establishment) followed by `"Ready"` state.
 3. **Run per-service health checks**:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      kubectl exec -n eusolicit deploy/$svc -- curl -sf http://localhost:8000/health && echo "$svc: OK" || echo "$svc: FAIL"
    done
    ```

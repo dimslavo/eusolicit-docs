@@ -8,7 +8,7 @@
 ---
 
 > **SLA-EXEMPT notice**: Stripe is an upstream payment vendor. Stripe API outages are
-> **explicitly excluded from the platform 99.9% SLA scope** per the Epic 4 KraftData
+> **explicitly excluded from the platform 99.9% SLA scope** per the Epic 4 AgenticSAI
 > isolation precedent applied to Stripe (architecture.md line 762 pattern).
 > The platform owns the recovery flow (webhook replay, reconciliation) but the
 > Stripe API availability itself is not in the platform SLA.

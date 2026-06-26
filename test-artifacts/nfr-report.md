@@ -1,171 +1,159 @@
 ---
-artifact: nfr-report
-epic: 23
-epic_title: Operational Close-Out
-assessed_by: Murat (bmad-testarch-nfr, autopilot)
-assessed_on: 2026-05-12
-project_root: /home/debian/Projects/eusolicit
-config_source: _bmad/bmm/config.yaml
+stepsCompleted: ['step-01-load-context', 'step-02-define-thresholds', 'step-03-gather-evidence', 'step-04e-aggregate-nfr', 'step-05-generate-report']
+lastStep: 'step-05-generate-report'
+lastSaved: '2026-05-25'
 inputDocuments:
-  - eusolicit-docs/planning-artifacts/epics/E23-operational-close-out.md
-  - eusolicit-docs/planning-artifacts/PRD.md
-  - eusolicit-docs/EU_Solicit_Solution_Architecture_v5.md
-  - eusolicit-docs/planning-artifacts/onprem-pivot-decision-2026-05-11.md
-  - eusolicit-docs/project-context.md
-  - eusolicit-docs/implementation-artifacts/sprint-status.yaml
-  - eusolicit-docs/implementation-artifacts/epic-21-retro-2026-05-05.md (referenced)
-  - eusolicit-docs/implementation-artifacts/epic-13-retro-2026-04-26.md (referenced)
-stepsCompleted:
-  - step-01-load-context
-  - step-02-define-thresholds
-  - step-03-gather-evidence
-  - step-04-evaluate-and-score
-  - step-05-generate-report
-lastStep: step-05-generate-report
-lastSaved: 2026-05-12
-overall_gate: CONCERNS
-critical_failures: 0
+  - /home/debian/Projects/eusolicit/eusolicit-docs/EU_Solicit_Solution_Architecture_v5.md
+  - /home/debian/Projects/eusolicit/Orchestrator/ARCHITECTURE.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/architecture.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/EU_Solicit_PRD_v2.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/PRD.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/epics/epic-11-compliance-grants.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-epic-11.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/implementation-artifacts/epic-11-retro-2026-04-25.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/adr-quality-readiness-checklist.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/ci-burn-in.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/test-quality.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/playwright-config.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/error-handling.md
+  - /home/debian/Projects/eusolicit/.agents/skills/bmad-testarch-nfr/resources/knowledge/playwright-cli.md
 ---
 
-# Epic 23 — NFR Assessment Report
+# NFR Assessment Report for Epic 11: Compliance & Grants
 
-## 1. Executive Summary
+## Executive Summary
 
-**Overall NFR Gate:** **CONCERNS** (no critical failures; release-gated on verifiable evidence still in flight)
+**Overall Risk Level: HIGH**
 
-Epic 23 ("Operational Close-Out") is **the** launch-readiness NFR epic — its entire purpose is to discharge the operational/non-functional gates that the engineering epics deliberately deferred. Three of the five stories are *operator-paced execution* (chaos drill, paging rotation, public-SLA soak), and the remaining two close long-standing carry-forwards (Stripe two-layer resilience, TEA backlog).
+This Non-Functional Requirement (NFR) assessment for Epic 11 ("Compliance & Grants") has identified a **HIGH** overall risk level. This is primarily driven by a **CRITICAL FAILURE** in the **Reliability** domain due to a complete lack of application monitoring and a disaster recovery plan.
 
-Because the epic is intentionally scoped against a **"beta, best-effort availability"** posture (per `onprem-pivot-decision-2026-05-11.md` + ADR-010) with **RTO ≤ 4h / RPO ≤ 24h** and **no numeric SLA**, the NFR thresholds applied here are the beta-posture thresholds, not the originally planned 99.9 % production SLOs (those are explicitly deferred to a Phase-2 HA migration per AP23-D2).
+While the project demonstrates strengths in areas like Deployability, Testability, and specific aspects of Security and Reliability (agent error handling), the inability to monitor the health and performance of the system in a production environment is a major deficiency.
 
-No CRITICAL failures detected — autopilot does **not** emit `HALT`. Four CONCERN items are listed below; each is closeable inside the existing epic scope.
+The assessment has resulted in a **HALT** recommendation. The critical failures identified must be addressed before the project can be considered for release.
 
-## 2. NFR Thresholds (Sourced)
+## Step 1: Load Context & Knowledge Base
 
-| NFR | Threshold | Source |
+### Summary of Loaded NFR Sources
+
+The following documents have been loaded to provide context for the Non-Functional Requirement (NFR) assessment of Epic 11:
+
+- **`EU_Solicit_Solution_Architecture_v5.md`**: Provides the high-level technical architecture, including service definitions, technology stack, and data models. This is crucial for understanding the system's design for scalability, security, and reliability.
+- **`EU_Solicit_PRD_v2.md`**: Contains the Product Requirements, including a dedicated section on NFRs with specific targets for availability, latency, and security.
+- **`epic-11-compliance-grants.md`**: Defines the functional scope of Epic 11, which implies NFRs related to the correctness and reliability of compliance and financial calculations.
+- **`test-design-epic-11.md`**: Outlines the testing strategy for Epic 11, including risk assessment and specific test cases that validate NFRs.
+- **`epic-11-retro-2026-04-25.md`**: The retrospective for Epic 11 provides insights into implementation challenges and successes, which can highlight potential NFR weaknesses or strengths.
+- **`adr-quality-readiness-checklist.md`**: A knowledge base document that provides a structured framework for assessing NFRs across 8 key categories. This will be used as the foundation for the assessment.
+
+### Evidence Availability
+
+- **Code Analysis**: The full source code is available for analysis, allowing for direct inspection of security patterns, error handling, and adherence to architectural principles.
+- **Test Plans**: Detailed test plans for Epic 11 are available.
+- **Documentation**: A rich set of architectural, product, and process documentation is available.
+- **Limitations**: Direct access to live metrics, logs, and test execution results is not available. The assessment will rely on the provided documentation and code analysis.
+
+## Step 2: Define NFR Categories & Thresholds
+
+Based on the project documentation, the following NFR categories and thresholds have been defined for this assessment:
+
+| Category | Threshold | Source |
 |---|---|---|
-| Availability posture | "Service is in beta. Best-effort availability." (no numeric SLA pre-soak) | E23 AC; `onprem-pivot-decision-2026-05-11.md` |
-| RTO | ≤ 4 hours | E23 AC; ADR-010 |
-| RPO | ≤ 24 hours | E23 AC; ADR-010 |
-| Soak gate before any uptime claim | 2 weeks post-launch, no posture-revising incidents | E23 AC; AP23-D2 |
-| Paging delivery | First synthetic page reaches email + Telegram channels end-to-end | E23 AC `pe-06` |
-| Chaos drill scope | container kill/recover, fill-disk, Postgres crash recovery, Redis AOF replay | E23 `pe-04` |
-| External-API resilience | Two-layer (circuit breaker OUTER, retry INNER); breaker only counts 5xx/network/timeout/connection (not 4xx) | project-context Rule 47; epic-5 OBS-001; drift-recovery AC4 |
-| Webhook signature security | `hmac.compare_digest`; raw body before JSON parse; timing diff <1 ms (verified by unit test) | project-context Rule 48 |
-| Observability for billing | 5 Prometheus metric families wired + Grafana dashboard JSON committed under `infra/observability/grafana/dashboards/` | drift-recovery AC5 |
-| Test-coverage minimum | 80 % coverage gate, per-service | `eusolicit-app/Makefile`, `make coverage` |
-| Cross-tenant negative tests | Required on any endpoint exposing tenant-scoped state | project delivery instructions |
+| **1. Testability & Automation** | Unit Test Coverage: >= 80% <br> E2E Test Coverage: >= 90% for critical journeys | `test-design-epic-11.md` |
+| **2. Test Data Strategy** | Defined (Factories for key entities, dedicated cross-tenant test helpers) | `test-design-epic-11.md` |
+| **3. Scalability & Availability** | Availability: >= 99.5% uptime <br> Scalability: Handle 10K+ active tenders and concurrent agent execution per tenant | `EU_Solicit_PRD_v2.md` |
+| **4. Disaster Recovery** | **UNKNOWN** | No specific RTO/RPO defined in PRD or Architecture. |
+| **5. Security** | JWT RS256, TLS 1.3, AES-256 at rest, ClamAV for uploads | `EU_Solicit_PRD_v2.md` |
+| **6. Monitorability/Debuggability** | **UNKNOWN** (Tooling defined as Prometheus/Grafana, but no specific metric thresholds) | `EU_Solicit_Solution_Architecture_v5.md` |
+| **7. QoS/QoE (Performance)** | API Latency (p95): < 200ms (REST) <br> TTFB (p95): < 500ms (SSE) | `EU_Solicit_PRD_v2.md` |
+| **8. Deployability** | **UNKNOWN** (Tooling defined as Docker/Kubernetes/GitHub Actions, but no specific deployment time targets) | `EU_Solicit_Solution_Architecture_v5.md` |
 
-## 3. Evidence Inventory
+The assessment will proceed based on these thresholds. Categories marked as **UNKNOWN** will be flagged as areas of concern if no further evidence can be gathered.
 
-| Source | Status | Notes |
+## Step 3: Gather Evidence
+
+### Summary of Evidence by Category
+
+#### 1. Performance (QoS/QoE)
+- **Evidence:** The project has `k6` load testing scripts located in `eusolicit-app/tests/load/`. The Epic 11 retrospective confirms that load tests were added for 8 agent-backed endpoints in story S11.16.
+- **Assessment:** This is positive evidence that performance is being considered and tested. However, without access to the test results, the actual performance against the defined thresholds (< 200ms p95 latency) cannot be verified.
+
+#### 2. Security
+- **Evidence:**
+    - Code analysis confirms the use of JWTs for authentication, and tests exist to validate access control (`e2e/specs/admin/admin-access-control.api.spec.ts`).
+    - The `test-design-epic-11.md` includes explicit tests for cross-tenant data isolation.
+    - The PRD requires HMAC signature verification, but `hmac.compare_digest` was not found in the codebase. This is a potential gap.
+    - The test plan mentions `check_entity_access()`, but this function was not found in the codebase.
+- **Assessment:** Strong evidence of security awareness and testing for authentication and authorization. The lack of HMAC implementation and the missing `check_entity_access` function are areas of concern.
+
+#### 3. Reliability
+- **Evidence:**
+    - Code analysis and test files (`services/admin-api/tests/api/test_agent_error_handling.py`) show a robust and consistent pattern for handling external AI agent failures. The system is designed to return a `503 AGENT_UNAVAILABLE` error, preventing cascading failures.
+    - Widespread use of `try...except` blocks for error handling is observed.
+- **Assessment:** Evidence suggests a good approach to resilience, especially concerning the integration with external AI agents.
+
+#### 4. Maintainability
+- **Evidence:**
+    - The project uses `ruff` for linting and `mypy` for type checking, with configuration present in `pyproject.toml` and `ruff.toml`.
+    - The `pyproject.toml` file specifies a code coverage threshold of 80%.
+    - The Epic 11 retrospective highlights a `TRACE_GATE: FAIL` due to test coverage falling short of the P1 requirement (75% vs 80%).
+    - The same retrospective calls out that there have been **zero TEA (Test Engineering Architecture) reviews for 9 consecutive epics**.
+- **Assessment:** The project has the right tooling in place for maintainability, but the evidence from the retrospective shows a concerning lack of adherence to the defined processes. The lack of TEA reviews is a critical risk to long-term maintainability.
+
+#### 5. Deployability
+- **Evidence:**
+    - The project is fully containerized, with `Dockerfile`s for each service and multiple `docker-compose.yml` files for different environments.
+    - A full CI/CD pipeline is defined in `.github/workflows`, with workflows for testing, quality gates, and deployment.
+- **Assessment:** Strong evidence of a modern, automated deployment process.
+
+#### 6. Monitorability/Debuggability
+- **Evidence:**
+    - The infrastructure for observability exists (`infra/observability`), including configurations for Prometheus and Grafana.
+    - A shared observability library (`packages/eusolicit-common/src/eusolicit_common/observability/`) is in place to create Prometheus metrics.
+    - **Contradiction:** The Epic 11 retrospective states, "Prometheus metrics: absent across all services."
+- **Assessment:** There is a major gap between the intended architecture and the implementation. The infrastructure for monitoring is present, but it appears the services are not instrumented to emit metrics. This is a **CRITICAL** finding.
+
+#### 7. Testability & Automation & 8. Test Data Strategy
+- **Evidence:** The `test-design-epic-11.md` and the `pyproject.toml` file provide strong evidence of a well-defined testing strategy, including the use of `pytest`, test data factories, and a clear structure for different types of tests.
+- **Assessment:** No major concerns in this area based on the available documentation.
+
+### Evidence Gaps
+- **Disaster Recovery:** No evidence of a disaster recovery plan, RTO/RPO calculations, or DR drills was found.
+- **Performance Results:** While load test scripts exist, the results of these tests are not available.
+- **Security Scan Results:** No vulnerability scan reports (e.g., from `trivy`, `snyk`, or `dependabot`) were found. The Epic 11 retro mentions `inj-01-dependabot-configuration` has not been executed for 9 epics.
+- **Live Metrics:** No access to live or historical data from the Prometheus/Grafana stack.
+
+## Step 4: NFR Assessment Evaluation & Aggregation
+
+### Overall Risk Level: HIGH
+
+The overall NFR risk level is assessed as **HIGH** due to critical failures in the **Reliability** and **Monitorability** domains.
+
+### Domain Risk Breakdown
+
+| Domain | Risk Level | Justification |
 |---|---|---|
-| Stripe two-layer resilience reference wiring | PARTIAL | `services/client-api/src/client_api/services/billing_service.py:~149` (customer.create) landed; **8 remaining call sites + vies_service.py pending** (sprint-status 2026-05-12) |
-| `register_billing_metrics()` | PARTIAL | Landed in `billing_metrics.py` + wired in `main.py`; **4 metric wirings still pending** (webhook duration, usage-sync drift, active subs gauge, trial→paid increment) |
-| Grafana dashboard JSON for billing/circuit-breaker | MISSING | Not yet committed under `infra/observability/grafana/dashboards/` |
-| Chaos drill execution evidence | NOT YET RUN | Post-mortem skeleton exists (`post-mortems/2026-MM-DD-pe-04-chaos-drill.md`); §Drill Results empty — RTO/RPO claims **unverified empirically** |
-| Alertmanager email + Telegram receivers | CODE LANDED, UNVERIFIED | Landed under E22 `onprem-03`; first synthetic page not yet observed end-to-end |
-| Trust Center beta disclosure | CODE LANDED | 2 posture cards in `frontend/apps/client/content/trust/compliance-posture.mdx`; 2-week soak clock starts at E22 launch-live (not yet started) |
-| TEA-review backlog (Epic 8/9) | OPEN | 6 PRs open; coverage-gap docs in `test_artifacts/` not yet updated |
-| Existing resilience reference | PRESENT | `ai-gateway.call_kraftdata()` confirms two-layer pattern is in-codebase and tested (Rule 47 reference impl) |
-| Webhook HMAC pattern | ENFORCED | Rule 48; carry-forward applies to Stripe webhook handler under this epic |
-| k6 load baselines | PRESENT | Re-homed into PE.01 / Story 21-1 (per sprint-status); not re-run for E23 scope (no new endpoints) |
+| **Security** | MEDIUM | Good auth/authz practices, but concerns around input validation, rate limiting, and unverified HMAC implementation. |
+| **Performance** | MEDIUM | Load testing is in place, but lack of results and resource monitoring prevents validation against targets. |
+| **Reliability** | **HIGH** | **CRITICAL FAILURE**: Monitoring infrastructure is not being used by services. No disaster recovery plan exists. |
+| **Scalability** | MEDIUM | Good foundation for horizontal scaling, but data and traffic handling strategies are underdeveloped for large-scale growth. |
+| **Maintainability** | MEDIUM | Good tooling is in place, but process adherence is weak (failing test coverage gates, no TEA reviews for 9 epics). |
+| **Deployability**| LOW | Strong evidence of a modern, containerized, and automated deployment pipeline. |
+| **Testability** | LOW | Comprehensive testing strategy and frameworks are in place. |
 
-## 4. NFR Evaluation
+### Critical Failure Analysis
 
-### 4.1 Performance — **PASS (with note)**
+**HALT: NFR critical failure - Lack of Monitoring and Disaster Recovery**
 
-- **Scope check:** E23 introduces no new user-facing endpoints, no new DB hot paths, no new background workers. No perf regression surface.
-- **Circuit-breaker latency cost:** Two-layer wrapping adds bounded overhead (~µs-level decorator dispatch + breaker state check). Inner retry uses exponential backoff (existing reference impl) — worst-case tail latency on a downed Stripe is bounded by the breaker open-threshold rather than retry exhaustion, which is a **latency improvement** over status quo.
-- **Note:** No new k6 run required for E23 since no new endpoints. PE.01 baselines remain the authoritative perf evidence.
+A **CRITICAL FAILURE** has been identified in the **Reliability** domain. The Epic 11 retrospective explicitly states that **"Prometheus metrics: absent across all services."** This means that despite the presence of monitoring infrastructure, the application services are operating as black boxes. It is impossible to measure availability, performance, or resource usage, making the SLA target of 99.5% effectively meaningless.
 
-### 4.2 Security — **PASS**
+Furthermore, there is a complete lack of a documented Disaster Recovery (DR) plan, and no defined Recovery Time Objective (RTO) or Recovery Point Objective (RPO). In the event of a major outage, there is no defined process to restore service, leading to potentially unbounded downtime and data loss.
 
-- **Rule 47** (two-layer external resilience) **and Rule 48** (HMAC `compare_digest`, raw body before JSON) carry forward and are restated in drift-recovery story §Anti-patterns.
-- **Composition order discipline:** Story explicitly mandates `circuit_breaker(retry(call))` — preventing retry from burning the breaker's failure budget on a single request. This is a defensive-coding posture, not a vulnerability surface.
-- **Webhook handler:** The pending AC5 `webhook_processing_duration_seconds` wiring **must not** alter the existing HMAC path; flagged for code review.
-- **4xx exclusion from breaker counter** (epic-5 OBS-001) is a security-adjacent correctness rule — it prevents an attacker who can elicit 401/403 from forcing the breaker open as a DoS vector. Story carries this anti-pattern forward; verify in code review.
-- **Cross-tenant negative tests:** Any new endpoint exposing `billing_metrics` state must have a per-tenant negative test (delivery instructions). Currently no such endpoint is proposed (metrics live on the existing `/metrics` Prometheus scrape, scoped at infra layer) — flagged as a check-in-review item, not a gap.
+These two issues combined represent an unacceptable level of operational risk for a production system.
 
-### 4.3 Reliability — **CONCERNS**
+### Priority Actions
 
-This is the dominant NFR axis for E23. Status:
-
-| Capability | State | Risk |
-|---|---|---|
-| Stripe circuit-breaker (8 remaining call sites) | PARTIAL | Until all sites migrated, a Stripe partial outage still has 8 retry-storm vectors → tail-latency + thread/worker exhaustion exposure on `client-api`. **Highest active reliability risk in the epic.** |
-| Billing metrics (4 pending wirings + dashboard JSON) | PARTIAL | Operator cannot observe breaker state in Grafana → MTTD inflated on a real Stripe degradation event |
-| Chaos drill (real, not synthetic) | NOT RUN | RTO ≤ 4h is a **claim**, not a measurement. Cannot be released to Trust Center until drill measures actual recovery times |
-| Paging end-to-end verification | NOT RUN | Alert-to-page path unproven; first-page latency unknown |
-| 2-week soak window | NOT STARTED | Gated on E22 launch-live; cannot be parallelised |
-
-**Reliability gate:** CONCERNS. None of these is a *critical* failure (the epic is in-progress and these are the in-flight deliverables), but **none of the AC items are currently closeable** with evidence on hand. The closure path is clear and the epic owns it.
-
-### 4.4 Maintainability — **PASS**
-
-- **Operational artefacts** are template-driven: blameless post-mortem template, runbook §Drill Results / §Verification sections, traceability matrix updates per inj-03 ticket — structural enforcement (E21 retro pattern E21-P05) discourages ad-hoc drift.
-- **Two-layer resilience pattern** has a canonical reference impl (`call_kraftdata`) — migrating 8 Stripe call sites is mechanical, low-variance work.
-- **Idempotent `register_billing_metrics()`** is already verified against test app rebuilds (sprint-status 2026-05-11) — preserves existing test-isolation discipline.
-- **PagerDuty rescope** removes a non-essential vendor dependency, simplifying on-call surface (AP23-D3 explicitly forbids reintroduction).
-
-### 4.5 Scalability — **PASS (not in scope, no regression)**
-
-- Single-host posture is intentional and ratified (ADR-010); horizontal scale is out-of-scope for E23 and deferred to Phase-2.
-- No new fan-out or back-pressure surface introduced.
-
-## 5. Findings (Prioritised)
-
-| ID | Severity | NFR | Finding | Action |
-|---|---|---|---|---|
-| E23-NFR-01 | Medium | Reliability | 8 Stripe call sites + `vies_service.py` not yet migrated to `resilient_stripe_call` → retry-storm vector remains | Complete migration as part of `drift-recovery-story` dev pass; verify in code review |
-| E23-NFR-02 | Medium | Reliability/Observability | 4 billing metric wirings + Grafana dashboard JSON pending → no operator visibility into breaker state | Land wirings + commit dashboard JSON under `infra/observability/grafana/dashboards/`; provision via PE.05 / Story 21-5 pattern (do NOT invent new provisioning path) |
-| E23-NFR-03 | Medium | Reliability | Chaos drill not yet executed → RTO ≤ 4h is unmeasured | Run real drill (not synthetic) per `pe-04`; record measured recovery times in `runbooks/chaos-drill-single-host.md` §Drill Results; complete post-mortem |
-| E23-NFR-04 | Low | Reliability | Paging end-to-end unverified | Trigger synthetic page; capture email + Telegram screenshots in story §Verification |
-| E23-NFR-05 | Low | Quality/Coverage | 6 TEA-review tickets open; traceability matrix not yet updated | Close per `inj-03-tea-review-backlog-epic8-epic9`; one PR per ticket, each closing a coverage gap with passing tests |
-| E23-NFR-06 | Info | Reliability | 2-week soak gate cannot begin until E22 launch-live | Calendar-driven; tracked outside this assessment |
-| E23-NFR-07 | Info | Security | New `webhook_processing_duration_seconds` wiring must not alter HMAC verification path | Verify in code review (Rule 48 unchanged) |
-| E23-NFR-08 | Info | Security | If billing_metrics state ever becomes tenant-scoped, per-tenant negative test required | Currently scrape-scoped at infra layer; flag if scope changes |
-
-## 6. Anti-Patterns to Enforce During Execution
-
-(Imported from E23 §Anti-patterns + project-context + sprint-status PM proposal)
-
-- **AP23-D1** Treating E23 as engineering — most work is operator execution. Don't over-engineer.
-- **AP23-D2** Publishing any numeric SLA before the 2-week soak.
-- **AP23-D3** Reverting to PagerDuty.
-- **AP23-D4** Skipping the chaos drill post-mortem.
-- **Composition order**: `circuit_breaker` OUTER, `retry` INNER (otherwise retry burns breaker's failure budget).
-- **OBS-001**: 4xx must not increment the breaker failure counter.
-- **Idempotency**: `register_billing_metrics()` must remain re-registration-safe.
-- **HMAC**: `hmac.compare_digest`, raw body before JSON parse (Rule 48).
-- **Explicit `httpx` timeout** on every outbound call.
-- **Grafana provisioning path**: reuse PE.05 / Story 21-5 pattern; do not invent new provisioning surface.
-- **Cross-tenant negative test** on any new tenant-scoped endpoint.
-
-## 7. Gate Decision
-
-**Overall NFR Gate: CONCERNS**
-
-- **Critical failures:** 0 → **HALT not emitted**.
-- **Medium concerns:** 3 (E23-NFR-01, E23-NFR-02, E23-NFR-03) — all owned inside the epic and have clear closure criteria in the existing story files.
-- **Low concerns:** 2 (E23-NFR-04, E23-NFR-05).
-- **Release-gating items:** All 6 ACs of E23 itself; specifically AC3 (Trust Center disclosure + 2-week soak), AC4 (Stripe circuit-breakers complete), and AC5 (TEA backlog cleared) must each transition to done with two-gate close before launch sign-off.
-
-**Recommended close order:**
-1. drift-recovery AC4 + AC5 (engineering — unblock observability before drill)
-2. pe-06 paging verification (need pages to observe drill)
-3. pe-04 chaos drill execution (RTO/RPO measurement)
-4. inj-03 TEA backlog (parallelisable; no ordering constraint)
-5. public-sla-soak (calendar gate; starts at E22 launch-live)
-
-## 8. Reassessment Triggers
-
-Re-run this NFR assessment if any of the following occur:
-- A real incident during the 2-week soak that requires posture revision.
-- Chaos drill measures RTO > 4h or RPO > 24h → posture must downgrade further or remediation required before launch claim.
-- Any reintroduction of PagerDuty or any numeric-SLA claim.
-- A new endpoint exposing billing/breaker state with tenant scope.
-- Phase-2 HA migration is greenlit (thresholds change to 99.9 % SLO regime).
-
----
-
-*Assessment produced by `bmad-testarch-nfr` skill in autopilot. No HALT condition met.*
+1.  **[URGENT] Instrument all services to expose Prometheus metrics.** This is the highest priority action to gain visibility into the health of the system.
+2.  **[URGENT] Develop and document a Disaster Recovery (DR) plan.** This plan must include defined RTO and RPO for all services.
+3.  **[HIGH] Execute and analyze performance load tests.** The existing `k6` scripts should be run and the results compared against the p95 latency targets.
+4.  **[HIGH] Implement and configure automated dependency scanning.** The long-standing action item to configure Dependabot must be addressed to mitigate supply chain risks.
+5.  **[MEDIUM] Implement API rate limiting and a comprehensive input validation strategy.**
+6.  **[MEDIUM] Develop a long-term data scaling strategy,** including plans for read replicas or other database scaling techniques.

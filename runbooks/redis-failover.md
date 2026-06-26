@@ -40,7 +40,7 @@
 
 3. **Check per-service Redis connectivity**:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      kubectl logs -n eusolicit deploy/$svc --since=5m | grep -i "redis" | tail -5
    done
    ```
@@ -68,7 +68,7 @@ ElastiCache handles promotion automatically with `automatic_failover_enabled = t
    ```
 3. **Run health checks**:
    ```bash
-   for svc in client-api admin-api ai-gateway data-pipeline notification integrations-api; do
+   for svc in client-api admin-api agenticsai-gateway data-pipeline notification integrations-api; do
      kubectl exec -n eusolicit deploy/$svc -- python -c \
        "import redis; r = redis.Redis(host='${REDIS_URL}', ssl=True); print(r.ping())" \
        && echo "$svc: Redis OK" || echo "$svc: Redis FAIL"
