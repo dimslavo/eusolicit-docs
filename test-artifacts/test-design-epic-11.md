@@ -1,460 +1,355 @@
 ---
+workflowStatus: 'completed'
+totalSteps: 5
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-09'
-workflowType: 'testarch-test-design'
-mode: 'epic-level'
-epicNumber: 11
+nextStep: ''
+lastSaved: '2026-05-25'
 inputDocuments:
-  - 'eusolicit-docs/planning-artifacts/epic-11-grants-compliance.md'
-  - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
-  - 'eusolicit-docs/test-artifacts/test-design-qa.md'
-  - 'resources/knowledge/risk-governance.md'
-  - 'resources/knowledge/probability-impact.md'
-  - 'resources/knowledge/test-levels-framework.md'
-  - 'resources/knowledge/test-priorities-matrix.md'
+  - /home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/epics/epic-11-compliance-grants.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/project-context.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-qa.md
+  - /home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design/eu-solicit-handoff.md
+  - /home/debian/Projects/eusolicit/_bmad/bmm/config.yaml
+  - .claude/skills/bmad-testarch-test-design/resources/knowledge/risk-governance.md
+  - .claude/skills/bmad-testarch-test-design/resources/knowledge/probability-impact.md
+  - .claude/skills/bmad-testarch-test-design/resources/knowledge/test-levels-framework.md
+  - .claude/skills/bmad-testarch-test-design/resources/knowledge/test-priorities-matrix.md
 ---
 
-# Test Design: Epic 11 — EU Grant Specialization & Compliance
+# Test Design: Epic 11 - Compliance & Grants
 
-**Date:** 2026-04-09
-**Author:** TEA Master Test Architect
+**Date:** 2026-05-25
+**Author:** Deb
 **Status:** Draft
-**Sprint:** 11–12 | **Points:** 55 | **Dependencies:** E04, E06, E07 | **Milestone:** MVP
+**Mode:** Epic-Level (Phase 4)
+**Project:** EU Solicit
+
+> **Related:** System-level plan (`test-design-qa.md`) and TEA→BMAD handoff (`test-design/eu-solicit-handoff.md`). This epic inherits system risks **R-006** (entity-level RBAC bypass), **R-018** (ESPD XML conformance), and **R-001** (AI Gateway resilience / mock mode). Epic-local risk IDs are prefixed `E11-R-`.
 
 ---
 
 ## Executive Summary
 
-**Scope:** Epic-level test design for E11 — EU grant application toolkit (Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template Generator agents), ESPD profile management with auto-fill and XML/PDF export, and platform-wide compliance administration (framework CRUD, opportunity assignment, auto-suggestion via Framework Suggestion Agent, Regulation Tracker Agent on Celery Beat schedule). All agent invocations flow through the AI Gateway (E04). This epic introduces **8 new KraftData agent types**, making it the most AI-intensive epic to date.
+**Scope:** Epic-level test design for Epic 11 — three user-facing capabilities defined in the epic spec:
+
+- **11.1 Run Compliance Check (ZOP):** validate a proposal against an assigned regulatory framework via the `compliance-checker` agent; return pass/fail/warning rules with severity; persist results; render interactive progress rings + accordion list + suggested remediations.
+- **11.2 ESPD Generator:** auto-fill an ESPD from company profile + opportunity; produce schema-valid **XML and PDF**; drive a wizard stepper for fields requiring confirmation.
+- **11.3 EU Grant Budget Calculator:** validate a budget against total caps, co-financing rules, and eligibility windows; perform float comparisons with `_ARITHMETIC_TOLERANCE = 0.01`.
+
+These features are AI-gateway-backed (`sirmaai-gateway`/`ai-gateway`), company-scoped, and tier-gated (per the system plan). The dominant exposures are **regulatory/financial correctness** (a wrong pass/fail or budget conclusion has legal/funding consequences) and **cross-tenant isolation** (compliance results and ESPD profiles are sensitive company data).
+
+**Grounding (verified in code):** `client-api/src/client_api/services/grants_service.py` (`_ARITHMETIC_TOLERANCE = 0.01`, `_validate_budget_arithmetic`, `422 BUDGET_ARITHMETIC_INCONSISTENT`), `espd_service.py` (`urn:X-eusolicit:espd:schema:v1`, `_sanitise_xml_tag`, XML/PDF/DOCX export), `api/v1/espd.py`. Existing tests: `test_budget_builder.py`, `test_espd_autofill_export.py`, `test_espd_profile.py`, `test_grant_eligibility.py`, `test_proposal_compliance_risk_scoring*.py`.
 
 **Risk Summary:**
 
-- Total risks identified: 12
-- High-priority risks (score ≥ 6): 5
-- Critical categories: TECH (AI Gateway error handling), DATA (ESPD XML conformance), SEC (admin authorization, ESPD RLS), BUS (budget arithmetic)
+- Total risks identified: **13**
+- High-priority risks (≥6): **7**
+- Critical categories: **DATA** (arithmetic / XML / severity correctness), **SEC** (cross-tenant + tier), **BUS** (caps/windows), **TECH** (agent resilience, CPU-bound render)
 
 **Coverage Summary:**
 
-- P0 scenarios: 10 (~20–35 hours)
-- P1 scenarios: 18 (~20–35 hours)
-- P2 scenarios: 20 (~15–25 hours)
-- P3 scenarios: 8 (~10–20 hours)
-- **Total effort:** ~65–115 hours (~2–3.5 weeks, 1 QA)
+- P0 scenarios: **25** (~30–45 hours)
+- P1 scenarios: **30** (~25–40 hours)
+- P2/P3 scenarios: **31** (~15–30 hours)
+- **Total effort**: ~**70–115 hours** (~2–3 weeks, 1 QA engineer)
 
 ---
 
 ## Not in Scope
 
 | Item | Reasoning | Mitigation |
-|------|-----------|------------|
-| **KraftData agent output quality (AI eval)** | Owned by KraftData; EU Solicit owns orchestration and parsing only | All agent interactions tested via TB-02 deterministic mock responses |
-| **EU ESPD legal compliance review** | ESPD XML must be structurally valid per XSD schema; legal accuracy of completed fields is a business/legal concern | XML structure validated against official EU ESPD XSD in P1 tests |
-| **ESPD rendering in third-party portals** | EU Solicit generates valid XML; portal-side compatibility is out of QA scope | EU ESPD XSD validation ensures structural correctness |
-| **Stripe billing flows** | Covered in E06 test design | Billing state assumed valid via TB-01 seeding |
-| **Proposal generation and export** | Covered in E07 | S11.16 journey 3 reuses E07 compliance checker — E07 regression must be green |
-| **Data pipeline crawl logic** | Covered in E04 | Framework Suggestion Agent receives opportunity metadata; crawl parsing not re-tested |
-| **Calendar sync (Google/Microsoft)** | Covered in E08 | Not referenced by any E11 story |
-| **Logframe/budget accuracy (AI output quality)** | KraftData responsibility; E11 tests parser correctness and structural completeness | Arithmetic validation tests catch parser-level inconsistencies (E11-R-004) |
+| --- | --- | --- |
+| **Agent model quality** (relevance of `compliance-checker` / `budget-builder` outputs) | Third-party SirmaAI/KraftData model behaviour is outside application scope | Contract-mock the agent (respx); assert our **parsing, validation, persistence, and arithmetic guards**, not the model's judgement |
+| **EU procurement portal acceptance of the ESPD XML** | Requires external portal sandbox access (out of CI) | Assert XML **well-formedness + namespace + mandatory Parts** against `urn:X-eusolicit:espd:schema:v1`; portal submission is a manual gate |
+| **PDF/DOCX renderer internal fidelity** (pixel layout) | Library-owned rendering | Assert document **MIME, non-empty bytes, non-blocking generation**; visual fidelity is exploratory (P3) |
+| **Stripe tier provisioning correctness** | Covered by Epic 8 billing tests | Reuse tier fixtures; this epic only asserts the **gate decision** (403 vs 200) on Epic 11 endpoints |
+| **Stories 11.4–11.7** (eligibility, consortium finder, logframe, reporting template) | Beyond the 3-story epic spec; implementation has expanded into these | Tracked as a follow-up test-design increment; existing tests already cover much of that surface — `*trace` before adding new tests |
 
 ---
 
 ## Risk Assessment
 
-> **Note:** P0/P1/P2/P3 designations below indicate test priority and risk, not execution timing. See Execution Strategy for timing decisions.
-
-### High-Priority Risks (Score ≥ 6)
+### High-Priority Risks (Score ≥6) — MITIGATE before release
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner | Timeline |
-|---------|----------|-------------|-------------|--------|-------|------------|-------|----------|
-| **E11-R-001** | TECH | AI Gateway error handling across 8 new agent types — S11.16 hardened timeout (30s default) and retry logic (1 retry, exp backoff). If not consistently applied across all E11 agent-backed endpoints, transient failures return raw 500s; users lose in-progress grant work with no recovery path. Extends system R-001. | 2 | 3 | **6** | Extend TB-02 mock with configurable failure injection per agent type; test every E11 endpoint with forced timeout → structured 503; test retry flow | Backend Lead | Sprint 11 |
-| **E11-R-002** | DATA | ESPD XML schema non-conformance — ESPD Auto-Fill export (S11.03) generates EU ESPD-compliant XML for Parts II-V. Invalid namespace, missing required elements, or malformed structure → ESPD rejected by EU procurement portals (TED, eTendering). Invalid ESPD = company misses bid deadline; high-stakes data loss scenario. | 2 | 3 | **6** | Obtain EU ESPD XSD (v2.1+); validate exported XML against schema in P1 tests; validate both auto-filled and manually completed profiles | Backend Lead | Sprint 11 |
-| **E11-R-003** | SEC | Admin endpoint authorization gaps (S11.08, S11.09, S11.10) — compliance framework CRUD, framework assignment, auto-suggestion management, regulation tracker, and platform settings are admin-only. If admin-only middleware is absent or misconfigured, company users could create/modify compliance frameworks, override regulatory change status, or alter platform settings. Extends system R-006. | 2 | 3 | **6** | Test all S11.08–S11.10 endpoints with company JWT → verify 403; test with expired admin JWT → 401; verify admin paths are not accessible via company API route | Backend | Sprint 11 |
-| **E11-R-004** | BUS | Budget arithmetic consistency — Budget Builder Agent (S11.05) returns a parsed budget object. If the parser does not validate that line items sum to totals, overhead_rate is correctly applied, and co-financing splits (EU contribution + own contribution = total_requested_funding) are arithmetically consistent, incorrect budget data is presented to users for EU grant applications. Incorrect budget = rejected grant application. | 2 | 3 | **6** | Test parser with valid response → arithmetic asserted correct; test with inconsistent AI response → validation error returned before serving to user; test per-partner breakdown summation | Backend Lead | Sprint 11 |
-| **E11-R-005** | SEC | ESPD company-scoped RLS enforcement — ESPD profiles contain sensitive company declarations (exclusion grounds, criminal conviction declarations, financial standing). company_id FK + RLS must prevent cross-company access. Missing or misconfigured RLS allows Company A to read/modify Company B's ESPD declarations. Extends system R-002. | 2 | 3 | **6** | Create Company A + Company B with ESPD profiles; assert Company A JWT cannot GET/PATCH/DELETE Company B profile IDs (expect 404 to avoid enumeration); assert POST /espd-profiles binds to JWT company_id (not user-supplied) | Backend | Sprint 11 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **E11-R-09** | DATA | **Budget float arithmetic** — line-item sum, co-financing sum, overhead, and per-partner totals must reconcile within `_ARITHMETIC_TOLERANCE = 0.01`; a silent mismatch yields an ineligible budget presented as valid | 2 | 3 | **6** | Unit + API tests on `_validate_budget_arithmetic` across all four invariants; boundary cases at exactly ±0.01 | QA/Dev | Pre-merge |
+| **E11-R-12** | DATA | **Inconsistent agent budget accepted** — agent returns a budget that fails arithmetic; service must `422 BUDGET_ARITHMETIC_INCONSISTENT`, never persist/return it | 2 | 3 | **6** | API test forcing each violation type → assert 422 + error code; assert no DB write (stateless) | QA | Pre-merge |
+| **E11-R-10** | BUS | **Co-financing cap / eligibility window boundary** — at-cap, just-over-cap, and window edge (inclusive/exclusive) mis-validated → wrong eligibility | 2 | 3 | **6** | Parametrized boundary tests: total caps, EU co-financing rate ceiling, window start/end inclusivity | QA | Pre-merge |
+| **E11-R-03** | DATA | **Compliance severity misclassification** — pass/fail/warning + severity from the agent mis-mapped or dropped → wrong legal conclusion shown to bid manager | 2 | 3 | **6** | API test asserting each severity round-trips into persisted result and response; malformed rule filtered, not silently passed | QA | Pre-merge |
+| **E11-R-05** | DATA | **ESPD XML non-conformance** (system R-018) — generated XML not well-formed / missing namespace / missing mandatory Parts → rejected by EU portal | 2 | 3 | **6** | API+Unit: parse XML with `ElementTree`, assert root `<ESPDResponse xmlns=urn:...>`, mandatory Parts present, depth cap honoured | QA | Pre-merge |
+| **E11-R-01** | SEC | **Cross-tenant compliance result access** (system R-006) — company B reads/triggers company A proposal compliance check | 2 | 3 | **6** | Negative test via `create_company_pair`: B → A `/{proposal_id}/compliance-check` GET+POST → 403/404; no ID leakage | QA | Pre-merge |
+| **E11-R-06** | SEC | **Cross-tenant ESPD profile access** — company B generates/reads/exports company A ESPD profile | 2 | 3 | **6** | Negative test: B → A ESPD profile + XML/PDF export → 403/404; `check_entity_access()` honoured | QA | Pre-merge |
 
-### Medium-Priority Risks (Score 3–5)
+### Medium-Priority Risks (Score 3–5) — MONITOR
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner |
-|---------|----------|-------------|-------------|--------|-------|------------|-------|
-| E11-R-006 | OPS | Regulation Tracker Celery Beat reliability — if the scheduled task fails silently (Beat misconfiguration, agent timeout not retried, or DB write failure on regulatory_changes table), regulatory changes go undetected. Admins act on stale compliance data. | 2 | 2 | 4 | Test Celery task with mocked agent returning regulatory changes; test agent timeout scenario — task records error, does not crash; test DB write; verify manual trigger via `POST /admin/regulatory-changes/trigger` (or equivalent) | Backend Lead |
-| E11-R-007 | DATA | Framework suggestion queue state atomicity — on suggestion acceptance, two writes must be atomic: `framework_suggestions.status = accepted` + `opportunity_compliance_frameworks` insert. Partial failure leaves opportunity without framework but suggestion marked accepted. | 2 | 2 | 4 | Test accept flow as DB transaction; simulate DB failure mid-accept → verify rollback (no orphaned accepted suggestion without corresponding assignment); test reject flow — dismissed suggestion does not auto-assign | Backend Lead |
-| E11-R-008 | DATA | Logframe parser field completeness — Logframe Generator returns a complex nested structure (logical_framework, work_packages, gantt_data, deliverable_table). If parser silently drops optional but expected fields (e.g., gantt_data absent), frontend gets incomplete structure and renders incorrectly without error. | 2 | 2 | 4 | Test parser with complete agent response → all fields mapped; test with gantt_data absent → structured partial response with explicit null; test with missing work_packages → error or empty list, not crash | Backend Lead |
-| E11-R-009 | BUS | Framework deletion guard correctness — S11.08 requires preventing deletion of frameworks currently assigned to active opportunities. If the guard checks the wrong table (inline FK vs join table), or ignores opportunity status (active vs archived), active opportunities can lose their compliance framework assignment mid-review. | 2 | 2 | 4 | Test delete framework assigned to active opportunity → 409 Conflict; test delete framework with archived-only opportunities → allowed; test hard-delete vs soft-delete path | Backend Lead |
-| E11-R-010 | TECH | Hybrid national+EU compliance assignment edge cases — supporting multiple frameworks per opportunity (e.g., Bulgarian national procurement law + Horizon Europe rules) requires join-table semantics and correct enforcement at the compliance check layer. Mixed-framework validation rule conflicts are not handled by E11 (compliance checker is E07), but assignment correctness must be verified. | 2 | 2 | 4 | Test assigning 2 frameworks (national + EU) to same opportunity; test removing one without affecting the other; test GET /admin/opportunities/:id/compliance-frameworks returns both; test suggestion that conflicts with existing assignment | Backend |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **E11-R-02** | TECH | `compliance-checker` agent timeout/unavailable → must `503 AGENT_UNAVAILABLE`, no partial persist (system R-001) | 2 | 2 | 4 | respx-injected timeout/5xx → assert 503 + code; assert DB unchanged | QA |
+| **E11-R-04** | BUS | Missing/stale `framework_id` → check runs with no criteria, silently "passes" | 2 | 2 | 4 | Test framework load path: criteria from `client.compliance_frameworks` reach agent payload; absent framework handled explicitly | QA |
+| **E11-R-07** | TECH | PDF/XML generation is CPU-bound (python-docx/render) → blocks event loop or hangs without timeout | 2 | 2 | 4 | Assert generation runs via `run_in_executor`/thread; timeout path returns error, not hang | Dev |
+| **E11-R-08** | SEC | **XML injection / XXE** — untrusted ESPD field content (`<`, `&`, entity refs) breaks XML or expands entities | 2 | 2 | 4 | Unit: field with markup/entity → escaped, `_sanitise_xml_tag` applied, no entity expansion on parse | QA |
+| **E11-R-11** | DATA | Eligibility window timezone / inclusive-boundary handling | 2 | 2 | 4 | Unit boundary tests across UTC dates; assert window edge semantics documented and tested | QA |
+| **E11-R-13** | SEC | Tier gating drift — compliance/ESPD/grants reachable below entitled tier | 2 | 2 | 4 | Parametrized tier-gate test (Free/Starter→403, Pro/Enterprise→200) reusing E12 `tier-gate` pattern | QA |
 
-### Low-Priority Risks (Score 1–2)
+### Low-Priority Risks (Score 1–2) — DOCUMENT
 
 | Risk ID | Category | Description | Probability | Impact | Score | Action |
-|---------|----------|-------------|-------------|--------|-------|--------|
-| E11-R-011 | PERF | DOCX export performance — Reporting Template Generator (S11.07) + Logframe Panel DOCX export (S11.12) use python-docx for potentially large reports. No concurrency cap documented. Concurrent DOCX generation may exhaust Celery workers. | 1 | 2 | 2 | Monitor; add k6 scenario in P3 with 10 concurrent DOCX requests; note worker memory limit in capacity planning |
-| E11-R-012 | DATA | Consortium Finder result field completeness — agent returns ranked partner suggestions. Missing optional fields (contact_info, past_projects) should degrade gracefully (empty list/null), not crash the endpoint or UI. | 2 | 1 | 2 | Monitor; add P2 test for partial agent response (missing contact_info) → gracefully returns partner card without contact section |
+| --- | --- | --- | --- | --- | --- | --- |
+| **E11-R-14** | OPS | Compliance-check audit-log write failure must not 500 (non-blocking, fire-and-forget) | 1 | 2 | 2 | Monitor (covered by P2 audit assertion) |
 
 ### Risk Category Legend
 
-- **TECH**: Architecture/integration (fragility, integration, scalability)
-- **SEC**: Security (access controls, auth, data exposure)
-- **PERF**: Performance (SLA violations, degradation, resource limits)
-- **DATA**: Data integrity (loss, corruption, inconsistency)
-- **BUS**: Business impact (UX harm, logic errors, revenue)
-- **OPS**: Operations (deployment, config, monitoring)
+- **TECH**: Technical/Architecture · **SEC**: Security · **PERF**: Performance · **DATA**: Data Integrity · **BUS**: Business Impact · **OPS**: Operations
 
 ---
 
 ## Entry Criteria
 
-- [ ] E04 (AI Gateway) stable; TB-02 mock mode extended for all 8 E11 agent types (Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template Generator, ESPD Auto-Fill, Framework Suggestion, Regulation Tracker) with fixture responses + configurable failure injection
-- [ ] E06 (billing) and E07 (compliance checker) stable — E11 depends on both per epic header
-- [ ] S11.01 migrations merged; dev DB seeded with sample compliance frameworks and ESPD profiles
-- [ ] TB-01 test data seeding extended to support: ESPD profiles (with structured espd_data), compliance frameworks, opportunity_compliance_frameworks join records, regulatory_changes records
-- [ ] EU ESPD XSD obtained and available to test suite for XML conformance validation (E11-R-002)
-- [ ] Celery Beat test mode (manual trigger or test-only endpoint) available for Regulation Tracker tests (S11.10)
+- [ ] AC for Stories 11.1–11.3 agreed by QA, Dev, PM
+- [ ] `make infra` up (postgres + redis) and `make migrate-all` applied
+- [ ] `compliance-checker`, `budget-builder`, ESPD agents mocked via **respx** (no live SirmaAI/KraftData credentials in CI) — system blocker TB-02 satisfied
+- [ ] Factories ready: `CompanyFactory`, `UserFactory`, `ProposalFactory`, `OpportunityFactory`, ESPD-profile factory, `ComplianceFramework` seed helper
+- [ ] `create_company_pair` + `register_and_verify_with_role` available for cross-tenant/tier tests
+- [ ] Tier fixtures (Free/Starter/Professional/Enterprise) reusable from Epic 8/12
 
 ## Exit Criteria
 
-- [ ] All 10 P0 tests passing
-- [ ] P1 pass rate ≥ 95% (≥17 of 18 passing)
-- [ ] All SEC tests (E11-R-003, E11-R-005) passing at 100%
-- [ ] ESPD XML exports validate against EU ESPD XSD (E11-R-002 mitigation verified)
-- [ ] All 5 E2E journeys (S11.16) passing in staging environment
-- [ ] No open P0/P1 severity bugs
-- [ ] Agent error handling verified for all 8 new E11 agent types (E11-R-001 mitigation verified)
+- [ ] All P0 tests passing (100%)
+- [ ] All P1 tests passing (≥95%; failures triaged with ticket)
+- [ ] No open High (≥6) risk unmitigated — especially E11-R-09, E11-R-05, E11-R-01, E11-R-06
+- [ ] Cross-tenant negative tests present for **every** company-scoped Epic 11 endpoint (compliance-check, ESPD profile/export, grant budget read paths)
+- [ ] ESPD XML asserted well-formed + schema-shape valid; PDF/DOCX asserted valid MIME + non-blocking generation
+- [ ] Budget arithmetic invariants (4 checks) covered with ±0.01 boundary cases
+- [ ] `make lint`, `make type-check` clean; `make coverage` ≥ **80%** on changed surface
+- [ ] Frontend: `pnpm lint && pnpm type-check`; `pnpm check:i18n` if new strings added
 
 ---
 
 ## Test Coverage Plan
 
-> **Priority clarification:** P0/P1/P2/P3 = risk-based priority, not execution timing. See Execution Strategy section for when each priority runs.
+> P0–P3 = **priority/risk level**, not execution timing. See Execution Order.
 
-### P0 — Critical
+### P0 (Critical) — Run on every commit
 
-**Criteria:** Blocks core functionality + high risk (score ≥ 6) + no workaround
+**Criteria**: Blocks core journey + High risk (≥6) + No workaround + regulatory/financial correctness
 
-| Test ID | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
-|---------|-------------|------------|-----------|------------|-------|-------|
-| E11-P0-001 | ESPD profile company RLS — Company A JWT cannot GET/PATCH/DELETE Company B profile | API | E11-R-005 | 3 | QA | 404 expected (not 403) to prevent enumeration |
-| E11-P0-002 | ESPD Auto-Fill: timeout → structured 503 (not raw 500); retry flow for transient failure | API | E11-R-001 | 2 | QA | AI Gateway mock: inject timeout, then 1-retry success |
-| E11-P0-003 | ESPD XML export: generated XML validates against EU ESPD XSD (Parts II-V all present) | API | E11-R-002 | 2 | QA | Use python `lxml` or equivalent to validate against XSD |
-| E11-P0-004 | Grant Eligibility Agent: structured 503 on timeout; structured list returned on success | API | E11-R-001 | 2 | QA | Mock: success + timeout scenarios |
-| E11-P0-005 | Budget Builder: line items sum to total_budget; overhead correctly applied; co-financing split sums to total_requested_funding | API | E11-R-004 | 3 | QA | Parse valid response + inject inconsistent response → validate error |
-| E11-P0-006 | Compliance Framework: non-admin JWT returns 403 on POST/GET/PATCH/DELETE /admin/compliance-frameworks | API | E11-R-003 | 4 | QA | Test company JWT, expired admin JWT (401), valid admin JWT (200) |
-| E11-P0-007 | Framework Suggestion admin-only: company JWT returns 403 on GET/PATCH /admin/framework-suggestions | API | E11-R-003 | 2 | QA | Covers S11.09 admin endpoints |
-| E11-P0-008 | Agent error handling: all 8 E11 agent-backed endpoints return `{"message": "...", "code": "AGENT_UNAVAILABLE"}` structure on agent 503 | API | E11-R-001 | 8 | QA | One test per agent type; mock each with 503; assert error shape consistent |
-| E11-P0-009 | AI Gateway mock: all 8 E11 agent types return deterministic fixture responses in CI (smoke gate) | API | E11-R-001, TB-02 | 8 | QA | Prerequisite validation; if any agent mock is missing, sprint gate blocks |
-| E11-P0-010 | 30s timeout enforced on all E11 agent endpoints; request does not hang past timeout | API | E11-R-001 | 4 | QA | Mock delayed response at 31s; assert 503 within 31s |
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 11.3 Budget arithmetic — all 4 invariants reconcile within ±0.01 (line-item, co-financing, overhead, per-partner) | Unit + API | E11-R-09 | 6 | QA/Dev | Parametrize each invariant; include exactly-at-tolerance boundary (`abs == 0.01`) |
+| 11.3 Inconsistent agent budget → `422 BUDGET_ARITHMETIC_INCONSISTENT`, nothing persisted | API | E11-R-12 | 4 | QA | respx returns broken sums for each check; assert error code + stateless |
+| 11.3 Total cap + co-financing + eligibility window boundary validation | API | E11-R-10 | 5 | QA | at-cap / over-cap / window-start / window-end / outside-window |
+| 11.1 Compliance severity round-trip — pass/fail/warning + severity persisted and returned faithfully | API | E11-R-03 | 4 | QA | Assert each severity tier; malformed rule filtered, not counted as pass |
+| 11.2 ESPD XML well-formed + schema-shape valid (root, namespace, mandatory Parts) | API + Unit | E11-R-05 | 4 | QA | `ElementTree.fromstring()` parses; assert `urn:X-eusolicit:espd:schema:v1`; mandatory Parts present |
+| 11.1 Cross-tenant compliance access — company B → company A proposal check → 403/404 | API | E11-R-01 | 1 | QA | GET + POST; no proposal/company ID in error body |
+| 11.2 Cross-tenant ESPD access — company B → company A ESPD profile + XML/PDF export → 403/404 | API | E11-R-06 | 1 | QA | `check_entity_access()`; cover read + both exports |
 
-**Total P0:** 38 assertions across 10 test functions (~20–35 hours)
+**Total P0**: **25** tests, **~30–45 hours**
 
-### P1 — High
+### P1 (High) — Run on PR to main
 
-**Criteria:** Important features + medium-to-high risk + common workflows
+**Criteria**: Important features + Medium risk (3–5) + common workflows
 
-| Test ID | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
-|---------|-------------|------------|-----------|------------|-------|-------|
-| E11-P1-001 | Grant Eligibility: full-match, partial-match, no-match scenarios; filter params applied (programme type, funding range) | API | E11-R-001 | 3 | QA | Mock 3 fixture variants |
-| E11-P1-002 | Budget Builder: per-partner breakdown present when consortium_size > 1; co_financing_split visualizable | API | E11-R-004 | 2 | QA | Mock multi-partner response |
-| E11-P1-003 | Consortium Finder: paginated results; capability overlap ranking; single-country filter; max_results honoured | API | — | 3 | QA | Mock ranked list |
-| E11-P1-004 | Logframe Generator: all 4 output fields present (logical_framework, work_packages, gantt_data, deliverable_table) | API | E11-R-008 | 2 | QA | Assert complete structure |
-| E11-P1-005 | Logframe: gantt_data absent in response → partial result with null gantt_data returned (no 500) | API | E11-R-008 | 1 | QA | Parser graceful degradation |
-| E11-P1-006 | Reporting Template Generator: project data loaded from DB, agent called, pre-filled report returned as JSON | API | — | 2 | QA | Use TB-01 seeded project |
-| E11-P1-007 | Reporting Template: DOCX export generated, Content-Type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, download succeeds | API | — | 1 | QA | Use `python-docx` output; validate MIME type + non-empty body |
-| E11-P1-008 | ESPD CRUD: create, list, get, update, delete — all 5 endpoints functional for company user | API | — | 5 | QA | Standard CRUD smoke |
-| E11-P1-009 | ESPD espd_data structure validation: missing Part III (exclusion grounds) returns 422 with field detail | API | E11-R-002 | 2 | QA | Validate schema enforcement at API layer |
-| E11-P1-010 | Compliance Framework CRUD: create, list with filters (country, regulation_type, is_active), get, update, soft-delete | API | — | 5 | QA | Admin JWT for all |
-| E11-P1-011 | Framework assignment: assign 1 framework to opportunity, list, remove — CRUD complete | API | E11-R-010 | 3 | QA | |
-| E11-P1-012 | Hybrid assignment: assign 2 frameworks (national + EU) to same opportunity; list returns both | API | E11-R-010 | 2 | QA | |
-| E11-P1-013 | Framework auto-suggestion: Framework Suggestion Agent called on opportunity ingest; suggestions stored with confidence scores in queue | API | E11-R-007 | 2 | QA | Mock agent with 2 suggestions |
-| E11-P1-014 | Suggestion accept flow: PATCH suggestion → status=accepted + opportunity framework assignment created atomically | API | E11-R-007 | 2 | QA | Assert both DB rows created |
-| E11-P1-015 | Suggestion reject flow: PATCH suggestion status=rejected → no auto-assignment created | API | E11-R-007 | 1 | QA | |
-| E11-P1-016 | Regulation Tracker Celery task: fires with mocked agent, regulatory_changes records created with correct fields | API | E11-R-006 | 2 | QA | Trigger manually via test helper |
-| E11-P1-017 | Regulation Tracker: acknowledge + dismiss flows; acknowledged change links to affected framework | API | E11-R-006 | 2 | QA | |
-| E11-P1-018 | Framework deletion guard: cannot DELETE framework assigned to active opportunity → 409 Conflict | API | E11-R-009 | 2 | QA | Covers hard-delete + soft-delete path |
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 11.1 Agent timeout/unavailable → `503 AGENT_UNAVAILABLE`, no partial persist | API | E11-R-02 | 3 | QA | respx timeout + 5xx; assert DB unchanged |
+| 11.1 `framework_id` load — criteria from `client.compliance_frameworks` reach agent payload | API | E11-R-04 | 4 | QA | with framework / absent framework / framework of another company → 404 |
+| 11.1 Persist + retrieve — `GET …/compliance-check` returns stored result; `{result: null}` when none | API | — | 3 | QA | Idempotent re-run overwrites prior result |
+| 11.2 ESPD PDF/DOCX generation non-blocking (run_in_executor) + valid MIME + timeout path | API | E11-R-07 | 4 | QA/Dev | Assert thread-pool offload; `application/pdf`; bytes non-empty |
+| 11.2 ESPD XML injection/XXE — markup + entity in field values escaped, no expansion | API + Unit | E11-R-08 | 3 | QA | `<`, `&`, `<!ENTITY>` → escaped; tag sanitised |
+| 11.3 Consortium budget — `consortium_size>1` without per-partner → `422 MISSING_PARTNER_BREAKDOWN` | API | E11-R-12 | 2 | QA | Plus partner subtotal reconciliation |
+| Tier gating on all Epic 11 endpoints (Free/Starter→403, Pro/Enterprise→200) | API | E11-R-13 | 4 | QA | Reuse `tier-gate-enforcement` pattern across compliance/espd/grants |
+| 11.1 FE — progress rings + accordion render severity from `<QueryGuard>` state | Component | E11-R-03 | 4 | Dev | Loading/error/empty/populated; remediation text present |
+| 11.2 FE — ESPD wizard stepper gates progression on fields requiring confirmation | Component | — | 3 | Dev | Cannot advance until confirmation; persists across reload (Zustand) |
 
-**Total P1:** 42 assertions across 18 test functions (~20–35 hours)
+**Total P1**: **30** tests, **~25–40 hours**
 
-### P2 — Medium
+### P2 (Medium) — Run nightly
 
-**Criteria:** Secondary features + low-to-medium risk + edge cases
+**Criteria**: Secondary flows + low/medium risk + edge cases + regression prevention
 
-| Test ID | Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
-|---------|-------------|------------|-----------|------------|-------|-------|
-| E11-P2-001 | Budget Builder: missing optional params (overhead_rate absent) → defaults applied or clear validation error | API | — | 1 | QA | |
-| E11-P2-002 | Consortium Finder: empty results set (no matches); contact_info absent in partner → null field, not crash | API | E11-R-012 | 2 | QA | |
-| E11-P2-003 | Logframe: DOCX reporting export — `POST /grants/reporting-template/export` returns valid DOCX | API | — | 1 | QA | |
-| E11-P2-004 | ESPD CRUD cross-company: Company A cannot PATCH Company B profile (404 expected) | API | E11-R-005 | 2 | QA | Covers PATCH + DELETE |
-| E11-P2-005 | ESPD espd_data: all 4 Parts can be independently patched without overwriting other Parts | API | — | 1 | QA | Partial PATCH semantics |
-| E11-P2-006 | Compliance Framework rules JSONB: invalid rule schema (missing `criterion` field) → 422 | API | — | 1 | QA | |
-| E11-P2-007 | Framework suggestion: override with alternative framework_id → override framework assigned | API | E11-R-007 | 1 | QA | |
-| E11-P2-008 | Regulation tracker: GET /admin/regulatory-changes filters (status, severity, date_range) all functional | API | — | 3 | QA | |
-| E11-P2-009 | Platform settings: GET /admin/platform-settings (admin only); PATCH /admin/platform-settings/:key merges value | API | — | 2 | QA | |
-| E11-P2-010 | Platform settings: invalid key returns 404; PATCH with invalid JSON value returns 422 | API | — | 2 | QA | |
-| E11-P2-011 | Grant Eligibility Panel: loading spinner during agent call; error state on 503; empty state if no matches | E2E | — | 3 | QA | Playwright; mock via route() |
-| E11-P2-012 | Budget Builder Panel: editable table cells recalculate totals on input change | E2E | E11-R-004 | 2 | QA | Frontend arithmetic validation |
-| E11-P2-013 | Consortium Finder Panel: tag input + multi-select country render; partner card grid displays all fields | E2E | — | 2 | QA | |
-| E11-P2-014 | Logframe Panel: Gantt chart renders with tasks; deliverable table is sortable | E2E | — | 2 | QA | |
-| E11-P2-015 | ESPD Profile List: empty state shown; "Create New Profile" navigates to editor | E2E | — | 2 | QA | |
-| E11-P2-016 | ESPD Profile Editor: multi-step form with inline validation; Part III exclusion grounds checkboxes | E2E | — | 2 | QA | |
-| E11-P2-017 | ESPD Auto-Fill Preview: side-by-side diff renders; changed fields highlighted; download XML button functional | E2E | — | 2 | QA | Mock auto-fill via route() |
-| E11-P2-018 | Compliance Framework List: filter by country + regulation_type; search by name; pagination | E2E | — | 2 | QA | |
-| E11-P2-019 | Framework Assignment Page: add 2 frameworks to opportunity; remove 1; list shows remaining | E2E | E11-R-010 | 2 | QA | |
-| E11-P2-020 | Auto-Suggestion Queue: batch accept; confidence bar colour-coded; filter by confidence threshold | E2E | E11-R-007 | 2 | QA | |
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 11.1 Audit-log entry on compliance-check mutation; failure is non-blocking (no 500) | API | E11-R-14 | 3 | QA | Assert `action_type/entity_type/entity_id`; fire-and-forget |
+| 11.1 Agent malformed response (non-dict rules / missing keys) filtered gracefully | Unit | E11-R-03 | 4 | QA | No `AttributeError`; counts exclude bad entries |
+| 11.3 Float edge cases — rounding at 0.005, large magnitudes, negative clamping to 0 | Unit | E11-R-09 | 6 | Dev | `_parse_cost_category`/`_parse_partner_budget` clamps |
+| 11.3 Eligibility window timezone / inclusive-boundary semantics | Unit | E11-R-11 | 4 | QA | UTC date edges |
+| 11.2 ESPD XML tag sanitisation + depth cap | Unit | E11-R-05/08 | 4 | QA | Invalid key chars → safe tag; depth beyond cap truncated |
+| 11.2 ESPD auto-fill field population from company profile + opportunity | API | — | 4 | QA | Mandatory fields populated; unknown fields flagged for confirmation |
 
-**Total P2:** 37 assertions across 20 test functions (~15–25 hours)
+**Total P2**: **25** tests, **~10–22 hours**
 
-### P3 — Low
+### P3 (Low) — Run on-demand / nightly E2E
 
-**Criteria:** Critical user journeys (E2E integration from S11.16) + performance benchmarks
+**Criteria**: Nice-to-have, full-journey, i18n, visual
 
-| Test ID | Requirement | Test Level | Test Count | Owner | Notes |
-|---------|-------------|------------|------------|-------|-------|
-| E11-P3-001 | E2E Journey 1 (S11.16): company runs eligibility check → views matched programmes → triggers budget builder → views budget | E2E | 1 | QA | Staging; mock agents |
-| E11-P3-002 | E2E Journey 2 (S11.16): company creates ESPD profile → triggers auto-fill → previews result → exports as XML | E2E | 1 | QA | Staging; validate XML download |
-| E11-P3-003 | E2E Journey 3 (S11.16): admin creates compliance framework → assigns to opportunity → user's proposal validated against it (reuses E07 compliance checker) | E2E | 1 | QA | Requires E07 stable |
-| E11-P3-004 | E2E Journey 4 (S11.16): new opportunity ingested → framework suggestion generated → admin accepts → framework assigned automatically | E2E | 1 | QA | |
-| E11-P3-005 | E2E Journey 5 (S11.16): regulation tracker fires → admin views change → acknowledges → reviews affected framework | E2E | 1 | QA | Manual Celery trigger |
-| E11-P3-006 | Reporting Template DOCX: downloaded file is valid Word document (opens without error; contains structured sections) | API | 1 | QA | python-docx verify |
-| E11-P3-007 | Regulation Tracker Frontend: feed renders change cards; acknowledge + dismiss buttons functional; acknowledged change links to framework | E2E | 1 | QA | |
-| E11-P3-008 | k6: 10 concurrent agent endpoint calls under 30s timeout constraint; verify p95 < 5s on mock; no 500s | Perf | 1 | QA | k6 nightly; AI Gateway mock only |
+| Requirement | Test Level | Test Count | Owner | Notes |
+| --- | --- | --- | --- | --- |
+| 11.2 E2E — generate ESPD via wizard → download XML + PDF (happy path) | E2E (Playwright) | 2 | QA | Chromium gate |
+| 11.1 E2E — run compliance check → rings + accordion + remediations visible | E2E (Playwright) | 2 | QA | Mocked agent |
+| i18n — new compliance/grant/ESPD strings present in BG + EN | Component | 2 | Dev | `pnpm check:i18n` parity |
 
-**Total P3:** 8 test functions (~10–20 hours)
+**Total P3**: **6** tests, **~5–8 hours**
+
+> Execution timing (smoke → PR → nightly) is handled separately in **Execution Order** below; the P0–P3 labels above denote priority/risk only.
 
 ---
 
-## Execution Strategy
+## Execution Order
 
-**Philosophy:** Run everything in PRs if the suite completes in under 15 minutes. Playwright parallelizes 100+ tests in 10–15 min. Only defer expensive or long-running tests.
+### Smoke Tests (<5 min)
+- [ ] Budget arithmetic happy path reconciles (API) — E11-R-09
+- [ ] ESPD XML parses + has root namespace (Unit) — E11-R-05
+- [ ] Compliance check returns persisted severity list (API) — E11-R-03
 
-**Every PR:**
-- All P0 + P1 + P2 API tests (pytest + pytest-asyncio): ~10–12 min
-- P2 E2E tests (Playwright, parallelized, AI Gateway mocked via `route()`): ~5–8 min
+### P0 Tests (<10 min)
+- [ ] Budget invariant boundary suite (Unit/API)
+- [ ] Inconsistent-budget 422 suite (API)
+- [ ] Total cap / co-financing / window boundary suite (API)
+- [ ] Compliance severity round-trip (API)
+- [ ] ESPD XML conformance (API/Unit)
+- [ ] Cross-tenant compliance + ESPD negatives (API)
 
-**Nightly:**
-- P3 E2E journeys (full stack integration, staging environment): ~15–25 min
-- k6 agent load test (P3-008): ~10 min
+### P1 Tests (<30 min)
+- [ ] Agent resilience (503) + framework load (API)
+- [ ] PDF/DOCX non-blocking + XML injection (API/Unit)
+- [ ] Tier gating matrix (API)
+- [ ] FE progress rings + ESPD wizard (Component)
 
-**Weekly:**
-- ESPD XML conformance validation against latest EU ESPD XSD (E11-R-002 regression)
-- DOCX format validation (P3-006, P3-007 visual check)
-- Regulation Tracker manual E2E journey with real Celery Beat trigger
+### P2/P3 Tests (nightly, <60 min)
+- [ ] Audit, malformed-response, float-edge, window, tag-sanitisation (Unit/API)
+- [ ] E2E ESPD + compliance journeys, i18n parity
+
+**Execution model:** PR runs all functional tests (Unit/API/Component, target <15 min); E2E + full regression run nightly (Chromium gate).
 
 ---
 
 ## Resource Estimates
 
-| Priority | Count | Effort Range | Notes |
-|----------|-------|-------------|-------|
-| P0 | 10 | ~20–35 hours | AI Gateway mock setup for 8 agent types; ESPD XSD integration; complex auth scenarios |
-| P1 | 18 | ~20–35 hours | Standard API CRUD + Celery task triggers; fixture data for agent types |
-| P2 | 20 | ~15–25 hours | Mix of API edge cases and Playwright E2E for frontend panels |
-| P3 | 8 | ~10–20 hours | E2E journeys against staging; k6 agent load script |
-| **Total** | **56** | **~65–115 hours** | **~2–3.5 weeks (1 QA)**; parallelisable between backend and frontend QA |
+### Test Development Effort
+
+| Priority | Count | Total Hours (range) | Notes |
+| --- | --- | --- | --- |
+| P0 | 25 | ~30–45 | Arithmetic boundaries, XML parsing, cross-tenant fixtures |
+| P1 | 30 | ~25–40 | respx resilience, tier matrix, component specs |
+| P2 | 25 | ~10–22 | Unit edge cases, audit assertions |
+| P3 | 6 | ~5–8 | Playwright E2E + i18n |
+| **Total** | **86** | **~70–115** | **~2–3 weeks, 1 QA** |
 
 ### Prerequisites
 
-**Test Data (TB-01 extensions required):**
-- `espd_profile` factory: company_id FK, profile_name, espd_data with all 4 Parts
-- `compliance_framework` factory: name, country, regulation_type, rules JSONB
-- `opportunity_compliance_frameworks` factory: opportunity_id + framework_id join records
-- `regulatory_change` factory: source, change_type, severity, detected_at, affected_frameworks
-- `framework_suggestion` factory: opportunity_id, framework_id, confidence, status=pending
+**Test Data:** `CompanyFactory`, `UserFactory`, `ProposalFactory`, `OpportunityFactory`, ESPD-profile factory, `ComplianceFramework` seed helper, tier fixtures.
 
-**AI Gateway Mock (TB-02 extensions required):**
+**Tooling:** pytest + pytest-asyncio, **respx** (mock `compliance-checker`/`budget-builder`/ESPD/`reporting-template-generator` agents), testcontainers (postgres/redis), `xml.etree.ElementTree` for XML assertions, Playwright (Chromium) for E2E, Vitest for component specs.
 
-| Agent Type | Required Fixture Responses |
-|-----------|---------------------------|
-| Grant Eligibility Agent | Full-match (3 programmes), partial-match (1 programme), no-match |
-| Budget Builder Agent | Valid budget (consistent arithmetic), inconsistent arithmetic (for error path test) |
-| Consortium Finder Agent | Ranked list (3 partners), empty results, partner with missing contact_info |
-| Logframe Generator Agent | Complete structure, gantt_data absent (partial) |
-| Reporting Template Generator Agent | Pre-filled periodic report JSON |
-| ESPD Auto-Fill Agent | Pre-filled ESPD data (changed fields highlighted) |
-| Framework Suggestion Agent | 2 suggestions with confidence scores |
-| Regulation Tracker Agent | 1 new regulatory change record |
-
-**All 8 agent types must also support:** configurable 503 failure injection, configurable 30s+ delayed response (for timeout tests)
-
-**Tooling:**
-- `pytest` + `pytest-asyncio` + `httpx` — backend API tests
-- `Playwright` + `playwright-utils` (API-only + UI profiles) — E2E + frontend panel tests
-- `lxml` (Python) — EU ESPD XSD validation for XML conformance tests
-- `k6` — agent endpoint load test (P3-008)
-- `python-docx` — DOCX structural validation
-
-**Environment:**
-- Dev: all P0 + P1 + P2 API tests (mocked AI Gateway)
-- Staging: P3 E2E journeys (requires KraftData agents pre-configured)
-- CI: PR suite (P0 + P1 + P2) must complete < 15 min
+**Environment:** local `make infra`; CI with testcontainers; no live SirmaAI/KraftData credentials.
 
 ---
 
 ## Quality Gate Criteria
 
 ### Pass/Fail Thresholds
+- **P0 pass rate**: 100% (no exceptions)
+- **P1 pass rate**: ≥95% (waivers ticketed)
+- **P2/P3 pass rate**: ≥90% (informational)
+- **High-risk mitigations**: 100% complete (E11-R-01/03/05/06/09/10/12)
 
-- **P0 pass rate:** 100% (no exceptions; blocks merge)
-- **P1 pass rate:** ≥ 95% (≥17 of 18; failures require triage ticket before merge)
-- **P2/P3 pass rate:** ≥ 90% (informational; failures logged as tech debt)
+### Coverage Targets
+- Critical paths (compliance check, ESPD gen, budget validation): ≥80%
+- Security scenarios (cross-tenant, tier, XXE): **100%**
+- Business/financial logic (arithmetic, caps, windows, severity): ≥80% (above default 70% — regulatory)
+- Edge cases: ≥50%
 
 ### Non-Negotiable Requirements
-
 - [ ] All P0 tests pass
-- [ ] SEC tests 100%: E11-P0-001 (ESPD RLS), E11-P0-006 (admin 403), E11-P0-007 (suggestions 403)
-- [ ] ESPD XML exports validate against EU ESPD XSD (E11-P0-003 + E11-P1-009)
-- [ ] Agent error handling consistent across all 8 E11 agent types (E11-P0-008 + E11-P0-010)
-- [ ] No open P0/P1 severity bugs at sprint exit
-- [ ] All 5 S11.16 E2E journeys passing in staging before MVP release
+- [ ] No high-risk (≥6) item unmitigated
+- [ ] SEC tests (E11-R-01/06/08/13) pass 100%
+- [ ] Every company-scoped endpoint has a cross-tenant negative test (project rule)
+- [ ] HMAC/secret comparisons use `hmac.compare_digest` (N/A unless a new webhook surface is introduced)
 
 ---
 
 ## Mitigation Plans
 
-### E11-R-001: AI Gateway Error Handling — 8 New Agent Types (Score: 6)
+### E11-R-09: Budget float arithmetic (Score 6)
+**Strategy:** Drive `_validate_budget_arithmetic` directly (unit) and via the endpoint (API) for all four invariants; include cases where `abs(diff)` is just below/at/above `_ARITHMETIC_TOLERANCE = 0.01`. **Owner:** QA/Dev. **Timeline:** Pre-merge. **Status:** Planned. **Verification:** consistent budget → 200; any violation → 422 with `BUDGET_ARITHMETIC_INCONSISTENT`.
 
-**Mitigation Strategy:**
-1. Extend TB-02 mock mode with fixture responses for all 8 E11 agent types — done before Sprint 11 testing begins
-2. Add configurable failure injection per agent type: `"mode": "timeout"` (31s delay), `"mode": "503"`, `"mode": "transient"` (503 then success on retry)
-3. For every E11 agent-backed endpoint: test with forced timeout → assert structured 503 with `{"message": "AI features temporarily unavailable", "code": "AGENT_UNAVAILABLE"}` — not a raw 500
-4. Test retry logic: inject 1 transient 503 on first call → verify second call succeeds → verify response served to user
-5. Test graceful degradation UI: Playwright asserts "temporarily unavailable" message (not loading spinner) after mock 503
+### E11-R-05: ESPD XML conformance (Score 6)
+**Strategy:** Parse generated XML; assert root element, namespace URI, mandatory Parts, escaping, depth cap. **Owner:** QA. **Timeline:** Pre-merge. **Status:** Planned. **Verification:** `ElementTree.fromstring(xml)` never raises; required elements present.
 
-**Owner:** Backend Lead (mock extension) + QA (test implementation) | **Timeline:** Sprint 11 | **Status:** Planned  
-**Verification:** E11-P0-002, E11-P0-004, E11-P0-008, E11-P0-010 all green; each of 8 agent types covered
+### E11-R-01 / E11-R-06: Cross-tenant isolation (Score 6 each)
+**Strategy:** `create_company_pair`; company B credentials against company A compliance result and ESPD profile/exports → 403/404, no ID leakage. **Owner:** QA. **Timeline:** Pre-merge. **Status:** Planned. **Verification:** non-200 on every cross path; system R-006 satisfied.
 
----
+### E11-R-03: Compliance severity correctness (Score 6)
+**Strategy:** Mock agent returning each severity; assert faithful persistence + response; malformed rules filtered. **Owner:** QA. **Timeline:** Pre-merge. **Status:** Planned. **Verification:** severity counts and remediation text round-trip.
 
-### E11-R-002: ESPD XML Schema Conformance (Score: 6)
-
-**Mitigation Strategy:**
-1. Obtain official EU ESPD XSD schema v2.1+ from https://github.com/ESPD/ESPD-EDM or EU eProcurement gateway
-2. Add `lxml` XML schema validator to test suite; load XSD once as fixture
-3. POST /espd-profiles/:id/export?format=xml → capture XML response → validate against XSD; assert no validation errors
-4. Validate both paths: (a) manually completed ESPD profile, (b) auto-filled profile via ESPD Auto-Fill Agent
-5. Validate all required Parts present: Part II (economic operator info), Part III (exclusion grounds), Part IV (selection criteria), Part V (reduction of candidates)
-
-**Owner:** Backend Lead | **Timeline:** Sprint 11 | **Status:** Planned  
-**Verification:** E11-P0-003 (XSD validation passes) + E11-P1-009 (schema enforcement at API layer)
-
----
-
-### E11-R-003: Admin Endpoint Authorization (Score: 6)
-
-**Mitigation Strategy:**
-1. For every S11.08/09/10 endpoint: test with company JWT → assert 403 Forbidden
-2. Test with expired admin JWT → assert 401 Unauthorized
-3. Test with valid admin JWT → assert 2xx success
-4. Verify admin routes are not accessible via company API path (different base path `/admin/` vs `/`)
-5. Verify admin-only middleware applied to ALL S11.10 routes (platform-settings, regulatory-changes)
-
-**Owner:** Backend | **Timeline:** Sprint 11 | **Status:** Planned  
-**Verification:** E11-P0-006, E11-P0-007 pass; all 3 endpoint groups covered (frameworks, assignments, regulations)
-
----
-
-### E11-R-004: Budget Arithmetic Consistency (Score: 6)
-
-**Mitigation Strategy:**
-1. Test with valid AI response where sum(cost_categories.amount) === totals.total_direct_costs — assert parser serves this correctly
-2. Inject AI response where line items don't sum to total → assert backend returns 422 (not 200 with bad data)
-3. Test overhead: `indirect_costs = overhead_rate * total_direct_costs` — assert calculation is exact (not approximate)
-4. Test co-financing split: `eu_contribution + own_contribution === total_requested_funding` — assert exact match
-5. Test per-partner breakdown: sum(partner_amounts) === total_requested_funding — assert for consortium_size ≥ 2
-
-**Owner:** Backend Lead | **Timeline:** Sprint 11 | **Status:** Planned  
-**Verification:** E11-P0-005, E11-P1-002 pass; inconsistent AI response rejected with 422, not silently served
-
----
-
-### E11-R-005: ESPD Company-Scoped RLS (Score: 6)
-
-**Mitigation Strategy:**
-1. Seed: Company A user + 1 ESPD profile; Company B user + 1 ESPD profile (different UUIDs)
-2. Company A JWT → GET /espd-profiles/{company_B_profile_id} → assert 404 (not 403, to prevent enumeration)
-3. Company A JWT → PATCH /espd-profiles/{company_B_profile_id} → assert 404
-4. Company A JWT → DELETE /espd-profiles/{company_B_profile_id} → assert 404
-5. Company A JWT → POST /espd-profiles with explicit `company_id: company_B.id` in body → assert company_id overridden to Company A's id (JWT-derived)
-6. Company A JWT → POST /espd-profiles/:id/auto-fill for Company B's profile ID → assert 404
-
-**Owner:** Backend | **Timeline:** Sprint 11 | **Status:** Planned  
-**Verification:** E11-P0-001 (3 test cases) + E11-P2-004 pass
+### E11-R-10 / E11-R-12: Caps/windows + inconsistent budget rejection (Score 6 each)
+**Strategy:** Parametrized boundary suite for caps, co-financing ceiling, and window inclusivity; respx-broken sums per invariant assert `422` and zero persistence. **Owner:** QA. **Timeline:** Pre-merge. **Status:** Planned. **Verification:** boundary edges resolve to documented eligibility; inconsistent budgets never returned to user.
 
 ---
 
 ## Assumptions and Dependencies
 
 ### Assumptions
-
-1. The EU ESPD XSD v2.1+ schema is publicly accessible (https://github.com/ESPD/ESPD-EDM) and stable enough to pin for test validation
-2. All 8 E11 KraftData agent types (Grant Eligibility, Budget Builder, Consortium Finder, Logframe Generator, Reporting Template Generator, ESPD Auto-Fill, Framework Suggestion, Regulation Tracker) are pre-configured in KraftData before staging E2E testing begins
-3. S11.01 Alembic migrations run successfully; dev DB seeded with sample compliance frameworks and ESPD profiles before Sprint 11 testing
-4. TB-02 mock mode is extended by Backend Lead before Sprint 11 testing begins; all 8 E11 agent types return fixture responses with failure injection support
-5. Celery Beat can be triggered in test environments via a manual trigger endpoint or test utility (not requiring wall-clock wait)
-6. E04 (AI Gateway) 30s timeout and 1-retry-with-backoff are configurable per agent type, not just globally
+1. Compliance/ESPD/grant endpoints are AI-gateway-backed and **mockable via respx** in CI (no live SirmaAI calls).
+2. Compliance check persists per-proposal; ESPD/budget grant flows are largely **stateless** (matches `grants_service.py`; reporting-template reads project DB).
+3. Tier gating applies to these endpoints (consistent with Epic 6/8/12); exact entitled tiers confirmed from `tier_access_policy`.
 
 ### Dependencies
-
-| Dependency | Owner | Required By | Reason |
-|-----------|-------|------------|--------|
-| TB-01: test data seeding extended (ESPD, frameworks, suggestions, regulatory changes) | Backend Lead | Sprint 11 start | All integration + E2E tests |
-| TB-02: AI Gateway mock — 8 new E11 agent types, failure injection | Backend Lead | Sprint 11 start | All P0 agent tests blocked without mock |
-| EU ESPD XSD v2.1+ obtained and added to test fixtures | Backend Lead / QA | Sprint 11 | E11-R-002 mitigation |
-| Celery Beat test trigger utility | Backend Lead | Sprint 11 | S11.10 Regulation Tracker tests |
-| E04 (AI Gateway) stable with configurable timeouts per agent type | Backend Lead | Sprint 11 start | E11-R-001 mitigation |
-| E06 (billing) + E07 (compliance checker) stable | Dev Team | Sprint 11 start | E11 dependency per epic header; E2E journey 3 requires E07 |
+1. `ComplianceFramework` seed helper + ESPD-profile factory — required before P0 compliance/ESPD work.
+2. Tier fixtures from Epic 8/12 — required for E11-R-13.
+3. respx agent contract fixtures for `compliance-checker`, `budget-builder`, ESPD, `reporting-template-generator` (system blocker TB-02).
 
 ### Risks to Plan
+- **Risk:** Epic 11 implementation has expanded beyond the 3 epic-spec stories (`grants_service.py` covers 11.4–11.7: eligibility, consortium finder, logframe, reporting template). **Impact:** coverage scoped to the 3 spec stories may understate effort. **Contingency:** treat 11.4–11.7 as a follow-up test-design increment; existing `test_grant_eligibility.py`, `test_budget_builder.py`, `test_espd_autofill_export.py`, `test_espd_profile.py`, `test_proposal_compliance_risk_scoring*.py` already cover much of that surface and should be traced (`*trace`) before adding new tests.
 
-- **Risk:** TB-02 mock not extended with all 8 E11 agent types before Sprint 11  
-  **Impact:** E11-P0-008 and E11-P0-009 gates fail; ~40% of P0 tests blocked  
-  **Contingency:** Playwright `route()` interceptor at HTTP level to stub KraftData responses for individual agent endpoints as TB-02 stopgap
+---
 
-- **Risk:** EU ESPD XSD not available or changes mid-sprint  
-  **Impact:** E11-P0-003 and E11-R-002 mitigation blocked; ESPD XML validation manual only  
-  **Contingency:** Use representative ESPD XML sample from EU eProcurement documentation as hand-crafted validation fixture; pin to specific ESPD-EDM commit hash
+## Follow-on Workflows (Manual)
+- Run `*atdd` to generate failing P0 tests (arithmetic invariants, XML conformance, cross-tenant negatives).
+- Run `*trace` to map every AC (11.1–11.3) to a test ID before dev queue (Epic 10 lesson: trace **before** implementation).
+- Run `*automate` for broader coverage once specs land.
 
-- **Risk:** E07 (compliance checker) not stable before E2E journey 3 (E11-P3-003)  
-  **Impact:** S11.16 journey 3 blocked; defer to post-E07 stabilisation  
-  **Contingency:** Mock compliance checker response in E11-P3-003 using `route()` until E07 is stable; flag as partial test
+---
+
+## Approval
+
+**Test Design Approved By:**
+- [ ] Product Manager: __ Date: __
+- [ ] Tech Lead: __ Date: __
+- [ ] QA Lead: __ Date: __
 
 ---
 
 ## Interworking & Regression
 
 | Service/Component | Impact | Regression Scope |
-|-------------------|--------|------------------|
-| **E04 — AI Gateway** | All 8 E11 agent types route through AI Gateway; circuit breaker, timeout, and retry logic must handle new agent types | Re-run E04 P0 smoke (health, circuit breaker open/close) before E11 agent tests |
-| **E07 — Compliance Checker** | S11.16 E2E journey 3 directly invokes E07 compliance checker against an E11-managed framework | E07 P0 tests must pass; E11-P3-003 depends on E07 stability |
-| **E02 — Auth/RBAC** | S11.08–S11.10 admin-only middleware reuses E02 JWT validation and RBAC infrastructure | E02 P0-001 (JWT validation) and P0-005 (RBAC ceiling) must remain green |
-| **Data Pipeline (E04 crawlers)** | Framework Suggestion Agent triggered on opportunity ingestion event from pipeline | E04 pipeline ingestion event format must remain compatible with S11.09 suggestion trigger hook |
-| **ESPD Profile (E02 S02.12)** | E02 included an ESPD Profile CRUD story (S02.12); E11 S11.01–S11.03 extends this schema and adds auto-fill | Verify S02.12 tests still pass after S11.01 schema migration; no breaking changes to espd_profiles table structure |
-
----
-
-## Follow-on Workflows
-
-- Run `*atdd` to generate failing P0 acceptance tests from E11-P0 scenarios (separate workflow; not auto-run).
-- Run `*automate` for broader coverage expansion once S11.01–S11.10 implementation is in place.
+| --- | --- | --- |
+| **client-api (8001)** | Hosts compliance-check, ESPD, grant budget endpoints + services | `make test-service SVC=client-api`; existing `test_espd_profile.py`, `test_espd_autofill_export.py`, `test_budget_builder.py`, `test_grant_eligibility.py`, `test_proposal_compliance_risk_scoring*.py` must stay green |
+| **sirmaai-gateway / ai-gateway (8004)** | Routes `compliance-checker`, `budget-builder`, ESPD, reporting agents | Mocked via respx; assert exact `Authorization: Bearer` header on outbound calls (E04 lesson) |
+| **shared.audit_log** | Compliance-check mutation writes audit entry | P2 audit assertion; non-blocking |
+| **Next.js client (3000)** | Compliance rings/accordion, ESPD wizard | `pnpm lint && pnpm type-check`; `make test-e2e-chromium` for P3 journeys |
 
 ---
 
 ## Appendix
 
 ### Knowledge Base References
-
-- `risk-governance.md` — Risk classification framework (P×I scoring, gate decision rules)
-- `probability-impact.md` — Probability/impact scale definitions (1=unlikely/minor, 3=likely/critical)
-- `test-levels-framework.md` — Test level selection (E2E only for critical paths; API for business logic)
-- `test-priorities-matrix.md` — P0–P3 prioritization criteria
+- `risk-governance.md` — risk classification + gate decisions
+- `probability-impact.md` — P×I scoring (1–9), thresholds
+- `test-levels-framework.md` — Unit/API/Component/E2E selection
+- `test-priorities-matrix.md` — P0–P3 prioritization
 
 ### Related Documents
-
-- **Epic:** `eusolicit-docs/planning-artifacts/epic-11-grants-compliance.md`
-- **System-Level Architecture:** `eusolicit-docs/test-artifacts/test-design-architecture.md` (v3, 2026-04-09)
-- **System-Level QA:** `eusolicit-docs/test-artifacts/test-design-qa.md` (v5, 2026-04-09)
-- **Handoff:** `eusolicit-docs/test-artifacts/test-design/eu-solicit-handoff.md`
-- **Prior Epic Designs:** test-design-epic-01.md, test-design-epic-02.md, test-design-epic-03.md, test-design-epic-12.md
+- Epic: `eusolicit-docs/planning-artifacts/epics/epic-11-compliance-grants.md`
+- System test plan: `eusolicit-docs/test-artifacts/test-design-qa.md` (R-006, R-018)
+- TEA→BMAD handoff: `eusolicit-docs/test-artifacts/test-design/eu-solicit-handoff.md`
+- Project context: `eusolicit-docs/project-context.md`
+- Implementation: `services/client-api/src/client_api/services/{grants_service,espd_service}.py`; routes `api/v1/{grants,espd,proposals}.py`
 
 ---
 
-**Generated by:** BMad TEA Agent — Test Architect Module  
-**Workflow:** `bmad-testarch-test-design`  
-**Version:** 4.0 (BMad v6)
+**Generated by**: BMad TEA Agent — Test Architect Module
+**Workflow**: `bmad-testarch-test-design`
+**Version**: 4.0 (BMad v6)

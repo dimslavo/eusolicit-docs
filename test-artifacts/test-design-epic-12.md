@@ -1,93 +1,100 @@
 ---
+workflowStatus: 'completed'
+totalSteps: 5
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-04-13'
-inputDocuments: [
-  '/home/debian/Projects/eusolicit/eusolicit-docs/planning-artifacts/epic-12-analytics-admin-platform.md',
-  '/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-architecture.md',
-  '/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/test-design-qa.md',
-  '/home/debian/Projects/eusolicit/eusolicit-docs/test-artifacts/automation-summary-story-12-1.md',
-  '/home/debian/Projects/eusolicit/_bmad/bmm/config.yaml'
-]
+nextStep: ''
+lastSaved: '2026-05-25'
+workflowType: 'testarch-test-design'
+designLevel: 'epic'
+epicNum: 12
+inputDocuments:
+  - 'eusolicit-docs/planning-artifacts/epics/epic-12-admin-platform.md'
+  - 'eusolicit-docs/test-artifacts/test-design-architecture.md'
+  - 'eusolicit-docs/test-artifacts/test-design-qa.md'
+  - 'eusolicit-docs/project-context.md'
+  - 'risk-governance.md'
+  - 'probability-impact.md'
+  - 'test-levels-framework.md'
+  - 'test-priorities-matrix.md'
 ---
 
-# Test Design: Epic 12 — Analytics, Reporting & Admin Platform
+# Test Design: Epic 12 - Admin Platform
 
-**Date:** 2026-04-13
+**Date:** 2026-05-25
 **Author:** Deb
-**Status:** Draft (Updated — S12.01 automation complete)
-**Epic:** E12 | **Sprint:** 13–14 | **Points:** 55 | **Dependencies:** E05, E06, E07, E08
+**Status:** Draft
+**Mode:** Epic-Level (sequential, single artifact)
+
+> System operators securely manage platform-wide operations, monitor KPIs, and curate
+> data to ensure ongoing platform health. This epic introduces the internal **admin
+> portal** (Next.js admin app :3001) and **`admin-api`** (:8002, `admin` schema),
+> protected by a network/IP allowlist and a fully-audited mutation surface.
 
 ---
 
 ## Executive Summary
 
-**Scope:** Epic-level test design for Epic 12 (Analytics, Reporting & Admin Platform) — the final pre-launch epic covering 18 stories across analytics dashboards, PDF/DOCX report generation, internal admin platform, enterprise API, performance hardening, and user onboarding.
+**Scope:** Epic-level test design for Epic 12 (Admin Platform), covering its two stories:
 
-**Implementation Status:**
-
-- **S12.01 (MV & Refresh Infrastructure):** ✅ Automated — 258 tests passing (89 notification unit, 139 client-API unit, 30 integration); 9 E2E tests in RED phase (pending S12.02–S12.08 endpoints)
-- **S12.02–S12.18:** Pending implementation
+- **S12.1 — Tenant Management:** list / suspend / reactivate companies and adjust tiers from the admin portal, behind a VPN/IP allowlist, with every mutating action audited.
+- **S12.2 — KPI Dashboards:** live Recharts dashboards (MRR, active companies, AI cost ratio, crawler health) backed by scheduled materialized views.
 
 **Risk Summary:**
 
-- Total risks identified: 12
-- High-priority risks (≥6): 7 (R12.1 and R12.5 partially mitigated by S12.01 automation)
-- Medium-priority risks (3–5): 3
-- Low-priority risks (1–2): 2
-- Critical categories: SEC, PERF, DATA, OPS
+- Total risks identified: **8**
+- High-priority risks (≥6): **3** (R-001, R-002, R-003)
+- Critical categories: **SEC** (admin-portal access + privilege), **DATA** (tenant state integrity + KPI freshness)
 
 **Coverage Summary:**
 
-- P0 scenarios: ~43 test cases (~65–80 hours)
-- P1 scenarios: ~149 test cases (~88–105 hours)
-- P2 scenarios: ~25 test cases (~20–28 hours)
-- P3 scenarios: ~10 test cases (~4–6 hours)
-- **Total:** ~227 test cases · **Effort:** ~175–220 hours (~22–28 days for 1 QA / ~11–14 days for 2 QAs)
-- **Already automated (S12.01):** 258 tests (unit + integration); ~28 P0 + 139 P1 + 91 P2 tests complete
+- P0 scenarios: **12** (~16–24 hours)
+- P1 scenarios: **14** (~14–22 hours)
+- P2/P3 scenarios: **13** (~6–12 hours)
+- **Total effort**: ~36–58 hours (~5–8 days for 1 QA + dev support)
+
+**System-level inheritance:** This epic inherits **R-002 (cross-tenant isolation)** and the
+two-tier RBAC contract from `test-design-architecture.md`. The admin portal is the
+highest-privilege surface in the platform — a defect here can affect *every* tenant — so
+SEC scenarios are treated as non-negotiable P0 gates.
 
 ---
 
 ## Not in Scope
 
 | Item | Reasoning | Mitigation |
-|:---|:---|:---|
-| **External SIEM Integration** | Out of scope for MVP; admin platform uses internal Loki/PostgreSQL audit logs. | Audit log content verified via internal API assertions only. |
-| **Mobile Native App Views** | Admin platform is desktop-first/responsive web; no native mobile app in scope. | Responsive web testing covers tablet + mobile viewports in browser. |
-| **Real-time Cross-tenant Benchmarking** | Global aggregate benchmarking across all tenants is Phase 2 post-MVP. | Analytics scoped to per-tenant data isolation only. |
-| **Historical MV Backfill Accuracy** | Accuracy of pre-existing data before MV deployment is Phase 2. | MV correctness tested with seeded data from migration point forward. |
-| **Email Deliverability (SendGrid Spam)** | Email rendering and deliverability optimisation is outside test scope. | SendGrid API mock used; delivery confirmed via API response, not inbox. |
+| ---- | --------- | ---------- |
+| **VPN / IP allowlist network infrastructure** | The L3/L4 VPN concentrator and firewall allowlist are owned by the infra/platform team, not this epic. This plan covers only the **application-level** enforcement (middleware that reads `X-Forwarded-For` / trusted-proxy headers and denies disallowed IPs). | API + middleware tests assert deny/allow behaviour from spoofed/forwarded headers; a system test confirms the middleware is registered before any auth/route handler. |
+| **Materialized view query/index performance tuning** | Deep tuning of MV refresh plans is deferred to a perf story; this epic verifies **functional correctness and freshness SLA**, not optimal query plans. | P2 baseline benchmark on dashboard endpoints (<5s) establishes a regression floor; deeper tuning tracked separately. |
+| **Recharts visual pixel-perfection** | Exact chart pixel rendering is browser/library dependent and low business risk. | P3 visual-regression snapshots detect gross regressions only; data-integrity (UI value == DB value) is covered at P0. |
+| **Real Stripe MRR computation correctness** | MRR *calculation* logic belongs to the billing epic (E08/E15). This epic verifies the dashboard **reads and displays** the materialized aggregate faithfully. | Dashboard tests assert UI matches the seeded MV/aggregate row, not the upstream Stripe math. |
 
 ---
 
 ## Risk Assessment
 
-### High-Priority Risks (Score ≥ 6)
+### High-Priority Risks (Score ≥6)
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner | Timeline |
-|:---|:---|:---|:---:|:---:|:---:|:---|:---|:---|
-| **R12.1** | SEC | **Cross-tenant data leakage** in analytics materialized views — queries lacking `company_id` scoping expose other tenants' procurement/ROI data. | 2 | 3 | **6** | Automated multi-tenant isolation suite injecting wrong `company_id` context into every analytics endpoint; assert empty/401 response. Verify SQL filter in each MV query. | Backend/Security Lead | Sprint 13 |
-| **R12.2** | SEC | **Admin API privilege escalation** — non-admin JWT or non-VPN request reaches admin endpoints; tier-override or tenant data exposed. | 2 | 3 | **6** | Negative RBAC test suite iterating all admin routes with standard user JWT and non-allowlisted IPs; expect 403 on every attempt. | Security Lead | Sprint 13 |
-| **R12.3** | PERF | **Analytics query latency** — materialized view queries against large multi-tenant datasets exceed dashboard load SLA (>3s p95). | 2 | 3 | **6** | Performance benchmark suite with 500k–1M row seeded datasets; assert p95 < 3s for all `/analytics/*` endpoints; EXPLAIN ANALYZE on slow queries. | Perf/Backend Lead | Sprint 14 |
-| **R12.4** | SEC | **Enterprise API key exposure** — hashed key storage bypassed, revoked keys still accepted, or rate limiting misconfigured allowing quota exhaustion. | 2 | 3 | **6** | Key lifecycle tests (create → use → revoke → retry must fail); rate limit saturation test returning 429 with correct headers; key hash integrity assertion. | Backend/Security Lead | Sprint 14 |
-| **R12.5** | DATA | **Materialized view stale/corrupt data** — `REFRESH MATERIALIZED VIEW CONCURRENTLY` fails mid-run leaving partial view or blocking reads if unique index missing. | 2 | 3 | **6** | Integration test triggering concurrent MV refresh while issuing read queries; assert no read timeouts and view row counts consistent pre/post refresh. Verify `CONCURRENTLY` constraint (unique index present). | Backend Lead | Sprint 13 |
-| **R12.9** | PERF | **Load test failure at target concurrency** — key user flows (search, analytics dashboards, proposal generation) exceed p95 500ms threshold under production load. | 2 | 3 | **6** | Locust/k6 load test scripts covering all target flows against staging; document p50/p95/p99 latencies; gate on p95 < 500ms for read endpoints. | Perf Team | Sprint 14 |
-| **R12.10** | SEC | **Security audit failures (OWASP/network policy)** — launch blocked by unresolved OWASP Top 10 findings, misconfigured Kubernetes network policies, or unrotated production secrets. | 2 | 3 | **6** | Complete OWASP Top 10 checklist execution; Kubernetes network policy service-isolation verification; confirm all secrets rotated and stored in secret manager before release gate. | Security Team | Sprint 14 |
+| ------- | -------- | ----------- | ----------- | ------ | ----- | ---------- | ----- | -------- |
+| **R-001** | **SEC** | Admin portal reachable from a disallowed network due to misconfigured/mis-ordered IP-allowlist middleware (e.g. trusts client-supplied `X-Forwarded-For`, or middleware mounted after routes). Exposes platform-wide controls to the public internet. | 2 | 3 | **6** | Exhaustive middleware + API tests for allow/deny from trusted-proxy vs spoofed headers; assert middleware ordering (runs before auth/route); deny-by-default test. Constant-time / non-bypassable check. | Security Lead / Backend | End of S12.1 |
+| **R-002** | **DATA/SEC** | Incorrect tenant mutation — suspending/reactivating the wrong company, or applying a tier change that bypasses tenant scoping — causes customer-facing outage or wrong billing. Cross-tenant write from admin context. | 2 | 3 | **6** | E2E coverage of every state transition (active→suspended→active) + tier matrix; API integrity assertions on the exact `company_id` mutated; negative cross-tenant test (operator action must target only the intended tenant); state-machine guard tests (illegal transitions rejected). | Backend / QA | End of S12.1 |
+| **R-003** | **DATA** | KPI dashboards show stale/incorrect data because the scheduled materialized-view refresh (Celery Beat) fails silently or races, driving wrong leadership decisions. | 3 | 2 | **6** | Integration test of the MV refresh task (success + failure/retry paths); E2E data-assertion that UI metric == value queried from `admin` schema; freshness/health indicator surfaced and asserted; alert on refresh failure. | DEV / QA | End of S12.2 |
 
-### Medium-Priority Risks (Score 3–5)
+### Medium-Priority Risks (Score 3-4)
 
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner |
-|:---|:---|:---|:---:|:---:|:---:|:---|:---|
-| **R12.6** | BUS | **Tier gate bypass** — users on Starter/Professional access Professional+ analytics dashboards (competitor, pipeline) or Enterprise API via URL manipulation or missing middleware. | 2 | 2 | **4** | Negative tier tests for all gated endpoints using tokens from each tier; assert 403 + upgrade message for non-qualifying tiers. | Product/Backend |
-| **R12.7** | OPS | **Silent async report failure** — Celery PDF/DOCX generation task fails without surfacing to the user; download link never appears; DLQ unmonitored. | 2 | 2 | **4** | Dead Letter Queue validation: inject a report task that triggers Celery failure; assert DLQ message created and job status reflects failure. Verify user notification path. | Ops/Backend |
-| **R12.8** | TECH | **Celery Beat schedule drift/miss** — daily MV refresh tasks skipped due to scheduler misconfiguration; hourly usage refresh lags >2 hours. | 2 | 2 | **4** | Integration test verifying Celery Beat schedule config is registered and fires within expected window using test task; monitor scheduler beat log. | Backend Lead |
+| ------- | -------- | ----------- | ----------- | ------ | ----- | ---------- | ----- |
+| **R-004** | **SEC** | Audit trail for admin actions is incomplete, missing the actor/before-after/timestamp, or not written transactionally with the mutation — hindering incident investigation and compliance. | 2 | 2 | **4** | API tests asserting every mutating tenant action writes exactly one audit row with correct actor, action, target `company_id`, before/after state; verify audit write is in the same transaction (no mutation without audit). No PII/secrets logged. | DEV |
+| **R-005** | **PERF** | Dashboard aggregate endpoints are slow (>5s) under realistic data volume, degrading leadership UX. | 2 | 2 | **4** | API-level baseline benchmark on each dashboard endpoint with seeded volume; assert MV-backed reads (not live aggregation); regression floor in CI. | DEV |
+| **R-006** | **OPS** | Materialized views drift / migration ordering: MV definitions or refresh schedule not applied after `make reset-db` + `make migrate-all`, leaving empty dashboards in fresh environments. | 2 | 2 | **4** | Migration smoke test confirms MV objects + Beat schedule exist post-`migrate-all`; empty-state dashboard renders gracefully (no crash) when MV not yet refreshed. | DEV / Platform |
 
-### Low-Priority Risks (Score 1–2)
+### Low-Priority Risks (Score 1-2)
 
 | Risk ID | Category | Description | Probability | Impact | Score | Action |
-|:---|:---|:---:|:---:|:---:|:---:|:---|
-| **R12.11** | BUS | Onboarding wizard state corruption — `onboarding_completed` flag reset after wizard skip/dismiss causing re-trigger on next login. | 1 | 2 | 2 | Monitor; cover in P1 E2E regression. |
-| **R12.12** | BUS | White-label subdomain collision — duplicate subdomain accepted, causing routing confusion between tenants. | 1 | 2 | 2 | Monitor; uniqueness validation test in P1. |
+| ------- | -------- | ----------- | ----------- | ------ | ----- | ------ |
+| **R-007** | **SEC** | Non-operator internal user (or a regular tenant JWT) discovers and hits admin-api endpoints directly, bypassing the portal UI. | 1 | 2 | **2** | RBAC/authz tests assert non-operator principals get 403 on every admin-api route (defence in depth behind the allowlist). |
+| **R-008** | **BUS** | Recharts minor-version breaking change causes dashboard render failure. | 1 | 2 | **2** | Pin Recharts version; P3 visual-regression + render smoke catch breakage. Monitor. |
 
 ### Risk Category Legend
 
@@ -96,373 +103,133 @@ inputDocuments: [
 - **PERF**: Performance (SLA violations, degradation, resource limits)
 - **DATA**: Data Integrity (loss, corruption, inconsistency)
 - **BUS**: Business Impact (UX harm, logic errors, revenue)
-- **OPS**: Operations (deployment, config, monitoring, alerting)
+- **OPS**: Operations (deployment, config, monitoring)
 
 ---
 
 ## Entry Criteria
 
-- [ ] Epic 12 requirements finalized and signed off by PM and Tech Lead.
-- [ ] Staging environment running with PostgreSQL (MV support + unique index constraints), Redis, Celery Beat, and S3-compatible storage (LocalStack or AWS staging).
-- [ ] Test data factories available: `TenantDataFactory` (10k–1M records), `AdminUserFactory` (admin role JWT), `ApiKeyFactory` (valid/revoked keys), `CompanyProfileFactory`.
-- [ ] Playwright `apiRequest` and `recurse` helpers configured in the monorepo.
-- [ ] Admin Service, Client Analytics API, and Enterprise API services scaffolded and accessible in staging.
-- [ ] VPN/IP allowlist configured for admin endpoint testing (or IP allowlist mock in staging config).
-- [ ] System-level test design reviewed and blockers B-01, B-02, B-03 addressed.
+- [ ] Epic 12 acceptance criteria for S12.1 and S12.2 approved by PM.
+- [ ] `admin-api` (:8002) deployed to the test environment with `admin` schema migrated (`make migrate-all`).
+- [ ] Admin Next.js app (:3001) builds and serves the `[locale]` routes.
+- [ ] IP-allowlist middleware configuration documented (trusted-proxy header, allowlist source).
+- [ ] Test data factories available: `CompanyFactory`, `UserFactory` (operator + non-operator roles), tier fixtures.
+- [ ] An "Operator"-role test principal and at least one non-operator principal available.
+- [ ] Materialized views + Celery Beat refresh schedule defined and applied.
 
 ## Exit Criteria
 
-- [ ] 100% of P0 tests pass — zero exceptions (tenant isolation, admin RBAC, enterprise API key gate).
-- [ ] ≥95% of P1 tests pass (failures triaged and waived with owner sign-off).
-- [ ] Analytics dashboard p95 response time < 3s under standard staging load.
-- [ ] Load test p95 < 500ms for read endpoints at target concurrency — documented results.
-- [ ] OWASP Top 10 checklist fully completed; all High findings resolved or risk-accepted by Security Lead.
-- [ ] No open Critical or High severity defects unresolved.
-- [ ] Enterprise API documentation (Swagger/Redoc) verified against implementation.
-- [ ] All production secrets rotated and confirmed in secret manager.
+- [ ] All P0 tests passing (100%).
+- [ ] All P1 tests passing, or failures triaged and waived.
+- [ ] No open high-priority / high-severity bugs in Epic 12 functionality.
+- [ ] `admin-api` line coverage ≥ **80%** (`make coverage`).
+- [ ] High-priority mitigations (R-001, R-002, R-003) implemented and green.
+- [ ] SEC-category scenarios pass **100%** (no waivers).
+- [ ] `make lint` + `make type-check` clean; `pnpm lint && pnpm type-check` clean for the admin app (`pnpm check:i18n` if strings added).
 
 ---
 
 ## Test Coverage Plan
 
-> **Priority labels (P0/P1/P2/P3) indicate risk level and test importance, NOT execution timing.** When to run each suite is defined separately in the Execution Strategy section below. A P2 test does not mean "run nightly" — it means lower risk, secondary coverage.
+> **Test-level discipline:** SEC bypass and data-integrity logic is exercised at the **API/integration** level (deterministic, fast, schema-asserted). E2E is reserved for the operator's critical journey and UI↔DB data-assertion. No duplicate coverage of the same logic across levels.
 
-> **Test level notation:** "API" = Playwright `apiRequest`/`request` (no browser); "E2E" = Playwright browser + UI; "Integration" = service + DB/queue interaction; "Unit" = isolated logic/function. Per `test-levels-framework.md`, business logic is tested at Unit/API level; user journeys at E2E.
+### P0 (Critical) - Run on every commit
 
----
+**Criteria**: Blocks core journey + High risk (≥6) + No workaround
 
-### P0 (Critical)
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| ----------- | ---------- | --------- | ---------- | ----- | ----- |
+| S12.1 — IP allowlist enforcement | API / Middleware | R-001 | 4 | QA | Allowed-IP→pass; disallowed-IP→deny; spoofed `X-Forwarded-For`→deny; middleware runs before auth (deny precedes 401). |
+| S12.1 — Tenant state transitions | API + E2E | R-002 | 5 | QA | suspend, reactivate, illegal transition rejected, exact `company_id` mutated, cross-tenant target isolation (no collateral mutation). |
+| S12.1 — Tier adjustment integrity | API | R-002 | 1 | QA | Tier change persists for the correct company only; tier-cache invalidation event emitted. |
+| S12.2 — Dashboard data integrity | E2E | R-003 | 2 | QA | UI MRR + active-companies values == values queried directly from `admin` schema MV. |
 
-**Criteria:** Blocks core journey + High risk (≥6) + No workaround
+**Total P0**: 12 tests, ~16–24 hours
 
-| Story | Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---|:---:|:---|:---|
-| S12.01 | MV schema exists for all 5 domains post-migration; indexes on filter columns present | API/DB | R12.5 | 2 | QA/DEV | ✅ **AUTOMATED** — `test_011_migration.py::TestE12DB002ViewsExist`, `TestE12DB003UniqueIndexes` (30 integration tests passing) |
-| S12.01 | `REFRESH MATERIALIZED VIEW CONCURRENTLY` does not block concurrent reads | Integration | R12.5 | 2 | DEV | ✅ **AUTOMATED** — `test_011_migration.py::TestE12DB006RefreshConcurrently`, `TestE12DB007ConcurrentRead` |
-| S12.02 | Company A token cannot retrieve Company B's market analytics data | API | R12.1 | 3 | QA | Inject wrong `company_id`; assert empty results or 404 — never Company B data |
-| S12.04 | Company A token cannot retrieve Company B's ROI data | API | R12.1 | 2 | QA | Same pattern — cross-tenant ROI isolation |
-| S12.05 | Standard user token cannot retrieve other users' team metrics | API | R12.1 | 3 | QA | `GET /analytics/team/user/{other_user_id}` with standard JWT → 403 |
-| S12.06 | Starter/Professional tier token receives 403 + upgrade message on competitor endpoints | API | R12.6 | 3 | QA | All 3 competitor endpoints tested with each lower tier |
-| S12.07 | Starter/Professional tier token receives 403 + upgrade message on pipeline forecast | API | R12.6 | 2 | QA | Forecast endpoint + tier gate message validated |
-| S12.09 | Async report Celery task completes; S3 object exists; signed URL returned | Integration | R12.7 | 3 | QA/DEV | Use `recurse` to poll job status; assert URL resolves and returns valid file |
-| S12.11 | All admin tenant endpoints return 403 for non-allowlisted IP | API | R12.2 | 3 | QA | Test from non-VPN IP; assert 403 on all tenant routes |
-| S12.11 | All admin tenant endpoints return 401/403 for standard user JWT (no admin claim) | API | R12.2 | 4 | QA | Iterate all tenant admin endpoints with standard token |
-| S12.12 | All admin crawler/white-label endpoints return 403 for non-allowlisted IP | API | R12.2 | 3 | QA | Same IP-restriction pattern for crawler routes |
-| S12.13 | All admin audit/analytics endpoints return 403 for non-allowlisted IP | API | R12.2 | 2 | QA | IP restriction on audit log + platform analytics |
-| S12.14 | Admin frontend pages blocked for non-admin role (route guard redirects) | E2E | R12.2 | 3 | QA | Attempt direct URL nav as standard user; assert redirect to /403 or /dashboard |
-| S12.15 | `X-API-Key` missing or invalid returns 401 on all `/v1/*` routes | API | R12.4 | 3 | QA | Missing header, tampered key, unknown key — all must return 401 |
-| S12.15 | Revoked API key returns 401 (not 200) | API | R12.4 | 1 | QA | Create key → revoke → retry → assert 401 |
-| S12.15 | Rate limit exceeded returns 429 with `X-RateLimit-*` headers | API | R12.4 | 3 | QA | Burst requests beyond per-key limit; assert 429 + correct headers |
-| S12.17 | Load test: p95 read latency < 500ms under target concurrency on staging | Performance | R12.9 | 1 | Perf | k6/Locust suite across search, analytics, proposal flows |
-| S12.17 | OWASP Top 10 checklist items all addressed or risk-accepted by Security Lead | Security Audit | R12.10 | 1 | Security | Checklist evidence attached to release gate |
+### P1 (High) - Run on PR to main
 
-**Total P0:** ~43 test cases across 18 scenarios · Estimated effort: **~65–80 hours**
+**Criteria**: Important features + Medium risk (3-4) + Common workflows
 
----
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| ----------- | ---------- | --------- | ---------- | ----- | ----- |
+| S12.1 — Audit logging completeness | API / Integration | R-004 | 5 | DEV | Each mutating action writes one audit row (actor, action, target, before/after, ts); audit written in same transaction; no secrets/PII in payload. |
+| S12.1 — Admin-api authz (non-operator) | API | R-007 | 2 | DEV | Non-operator + regular-tenant JWT → 403 on every admin route. |
+| S12.2 — Materialized view refresh task | Integration | R-003 | 3 | DEV | Beat task refreshes MV (success); failure → retry/backoff + alert; freshness timestamp updated. |
+| S12.2 — Crawler health + AI cost ratio metrics | API | R-003 | 2 | DEV | Endpoint returns correct aggregate shape; degraded/zero-data state handled. |
+| S12.2 — Dashboard render states | E2E | R-008 | 2 | QA | Recharts renders MRR/active/AI-cost/crawler charts; empty + error states render without crash. |
 
-### P1 (High)
+**Total P1**: 14 tests, ~14–22 hours
 
-**Criteria:** Core features + Medium/High risk (3–5) + Common user workflows
+### P2 (Medium) - Run nightly/weekly
 
-#### S12.01 — Analytics Materialized Views & Refresh Infrastructure ✅ AUTOMATED (258 tests)
+**Criteria**: Secondary features + Low risk (1-2) + Edge cases
 
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| Celery Beat daily refresh fires for market/ROI/team/competitor views (verified via task execution log) | Integration | R12.8 | 2 | DEV | ✅ `test_refresh_analytics_views.py::TestBeatSchedule` + `test_refresh_analytics_views_extended.py` |
-| Hourly usage view refresh schedule is registered and fires within window | Integration | R12.8 | 1 | DEV | ✅ `test_refresh_analytics_views.py::TestBeatSchedule` — hourly config verified |
-| Manual refresh management command updates MV data correctly | API/CLI | — | 1 | DEV | ✅ `test_refresh_script.py` — 34 tests covering all CLI paths |
-| Migration rollback leaves no orphaned views or indexes | DB | R12.5 | 1 | DEV | ✅ `test_011_migration.py::TestE12DB008Downgrade` — rollback verified |
-| MV indexes on filter columns (`sector`, `country`, `date_range`) improve query plans | DB | R12.3 | 1 | DEV | ✅ `test_011_migration.py::TestE12DB003UniqueIndexes` — index presence confirmed |
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| ----------- | ---------- | --------- | ---------- | ----- | ----- |
+| S12.1 — Tenant list pagination/sort/filter | API | - | 4 | DEV | Pagination bounds, sort keys, status/tier filters, empty result. |
+| S12.2 — Dashboard endpoint performance baseline | API | R-005 | 2 | DEV | <5s with seeded volume; assert MV-backed (not live aggregation). |
+| S12.2 — MV bootstrap after fresh migrate | Integration | R-006 | 2 | DEV | MV objects + Beat schedule exist post-`migrate-all`; empty MV renders gracefully. |
+| General — Admin portal responsiveness | E2E | - | 2 | QA | Layout at desktop/tablet widths. |
 
-**S12.01 P1 subtotal:** 6 tests (all automated)
+**Total P2**: 10 tests, ~5–9 hours
 
-#### S12.02 — Market Intelligence Dashboard API
+### P3 (Low) - Run on-demand
 
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/market/volume` returns procurement volume grouped by sector with date range + country filter | API | R12.3 | 2 | QA | Test filter combinations; verify pagination |
-| `GET /analytics/market/values` returns average contract values by sector | API | — | 1 | QA | Verify calculation against seeded data |
-| `GET /analytics/market/authorities` returns top authorities ranked by activity (paginated) | API | — | 2 | QA | Ranking order + pagination metadata |
-| `GET /analytics/market/trends` returns monthly aggregates with correct date grouping | API | — | 2 | QA | Verify monthly bucket boundaries |
-| Empty-result edge cases return empty arrays (not 500) for all 4 endpoints | API | — | 1 | QA | Seed company with no bids; assert `[]` with 200 |
-| Cache headers (`Cache-Control`, `ETag`) present on market responses | API | — | 1 | QA | Verify response headers per spec |
+**Criteria**: Nice-to-have + Exploratory + Performance benchmarks
 
-**S12.02 P1 subtotal:** 9 tests
+| Requirement | Test Level | Risk Link | Test Count | Owner | Notes |
+| ----------- | ---------- | --------- | ---------- | ----- | ----- |
+| S12.2 — KPI dashboard visual regression | E2E | R-008 | 2 | QA | Screenshot compare to detect unintended chart UI changes. |
+| S12.1 — Audit log export (if implemented) | API | - | 1 | DEV | Export endpoint shape/permissions, only if feature lands. |
 
-#### S12.03 — Market Intelligence Dashboard Frontend
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| Bar chart renders procurement volume grouped by sector (Recharts SVG visible) | E2E | — | 1 | QA | Assert `<svg>` Recharts element rendered with bar data |
-| Line chart renders monthly trend data with hover tooltip functional | E2E | — | 1 | QA | Hover tooltip appears on data point |
-| Sortable table displays top contracting authorities with pagination | E2E | — | 2 | QA | Sort by activity column; pagination navigates |
-| Date range, sector, and country filters update all 3 visualizations | E2E | — | 2 | QA | Change filter → assert API re-called and charts re-render |
-| Responsive layout: charts stack vertically on mobile viewport (375px) | E2E | — | 1 | QA | Screenshot assertion at 375px width |
-
-**S12.03 P1 subtotal:** 7 tests
-
-#### S12.04 — ROI Tracker Dashboard (Full Stack)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/roi/summary` returns correct total invested, won, ROI % from seeded data | API | — | 2 | QA | Verify ROI formula: `(won - invested) / invested × 100` |
-| `GET /analytics/roi/bids` returns per-bid breakdown paginated, sortable | API | — | 2 | QA | Sort by investment desc; verify page_size |
-| `GET /analytics/roi/trends` returns ROI over time grouped by month | API | — | 1 | QA | Verify time series grouping |
-| Frontend summary cards display aggregate metrics correctly | E2E | — | 1 | QA | Assert card values match API response |
-| Per-bid table sortable by investment, outcome, and ROI columns | E2E | — | 1 | QA | Click each sortable column header |
-| Trend chart renders with date range filter applied | E2E | — | 1 | QA | Apply 3-month filter; assert chart re-renders |
-
-**S12.04 P1 subtotal:** 8 tests
-
-#### S12.05 — Team Performance Dashboard (Full Stack)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/team/leaderboard` returns all team members sorted by win rate for company admin | API | — | 2 | QA | Admin JWT; verify sort order |
-| `GET /analytics/team/user/{user_id}` returns individual user metrics | API | — | 1 | QA | Own user_id returns data; verified fields |
-| Frontend leaderboard table sortable by any metric column | E2E | — | 2 | QA | Sort by bids submitted, win rate, avg prep time |
-| User cards display all 4 metrics: bids submitted, win rate, avg prep time, proposals generated | E2E | — | 1 | QA | Assert all metric labels and values visible |
-| Activity chart shows team-level bids submitted over time | E2E | — | 1 | QA | Assert chart renders with correct data |
-
-**S12.05 P1 subtotal:** 7 tests
-
-#### S12.06 — Competitor Intelligence Dashboard (Professional+ Tier)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/competitors/profiles` returns paginated competitor profiles for Professional+ | API | R12.6 | 2 | QA | Valid Professional+ token; verify fields |
-| `GET /analytics/competitors/{id}/patterns` returns bidding pattern data | API | — | 1 | QA | Valid competitor_id; verify pattern fields |
-| `GET /analytics/competitors/benchmarks` returns pricing benchmark aggregations | API | — | 1 | QA | Verify benchmark structure |
-| Frontend competitor profile cards show all required fields | E2E | — | 1 | QA | Name, bid count, win rate, active sectors visible |
-| Comparison table: select 2–4 competitors side by side | E2E | — | 2 | QA | Select 2 and 4 competitors; table renders |
-| Pattern chart renders bidding frequency trends | E2E | — | 1 | QA | Assert chart element present with data |
-
-**S12.06 P1 subtotal:** 8 tests
-
-#### S12.07 — Pipeline Forecasting Dashboard (Professional+ Tier)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/pipeline/forecast` returns predicted opportunities with confidence scores | API | — | 2 | QA | Verify all 5 fields: title, sector, value range, date, confidence |
-| Frontend timeline view plots predicted opportunities on time axis | E2E | — | 1 | QA | Assert timeline/calendar items render |
-| Confidence color coding: green (high), amber (medium), red (low) indicators | E2E | — | 1 | QA | Assert CSS color classes per confidence level |
-| Sector and confidence threshold filters update forecast results | E2E | — | 2 | QA | Apply each filter; assert list updates |
-
-**S12.07 P1 subtotal:** 6 tests
-
-#### S12.08 — Usage Dashboard (Full Stack)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /analytics/usage` returns consumed/limit/remaining for all 3 usage types | API | — | 2 | QA | Verify AI summaries, proposal drafts, compliance checks |
-| Response includes billing period start/end dates | API | — | 1 | QA | Assert date fields present and valid |
-| Frontend circular progress meters render for each usage type | E2E | — | 1 | QA | Assert 3 meter elements with correct labels |
-| Warning indicator shown when usage exceeds 80% of limit | E2E | — | 1 | QA | Seed usage at 85% limit; assert warning UI element |
-| Upgrade CTA displayed when any usage type is at or above limit | E2E | — | 1 | QA | Seed usage at 100% limit; assert CTA link to billing |
-
-**S12.08 P1 subtotal:** 6 tests
-
-#### S12.09 — Report Generation Engine (PDF & DOCX)
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| PDF report generated via reportlab: has headers, summary section, and data table | Integration | R12.7 | 2 | DEV | Assert PDF bytes > 0; parse structure via reportlab reader |
-| DOCX report generated via python-docx: has headers, summary, and embedded chart image | Integration | R12.7 | 2 | DEV | Assert DOCX bytes > 0; verify document structure |
-| S3 upload stores report object; signed URL generated with 24h expiry | Integration | — | 2 | DEV | Assert S3 object exists; URL TTL verified |
-| All 4 templates produce valid output: pipeline summary, bid performance, team activity, custom date range | Integration | — | 4 | DEV | One test per template; assert non-empty output |
-| Shared generation code between E07 proposal export and E12 report engine (no duplication) | Unit | — | 1 | DEV | Assert common renderer module imported in both paths |
-
-**S12.09 P1 subtotal:** 11 tests
-
-#### S12.10 — Scheduled & On-Demand Report Delivery
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| Company admin can configure weekly/monthly schedule with type, format, and recipients via API | API | — | 2 | QA | POST schedule config; GET confirms it persisted |
-| Celery Beat triggers scheduled report and sends email via SendGrid (mock) | Integration | R12.7/R12.8 | 2 | DEV | Mock SendGrid; assert task fired and email payload correct |
-| On-demand report request returns async job ID; status polling via `recurse` reaches "complete" | E2E/API | — | 2 | QA | Playwright `recurse` polling job endpoint until status=complete |
-| Download link appears in-app when report is ready | E2E | — | 1 | QA | Assert download link element visible after job completes |
-| Reports list page shows past reports with download links and timestamps | E2E | — | 1 | QA | Assert table row with correct metadata |
-| Email delivery includes report as attachment with summary in body | Integration | — | 1 | DEV | Mock SendGrid; assert attachment MIME type correct |
-
-**S12.10 P1 subtotal:** 9 tests
-
-#### S12.11 — Admin API — Tenant Management
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /admin/tenants` returns paginated list with search by name and tier filter | API | — | 3 | QA | Search partial name; filter by tier; assert pagination metadata |
-| `GET /admin/tenants/{company_id}` returns subscription, current usage, activity summary | API | — | 2 | QA | Verify all summary fields present |
-| `POST /admin/tenants/{company_id}/tier-override` updates tier and creates audit log entry | API | — | 2 | QA | Assert tier changed; assert audit_log row created with reason |
-| Admin JWT with admin role claim accepted on all tenant routes | API | — | 1 | QA | Positive: valid admin JWT → 200 on all routes |
-
-**S12.11 P1 subtotal:** 8 tests
-
-#### S12.12 — Admin API — Crawler & White-Label Management
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /admin/crawlers/runs` returns paginated run history with status, timestamps | API | — | 2 | QA | Verify pagination + status field values |
-| `GET/PUT /admin/crawlers/schedule/{crawler_type}` reads and updates Celery Beat schedule | API | — | 2 | QA | Read current schedule; update; re-read confirms change |
-| `POST /admin/crawlers/trigger/{crawler_type}` starts crawl and returns valid run_id | API | — | 1 | QA | Assert run_id UUID format; GET run status shows "running" |
-| `GET/PUT /admin/tenants/{id}/white-label` reads/updates branding settings | API | R12.12 | 2 | QA | Update subdomain, logo, colors; GET confirms persisted |
-| Subdomain uniqueness: duplicate subdomain rejected with 409 | API | R12.12 | 1 | QA | Create two tenants with same subdomain; assert 409 on second |
-| `GET /admin/crawlers/runs/{run_id}` returns run status, result counts, error details | API | — | 1 | QA | Assert all detail fields present |
-
-**S12.12 P1 subtotal:** 9 tests
-
-#### S12.13 — Admin API — Audit Log & Platform Analytics
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `GET /admin/audit-logs` returns paginated filtered results for all 5 filter dimensions | API | — | 3 | QA | Filter by user_id, action_type, entity_type, date range individually |
-| `GET /admin/audit-logs/export` returns streaming CSV response with correct MIME type | API | — | 2 | QA | Assert `Content-Type: text/csv`; parse 5 header columns |
-| `GET /admin/analytics/funnel` returns signup funnel stage counts (registered, trial, paid) | API | — | 1 | QA | Assert all 3 funnel stages present with integer counts |
-| `GET /admin/analytics/revenue` returns MRR, growth rate, churn rate | API | — | 2 | QA | Verify revenue metric fields and numeric types |
-| `GET /admin/analytics/tiers` returns tier distribution counts | API | — | 1 | QA | Assert tier distribution sums to total tenant count |
-
-**S12.13 P1 subtotal:** 9 tests
-
-#### S12.14 — Admin Frontend Pages
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| Tenant management table: searchable, filterable by tier, detail drawer opens with correct data | E2E | — | 3 | QA | Search by partial name; open drawer; assert subscription info |
-| Tier override form: submits with reason field; tier badge updates immediately in table | E2E | — | 2 | QA | Assert optimistic update and confirmation toast |
-| Crawler run history: status badges displayed; manual trigger button fires with confirmation | E2E | — | 2 | QA | Click trigger; confirm dialog; assert new run row appears |
-| Audit log page: filter bar, date range picker, paginated results, CSV export downloads file | E2E | — | 3 | QA | Apply date filter; click export; assert file download initiated |
-| Platform analytics page: funnel chart, tier pie chart, revenue line chart, metric cards all render | E2E | — | 2 | QA | Assert 4 chart/card elements visible with non-zero data |
-
-**S12.14 P1 subtotal:** 12 tests
-
-#### S12.15 — Enterprise API — Key Auth, Rate Limiting & Docs
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| `api.eusolicit.com/v1/*` routes proxy correctly to Client API endpoints | API | — | 2 | QA | Assert `/v1/analytics/market/volume` resolves same data as client API |
-| `POST /v1/api-keys` creates new API key (hashed in DB); `GET` lists it; `DELETE` revokes it | API | R12.4 | 3 | QA | Full CRUD lifecycle; assert DB hash differs from plain key |
-| Valid API key header authenticates successfully on all `/v1/*` routes | API | R12.4 | 1 | QA | Positive path: valid key → 200 |
-| Swagger UI accessible at `/v1/docs`; Redoc at `/v1/redoc` | API | — | 2 | QA | Assert 200 with HTML body containing spec UI |
-
-**S12.15 P1 subtotal:** 8 tests
-
-#### S12.16 — Enterprise API Documentation & Usage Frontend
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| API key management page: lists masked active keys (last 4 chars visible only) | E2E | — | 1 | QA | Assert key display masked with `****xxxx` format |
-| New key creation: full key shown exactly once with copy-to-clipboard; subsequent view masked | E2E | R12.4 | 2 | QA | Create key; capture display; navigate away; return; verify masked |
-| Key revocation: confirmation dialog; key status changes to revoked immediately | E2E | — | 1 | QA | Revoke; retry API call; assert 401 |
-| Rate limit tier and usage stats displayed on management page | E2E | — | 1 | QA | Assert rate limit info section visible |
-
-**S12.16 P1 subtotal:** 5 tests
-
-#### S12.17 — Performance Optimization, Load Testing & Security Audit
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| EXPLAIN ANALYZE on all analytics queries shows no sequential scans on large datasets | DB | R12.3 | 2 | DEV | Assert index scan in query plan for all `/analytics/*` endpoints |
-| N+1 queries resolved in API endpoints (verified via query count assertion) | Unit/Integration | R12.3 | 2 | DEV | Assert max N DB queries per API request using query counter |
-| CORS configuration: allowed origins restricted; preflight returns correct headers | API | R12.10 | 1 | QA | Assert CORS headers on preflight; non-whitelisted origin rejected |
-| All public endpoints have rate limiting configured (non-Enterprise API) | API | R12.4/R12.10 | 1 | QA | Assert 429 on saturation of public API endpoints |
-| All production secrets documented as rotated in secret manager | Security Audit | R12.10 | 1 | Security | Evidence checklist: DB passwords, JWT keys, API keys rotated |
-| Kubernetes network policies verify service-to-service isolation (cross-namespace blocked) | Security/Infra | R12.10 | 1 | Security | Test network policy rules in staging cluster |
-
-**S12.17 P1 subtotal:** 8 tests
-
-#### S12.18 — User Onboarding Flow & Launch Polish
-
-| Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| First login triggers onboarding wizard overlay for users with `onboarding_completed=false` | E2E | R12.11 | 1 | QA | New user login; assert wizard overlay visible |
-| Wizard steps complete in order: profile → search → opportunity → feature tour | E2E | — | 3 | QA | Step through each; assert spotlight and tooltip per step |
-| Skip/dismiss sets `onboarding_completed=true` immediately via API | E2E/API | R12.11 | 2 | QA | Skip wizard; assert flag set via GET user API |
-| Wizard does not reappear on subsequent login after completion or dismissal | E2E | R12.11 | 1 | QA | Login again; assert no overlay visible |
-| Error pages (404, 500, 403) use branded templates with correct status codes | E2E | — | 2 | QA | Navigate to non-existent route; trigger 403; verify branded design |
-
-**S12.18 P1 subtotal:** 9 tests
+**Total P3**: 3 tests, ~1–2 hours
 
 ---
 
-**Total P1: ~149 test cases across 62 scenario groups · Estimated effort: ~88–105 hours**
+## Execution Order
 
----
+### Smoke Tests (<5 min)
 
-### P2 (Medium)
+**Purpose**: Fast feedback, catch build-breaking issues
 
-**Criteria:** Secondary flows + Low risk + Edge cases + UI polish
+- [ ] `admin-api` boots and `/health` responds.
+- [ ] Admin app builds and serves `[locale]` layout.
+- [ ] Operator can log in to the admin portal.
+- [ ] Tenant management page loads; KPI dashboard page loads.
 
-| Story | Scenario | Test Level | Risk Link | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| S12.01 | MV data remains consistent after simulated partial refresh failure (rollback to last full state) | Integration | R12.5 | 2 | DEV | Simulate mid-refresh failure; assert last valid state preserved |
-| S12.02 | Market dashboard response includes correct cache headers per CDN caching spec | API | — | 1 | QA | Verify `Cache-Control: max-age=300` on market routes |
-| S12.03 | Loading skeletons displayed during API fetch on market dashboard | E2E | — | 1 | QA | Throttle network; assert skeleton animation visible |
-| S12.04 | ROI per-bid table: columns sortable in ascending and descending order | E2E | — | 1 | QA | Click investment column twice; assert order reversal |
-| S12.05 | Team activity bar chart renders with correct time axis grouping | E2E | — | 1 | QA | Assert bar chart with date-bucketed data |
-| S12.06 | Competitor pattern chart renders bidding frequency over time | E2E | — | 1 | QA | Assert chart SVG with time axis visible |
-| S12.07 | Empty state displayed when no pipeline predictions available | E2E | — | 1 | QA | Seed company with no forecast data; assert empty state UI |
-| S12.07 | Confidence threshold filter removes low-confidence items from timeline | E2E | — | 1 | QA | Apply high-confidence filter; assert low items hidden |
-| S12.08 | Usage dashboard accessible to all paid tiers (Starter, Professional, Enterprise) | API | — | 1 | QA | Test with each tier JWT; assert 200 |
-| S12.09 | All 4 report templates produce non-empty output (one test per template type) | Integration | — | 2 | DEV | Verify pipeline summary, bid perf, team activity, custom |
-| S12.10 | Signed S3 download URL expires after 24 hours | Integration | — | 1 | DEV | Assert URL signed with 86400s TTL in metadata |
-| S12.11 | Pagination metadata correct: `total_count`, `page`, `page_size` in all admin list responses | API | — | 1 | QA | Verify pagination envelope on `/admin/tenants` |
-| S12.12 | DNS readiness check returns informative error when subdomain CNAME unresolvable | API | — | 1 | QA | Mock DNS failure; assert error message includes domain name |
-| S12.13 | `GET /admin/analytics/usage` returns aggregate usage metrics across all tenants | API | — | 1 | QA | Assert response contains multi-tenant aggregate |
-| S12.14 | White-label live preview panel updates in real time as logo/color settings change | E2E | — | 2 | QA | Change logo URL; change primary color; assert preview updates |
-| S12.14 | Platform analytics funnel chart and revenue line chart render with correct data shape | E2E | — | 1 | QA | Assert chart components visible with non-empty series |
-| S12.15 | OpenAPI spec includes request/response examples for all endpoints | API | — | 1 | QA | Parse OpenAPI JSON; assert examples present on each route |
-| S12.16 | Enterprise API documentation page embeds Swagger UI or Redoc component | E2E | — | 1 | QA | Assert iframe or embedded component visible in API docs page |
-| S12.17 | Response compression enabled (gzip/br): `Content-Encoding` header present on large responses | API | — | 1 | DEV | Assert compressed response on analytics endpoints >1KB |
-| S12.18 | Empty states reviewed across all 5 main pages: no broken/missing empty state UI | E2E | — | 2 | QA | Navigate to each section with no data; assert styled empty state |
-| S12.18 | Email templates render correctly (verified via HTML structure assertions in integration test) | Integration | — | 1 | QA | Assert key email sections present in rendered HTML |
+**Total**: 4 scenarios
 
-**Total P2:** ~25 test cases · Estimated effort: **~20–28 hours**
+### P0 Tests (<15 min)
 
----
+**Purpose**: Critical path validation
 
-### P3 (Low)
+- [ ] Disallowed IP (incl. spoofed `X-Forwarded-For`) is denied before auth (API/middleware).
+- [ ] Operator suspends then reactivates a company; only that `company_id` changes (E2E + API).
+- [ ] Illegal state transition rejected; tier change isolates to target tenant (API).
+- [ ] Dashboard MRR & active-companies values match `admin` schema MV (E2E data-assertion).
 
-**Criteria:** Nice-to-have + Exploratory + Non-blocking polish
+**Total**: 12 scenarios
 
-| Story | Scenario | Test Level | Count | Owner | Notes |
-|:---|:---|:---|:---:|:---|:---|
-| S12.03 | Recharts charts render without visual regression in Firefox and Safari | E2E/Visual | 2 | QA | Browser matrix run (chromium covers CI; cross-browser on schedule) |
-| S12.01 | MV data freshness monitoring: verify dashboard shows "last updated" timestamp within 1hr for usage MV | E2E | 1 | QA | Assert timestamp label on usage dashboard |
-| S12.14 | White-label live preview: visual accuracy of applied branding in preview vs live render | E2E/Visual | 1 | QA | Screenshot comparison of preview vs actual branded page |
-| S12.17 | Chaos: analytics service restart during active MV refresh — assert graceful degradation | Chaos | 2 | Ops | Manual chaos injection; assert system recovers without data loss |
-| S12.18 | Public pages (landing, pricing) include correct meta tags and OG image tags | E2E | 1 | QA | Assert `<meta og:*>` tags present and populated on public routes |
-| S12.10 | Analytics data freshness: usage MV lag < 2h during peak load (monitor metric) | E2E/Monitor | 1 | Ops | Assert `last_refreshed` within threshold during load test |
-| Cross-epic | Full regression of E05/E06/E07/E08 integration points after Epic 12 deployment | E2E | 2 | QA | Smoke test: tender search, proposal generation, billing still operational |
+### P1 Tests (<30 min)
 
-**Total P3:** ~10 test cases · Estimated effort: **~4–6 hours**
+**Purpose**: Important feature coverage
 
----
+- [ ] Every mutating tenant action emits one correct, transactional audit row (API).
+- [ ] Non-operator principals receive 403 across all admin-api routes (API).
+- [ ] MV refresh Beat task succeeds; failure path retries + alerts (Integration).
+- [ ] Charts render with data, empty, and error states (E2E).
 
-## Execution Strategy
+**Total**: 14 scenarios
 
-> **Philosophy**: Run everything in PRs if the total suite completes in under 15 minutes. With Playwright parallelization, 190+ API and E2E tests complete in ~10–12 minutes. Defer only expensive, long-running, or infrastructure-heavy suites to nightly/weekly.
+### P2/P3 Tests (<60 min)
 
-### Every PR
+**Purpose**: Full regression coverage
 
-Run full Playwright functional test suite (P0 + P1):
-- All API tests: tenant isolation, admin RBAC, enterprise key/rate-limit, tier gates, analytics endpoints, admin CRUD, onboarding
-- All E2E browser tests: admin frontend pages, analytics dashboards, wizard flow, API docs page
-- Duration: ~10–15 min with parallelization
+- [ ] Full `admin-api` API regression (`make test-service SVC=admin-api`).
+- [ ] Full admin-portal E2E on Chromium (`make test-e2e-chromium`).
+- [ ] Visual-regression snapshots of KPI dashboards.
 
-### Nightly
-
-Suites too slow or noisy for PR gates:
-- P2 edge case + visual/responsive suite (~20 tests, ~15–20 min)
-- Performance benchmark suite: EXPLAIN ANALYZE, N+1 detection, p95 latency against seeded datasets (~20 min)
-
-### Weekly / Pre-release
-
-Infrastructure-heavy or manual suites:
-- k6/Locust full load test against staging (50–200 VUs, ~45 min)
-- OWASP Top 10 security audit execution (manual + automated, ~4h)
-- Kubernetes network policy verification (manual, ~1h)
-- Chaos engineering suite: service restart, MV refresh failure (~30 min, ops-assisted)
-- Cross-browser matrix: Firefox + Safari chart rendering (P3, ~15 min)
+**Total**: 13 scenarios
 
 ---
 
@@ -470,40 +237,33 @@ Infrastructure-heavy or manual suites:
 
 ### Test Development Effort
 
-| Priority | Scenarios (est.) | Test Cases (est.) | Total Hours (range) | Notes |
-|:---|:---:|:---:|:---:|:---|
-| P0 | 18 | ~43 | ~60–85h | Security/isolation setup; IP mocking; rate limit harness (~20h one-time setup) |
-| P1 | 62 | ~149 | ~85–110h | Standard API + E2E; async polling via `recurse` |
-| P2 | 21 | ~25 | ~18–28h | Edge cases + visual polish |
-| P3 | 7 | ~10 | ~4–6h | Exploratory + chaos (manual) |
-| **Total** | **~108** | **~227** | **~170–230h** | **~22–29 days (1 QA) / ~11–15 days (2 QAs)** |
-
-> Ranges are intentionally wide to account for async complexity (Celery, S3, PDF/DOCX assertions), security harness setup, and fixture creation uncertainty.
+| Priority | Count | Hours/Test | Total Hours | Notes |
+| -------- | ----- | ---------- | ----------- | ----- |
+| P0 | 12 | ~1.5–2.0 | ~16–24 | Security + cross-tenant + data-assertion setup |
+| P1 | 14 | ~1.0–1.5 | ~14–22 | Audit, MV task, authz, render states |
+| P2 | 10 | ~0.5 | ~5–9 | Pagination, perf baseline, responsiveness |
+| P3 | 3 | ~0.25–0.5 | ~1–2 | Visual regression / optional export |
+| **Total** | **39** | **-** | **~36–58** | **~5–8 days (1 QA + dev support)** |
 
 ### Prerequisites
 
-**Test Data Factories:**
-- `TenantDataFactory`: Generates 10k–1M MV records per tenant for performance testing.
-- `AdminUserFactory`: Creates users with admin JWT claims; generates non-admin tokens for negative tests.
-- `ApiKeyFactory`: Generates valid, revoked, and expired enterprise API keys.
-- `ScheduledReportFactory`: Creates company report schedules (weekly/monthly) for delivery testing.
-- `CrawlerRunFactory`: Seeds crawler run history with mixed statuses.
+**Test Data:**
+
+- `CompanyFactory` (multiple companies, varied tier/status) and `UserFactory` (operator + non-operator roles) from root `tests/conftest.py`.
+- Seeded `admin` schema materialized-view rows / aggregate fixtures for deterministic dashboard assertions.
+- `create_company_pair` for cross-tenant isolation negative tests.
 
 **Tooling:**
-- Playwright `apiRequest` — All P0/P1 backend and API assertions.
-- Playwright `recurse` — Async job polling for report generation (S12.09/S12.10) and crawler run status (S12.12).
-- Redis CLI / RedisInsight — Verify per-key rate-limiting token bucket state.
-- k6 or Locust — Load test scripts covering 4 key user flows.
-- reportlab / python-docx assertion utilities — PDF/DOCX structure validation.
-- boto3 / LocalStack — S3 signed URL verification.
+
+- `pytest` markers: `@pytest.mark.api` / `@pytest.mark.integration` for admin-api; Playwright (Chromium) for portal E2E.
+- Trusted-proxy / `X-Forwarded-For` header injection harness for allowlist tests.
+- Celery Beat task trigger (synchronous test invocation) for MV refresh, per system-level testability ask.
 
 **Environment:**
-- Staging: PostgreSQL with materialized view support + unique index support (`CONCURRENTLY`).
-- Redis configured with per-key TTL for rate limiting.
-- Celery + Celery Beat running with 1-minute test schedules (configurable via env).
-- S3-compatible storage (LocalStack in staging, AWS S3 in pre-prod).
-- VPN/IP allowlist mock: staging config accepts a test IP header for admin endpoint testing.
-- SendGrid mock (webhook receiver or mock server) for email delivery assertions.
+
+- `make infra` (postgres + redis) then `make migrate-all` for integration tier.
+- `admin-api` (:8002) + admin app (:3001) running for `api`/E2E tiers.
+- Override `get_db_session` / `get_redis_client` via `app.dependency_overrides`, cleared in `finally`. `clean_redis` flushes DB 1; app uses DB 0. Never `commit()` in tests.
 
 ---
 
@@ -511,134 +271,66 @@ Infrastructure-heavy or manual suites:
 
 ### Pass/Fail Thresholds
 
-| Suite | Pass Rate | Policy |
-|:---|:---|:---|
-| **P0 (Security + Isolation)** | **100%** | Zero exceptions; any failure blocks release |
-| **P0 (Load Test)** | **100%** | p95 < 500ms for read endpoints; documented results required |
-| **P1 (Features)** | **≥95%** | Failures require owner waiver with root cause |
-| **P2/P3** | **≥90%** | Informational; waivers self-serve |
-| **OWASP Checklist** | **100% addressed** | All High findings resolved or risk-accepted in writing |
-
-### Non-Negotiable Requirements
-
-- [ ] **Zero cross-tenant data leakage** — any leak = release blocked (R12.1)
-- [ ] **Zero admin RBAC bypass** — privilege escalation = release blocked (R12.2)
-- [ ] **Enterprise API key lifecycle enforced** — revoked keys must fail 100% (R12.4)
-- [ ] **Analytics p95 < 3s** on staging under 50 concurrent users (R12.3)
-- [ ] **Load test p95 < 500ms** for read endpoints (R12.9)
-- [ ] **All production secrets rotated** before release (R12.10)
-- [ ] **OWASP Top 10** checklist evidence attached to release gate ticket (R12.10)
+- **P0 pass rate**: 100% (no exceptions)
+- **P1 pass rate**: ≥95% (waivers required for failures)
+- **P2/P3 pass rate**: ≥90% (informational)
+- **High-risk mitigations**: 100% complete or approved waivers for R-001, R-002, R-003
 
 ### Coverage Targets
 
-- **Security scenarios (P0 SEC):** 100%
-- **Tier gating (P0 BUS):** 100%
-- **Core analytics endpoints (P1):** ≥80% AC coverage
-- **Admin CRUD (P1):** ≥80% AC coverage
-- **UI components (P2):** ≥60% AC coverage
+- **Critical paths (tenant state, dashboard data integrity)**: ≥90%
+- **Security scenarios (IP allowlist, admin authz, cross-tenant)**: **100%**
+- **`admin-api` service line coverage**: ≥80%
+- **Edge cases**: ≥50%
+
+### Non-Negotiable Requirements
+
+- [x] All P0 tests pass.
+- [x] No high-risk (≥6) item unmitigated (R-001, R-002, R-003).
+- [x] SEC-category tests pass 100% — the admin portal is the platform-wide privilege surface.
+- [x] Every mutating admin action has a verified audit record (R-004).
+- [x] No cross-schema joins introduced; admin-api stays within the `admin` schema.
 
 ---
 
 ## Mitigation Plans
 
-### R12.1: Cross-tenant data leakage in analytics MV (Score: 6)
+### R-001: IP-Allowlist Bypass on Admin Portal (Score: 6)
 
-**Mitigation Strategy:**
-1. Verify `company_id` WHERE clause on all 5 analytics MV queries using `EXPLAIN ANALYZE` output.
-2. Build automated "cross-tenant injection suite": seed data for Tenant A and Tenant B; use Tenant A's JWT to call all `/analytics/*` endpoints with Tenant B's `company_id` injected; assert empty arrays or 404, never Tenant B data.
-3. Add DB-level Row Level Security (RLS) policy on materialized view base tables as defence in depth.
-
-**Owner:** Backend Lead + Security Lead
-**Timeline:** Sprint 13 — gate on story S12.01 and S12.02 completion
-**Status:** Partially Mitigated (S12.01 automation confirms all 5 MVs have `company_id` column at ORM and DB schema levels — 38 tests in `test_analytics_views_models.py`; 30 integration tests in `test_011_migration.py` verify schema. E2E cross-tenant injection suite pending S12.02 endpoint deployment.)
-**Verification:** Automated P0 cross-tenant suite passes 100%; RLS policy in DB migration reviewed by DBA.
-
----
-
-### R12.2: Admin API privilege escalation (Score: 6)
-
-**Mitigation Strategy:**
-1. Implement "Negative Admin Suite": iterate all 15+ admin routes using (a) standard user JWT, (b) no JWT, (c) expired JWT, (d) non-allowlisted IP header. Assert 401/403 on every attempt.
-2. Admin JWT requires explicit `role: admin` claim — verify middleware rejects any JWT without this claim.
-3. IP allowlist middleware tested in integration with configurable test IP.
-
-**Owner:** Security Lead
-**Timeline:** Sprint 13 — gate on story S12.11 completion
+**Mitigation Strategy:** Test the allowlist middleware exhaustively at the middleware/API
+level: allowed IP → pass; disallowed → deny; client-supplied/spoofed `X-Forwarded-For` →
+deny (only the configured trusted proxy hop is honoured); deny-by-default when config is
+empty/missing. Assert middleware is registered **before** auth and route handlers so a
+disallowed IP is rejected without reaching authenticated logic. Pair with R-007 authz as
+defence in depth.
+**Owner:** Security Lead / Backend
+**Timeline:** End of S12.1
 **Status:** Planned
-**Verification:** Negative suite passes 100% — no admin route accessible without admin claim + allowlisted IP.
+**Verification:** Existing `services/admin-api/tests/middleware/test_ip_allowlist.py` extended to cover spoofed-header and ordering cases; 100% pass, zero allow on disallowed source.
 
----
+### R-002: Incorrect / Cross-Tenant Tenant Mutation (Score: 6)
 
-### R12.3: Analytics query latency > 3s p95 (Score: 6)
-
-**Mitigation Strategy:**
-1. Add indexes on all MV filter columns (`sector`, `country`, `date_from`, `date_to`, `company_id`) in S12.01 migration.
-2. Run `EXPLAIN ANALYZE` benchmark test for each analytics endpoint against 500k-row dataset; block story completion if sequential scan detected.
-3. Nightly performance test suite monitors p95 latency regression against baseline.
-
-**Owner:** Backend Lead + Performance Team
-**Timeline:** Sprint 13 (indexes) / Sprint 14 (load test gate)
+**Mitigation Strategy:** Cover the tenant state machine (active↔suspended, reactivate) and
+the tier matrix with API integrity assertions on the exact `company_id` mutated. Reject
+illegal transitions. Add a negative cross-tenant test: an operator action targeting company
+A must leave company B untouched (assert B's status/tier unchanged). Confirm tier change
+emits the tier-cache invalidation event rather than cross-schema writes.
+**Owner:** Backend / QA
+**Timeline:** End of S12.1
 **Status:** Planned
-**Verification:** P0 performance benchmark passes with p95 < 3s at 50 concurrent users on staging.
+**Verification:** State-transition + tier matrix green; cross-tenant collateral-mutation test asserts zero unintended changes; audit row matches the mutated target (links R-004).
 
----
+### R-003: Stale / Incorrect KPI Dashboard Data (Score: 6)
 
-### R12.4: Enterprise API key exposure / rate limit gap (Score: 6)
-
-**Mitigation Strategy:**
-1. API key stored hashed (bcrypt/SHA-256) — test verifies DB value differs from plaintext key.
-2. Revoked key test: create → revoke → retry → assert 401 immediately (no caching of valid state).
-3. Rate limit saturation test: burst N+1 requests above per-tier limit; assert 429 with correct `X-RateLimit-*` headers.
-4. Single-display test: new key shown exactly once in UI; assert subsequent views are masked.
-
-**Owner:** Backend Lead + Security Lead
-**Timeline:** Sprint 14 — gate on story S12.15 completion
+**Mitigation Strategy:** Integration-test the Celery Beat MV refresh task for success and
+failure (retry/backoff + alert) paths, asserting the freshness timestamp advances. E2E
+data-assertion cross-references each headline metric (MRR, active companies) against the
+value queried directly from the `admin` schema MV. Surface and assert a dashboard
+freshness/health indicator so stale data is visible, not silent.
+**Owner:** DEV / QA
+**Timeline:** End of S12.2
 **Status:** Planned
-**Verification:** Full API key lifecycle test suite passes 100%; rate limit saturation test returns 429.
-
----
-
-### R12.5: Materialized view stale/corrupt data (Score: 6)
-
-**Mitigation Strategy:**
-1. Verify unique index exists on each MV before `CONCURRENTLY` refresh (required by PostgreSQL) — integration test asserts `\d view` confirms unique index.
-2. Concurrent refresh stress test: trigger `REFRESH CONCURRENTLY` while 100 parallel read queries run; assert zero read errors and final row counts consistent.
-3. Partial failure simulation: kill Celery refresh worker mid-task; assert last-valid MV state preserved (CONCURRENTLY guarantee).
-
-**Owner:** Backend Lead + DBA
-**Timeline:** Sprint 13 — gate on S12.01 completion
-**Status:** Mitigated (S12.01 automation: `TestE12DB003UniqueIndexes` verifies unique indexes on all 5 MVs; `TestE12DB006RefreshConcurrently` verifies concurrent refresh SQL; `TestE12DB007ConcurrentRead` verifies parallel reads are not blocked during refresh. All 30 integration tests passing.)
-**Verification:** Concurrent refresh integration test passes without read errors; row count pre- and post-refresh consistent.
-
----
-
-### R12.9: Load test failure at target concurrency (Score: 6)
-
-**Mitigation Strategy:**
-1. Identify and resolve N+1 queries in all API endpoints before load test execution (S12.17 story).
-2. Enable response compression (gzip/br) and CDN cache headers for static assets.
-3. Load test scripts cover 4 flows: (1) search, (2) opportunity detail, (3) analytics dashboard, (4) proposal generation. Run against staging at 50/100/200 VUs.
-4. Document p50/p95/p99 latencies; fix bottlenecks before release gate; document residual risks for post-launch monitoring.
-
-**Owner:** Performance Team + Backend Lead
-**Timeline:** Sprint 14 — load test must pass before release gate
-**Status:** Planned
-**Verification:** k6/Locust results documented; p95 < 500ms for read endpoints at 100 VUs confirmed.
-
----
-
-### R12.10: Security audit failures — OWASP / network policy (Score: 6)
-
-**Mitigation Strategy:**
-1. Assign security engineer to execute OWASP Top 10 checklist against staging environment in Sprint 14.
-2. Kubernetes network policy test: attempt cross-namespace service calls; assert blocked by policy.
-3. Secret rotation checklist: DB passwords, JWT signing keys, API keys, S3 credentials — all rotated and stored in secret manager with rotation timestamps.
-4. CORS verification: assert non-whitelisted origins receive 403 on all public endpoints.
-
-**Owner:** Security Team + Platform Lead
-**Timeline:** Sprint 14 — must complete before release gate
-**Status:** Planned
-**Verification:** OWASP checklist attached to release gate PR; all High findings closed or risk-accepted by CTO; secret manager audit log confirms rotation.
+**Verification:** MV refresh task test passes both paths; UI value == DB MV value within freshness window; refresh failure raises an alert and flags staleness in UI.
 
 ---
 
@@ -646,59 +338,38 @@ Infrastructure-heavy or manual suites:
 
 ### Assumptions
 
-1. Staging environment has PostgreSQL with full materialized view support including `CONCURRENTLY` and unique index constraints.
-2. Celery Beat schedules are configurable via environment variable for testing (e.g., `CELERY_ANALYTICS_REFRESH_INTERVAL=60` for 1-minute test cycles).
-3. Redis is running in staging with configurable per-key rate limit windows for integration testing.
-4. S3-compatible storage (LocalStack or AWS staging) available with public URL signing support.
-5. SendGrid is mockable in staging — either via webhook receiver or HTTP stub.
-6. VPN/IP allowlist middleware is configurable in staging to accept a test-mode header (`X-Test-IP: allowlisted`) without requiring actual VPN.
-7. System-level blockers B-01 (Stripe mock), B-02 (tenant seeding API), B-03 (AI determinism) from architecture test design are resolved — these are required for E07/E08 regressions in P3.
+1. VPN/firewall network controls are owned and operated by infra; this epic validates only the application-level allowlist middleware.
+2. MRR / unit-economics *calculations* originate in the billing epics; dashboards display pre-aggregated MV values faithfully.
+3. Materialized views and the Celery Beat refresh schedule are defined as part of S12.2 and applied via `make migrate-all`.
+4. `admin-api` stays strictly within the `admin` schema; all cross-service reads go through APIs or events (no cross-schema joins).
+5. Recharts version is pinned; chart breakage is detectable via render smoke + visual regression.
 
 ### Dependencies
 
-1. **E05/E06 data pipeline** — Materialized view data sourced from tender and opportunity tables seeded by E05/E06. Test data factory must be able to seed `tender`, `opportunity`, and `bid_preparation_logs` records directly.
-2. **E07 proposal export** — S12.09 reuses document generation code from E07; shared module must be extracted and importable before S12.09 implementation begins.
-3. **E08 subscription/billing** — Tier gate middleware from E08 used in S12.06, S12.07, S12.15, S12.16; billing service must be healthy in staging for tier validation.
-4. **Admin JWT claim issuance** — Auth service (E02) must support `role: admin` claim in JWT. Required for all S12.11–S12.14 admin tests.
-5. **PostgreSQL unique indexes on MVs** — Required before `CONCURRENTLY` refresh tests in S12.01. Migration must be deployed before S12.01 P0 suite runs.
+1. Operator + non-operator role fixtures and `CompanyFactory`/`UserFactory` — required before S12.1 API tests.
+2. Synchronous test-trigger for the MV refresh Celery task — required before S12.2 integration tests (per system-level testability ask #5).
+3. Trusted-proxy header configuration documented — required before R-001 allowlist tests.
+4. Seeded `admin`-schema MV/aggregate fixtures — required before S12.2 dashboard data-integrity E2E.
 
 ### Risks to Plan
 
-- **Risk**: Celery Beat schedule drift in staging due to worker restarts during testing.
-  - **Impact**: S12.10 scheduled report delivery tests may be non-deterministic.
-  - **Contingency**: Trigger scheduled jobs manually via admin command; assert task execution rather than scheduler timing.
-
-- **Risk**: LocalStack S3 signed URL TTL behaviour differs from AWS in edge cases.
-  - **Impact**: S12.09 signed URL expiry tests may produce false positives in staging.
-  - **Contingency**: Test TTL assertion in pre-prod (AWS) environment; staging test focuses on URL generation and accessibility.
-
-- **Risk**: Load test environment (staging) has different hardware profile from production, risking misleading p95 results.
-  - **Impact**: Load test gate pass may not reflect production behaviour at scale.
-  - **Contingency**: Document staging hardware specs alongside results; schedule production load test canary in Sprint 15.
+- **Risk**: MV refresh has no synchronous test-trigger and tests must wait for the beat interval.
+  - **Impact**: S12.2 integration tests slow/flaky.
+  - **Contingency**: Invoke the Celery task function directly in-test (call the task, not the schedule), or add a test-only trigger endpoint guarded by env flag.
+- **Risk**: Allowlist trusted-proxy semantics differ between local/CI and the real ingress.
+  - **Impact**: Tests pass locally but the real proxy hop is mis-trusted in prod.
+  - **Contingency**: Pin the trusted-proxy hop count/config in test, and add a staging smoke from a known-disallowed source before release.
+- **Risk**: Dashboard fixtures diverge from real MV shape.
+  - **Impact**: Data-integrity E2E green but real dashboards wrong.
+  - **Contingency**: Build fixtures by running the actual MV refresh against seeded base data rather than hand-crafting aggregate rows.
 
 ---
 
-## Interworking & Regression
+## Follow-on Workflows (Manual)
 
-| Service/Component | Impacted By Epic 12 | Regression Scope |
-|:---|:---|:---|
-| **Auth Service (E02)** | Admin JWT claim (`role: admin`) required for S12.11–S12.14. | Existing E02 JWT issuance and token refresh tests must still pass. |
-| **Notification Service** | Celery Beat tasks for MV refresh and report delivery share worker pool. | E09 notification delivery smoke test must pass after Epic 12 deployment. |
-| **Analytics Service (new)** | Core new service; materialized view refresh and query endpoints. | Full P0/P1 suite; monitor for task queue contention with E09. |
-| **Proposal Service (E07)** | S12.09 reuses document generation code from E07 proposal export. | E07 proposal PDF export regression must pass (shared code path). |
-| **Billing Service (E08)** | Tier gate middleware used by competitor/pipeline/enterprise API. | E08 subscription upgrade/downgrade smoke tests must still pass. |
-| **S3 Storage** | Report artifacts stored and retrieved; signed URLs generated. | Verify S3 connectivity and upload/download in pre-deployment smoke test. |
-| **Enterprise API Gateway** | New `api.eusolicit.com/v1/*` routing layer added. | Existing Client API endpoints unaffected — regression smoke test on `/api/v1/*`. |
-| **Redis** | Rate limiting token bucket added alongside session cache. | Verify existing session management unaffected; Redis key namespace isolation. |
-
----
-
-## Follow-on Workflows
-
-- Run `*atdd` (bmad-testarch-atdd) to generate failing P0 acceptance tests for S12.01–S12.02 (tenant isolation + MV safety) — recommended first ATDD target.
-- Run `*automate` (bmad-testarch-automate) after S12.09 and S12.10 are implemented to expand async report coverage.
-- Run `*nfr` (bmad-testarch-nfr) in Sprint 14 to re-assess PERF and SEC NFRs against load test results.
-- Run `*trace` (bmad-testarch-trace) post-sprint to verify traceability between all 14 AC-level acceptance criteria and test cases.
+- Run `*atdd` to generate failing P0 tests (IP allowlist deny, tenant suspend/reactivate isolation, dashboard data-assertion).
+- Run `*automate` for broader coverage once S12.1/S12.2 implementation exists.
+- Run `*trace` after implementation to build the Epic-12 traceability matrix and gate decision.
 
 ---
 
@@ -706,9 +377,23 @@ Infrastructure-heavy or manual suites:
 
 **Test Design Approved By:**
 
-- [ ] Product Manager: — Date: —
-- [ ] Tech Lead: — Date: —
-- [ ] QA Lead: — Date: —
+- [ ] Product Manager: {name} Date: {date}
+- [ ] Tech Lead: {name} Date: {date}
+- [ ] QA Lead: {name} Date: {date}
+
+**Comments:**
+
+---
+
+## Interworking & Regression
+
+| Service/Component | Impact | Regression Scope |
+| ----------------- | ------ | ---------------- |
+| **admin-api (:8002, `admin` schema)** | New tenant-management + KPI endpoints, IP-allowlist middleware, audit writes. | Existing `admin-api` integration suite (stage-mapping, pricing-tiers admin-only, tenant_service) must stay green. |
+| **client-api (:8001)** | Tier change triggers tier-cache invalidation consumed by client-api. | Tier-gating / subscription tests must pass after a tier change made from admin. |
+| **Audit trail (shared/admin)** | New mutating actions must produce audit rows. | Existing audit-trail middleware tests must pass; no schema bleed. |
+| **Notification (:8005)** | MV-refresh failure / suspension may emit alerts/notifications. | Event-bus consumer tests unaffected; new alert path additive. |
+| **Admin Next.js app (:3001)** | New tenant-management + dashboard routes. | `pnpm lint`/`type-check`, locale routing smoke, existing admin E2E. |
 
 ---
 
@@ -716,26 +401,20 @@ Infrastructure-heavy or manual suites:
 
 ### Knowledge Base References
 
-- `risk-governance.md` — Risk classification, scoring (P×I), and gate decision framework
-- `probability-impact.md` — Risk scoring methodology (1–3 scale)
-- `test-levels-framework.md` — Test level selection (Unit / Integration / API / E2E)
-- `test-priorities-matrix.md` — P0–P3 prioritization rules and decision tree
-- `recurse.md` — Async polling pattern for Celery job status validation
-- `api-request.md` — Playwright `apiRequest` usage for backend contract testing
+- `risk-governance.md` - Risk classification framework
+- `probability-impact.md` - Risk scoring methodology (P×I, 1–3 scale)
+- `test-levels-framework.md` - Test level selection (E2E / API / Integration / Unit)
+- `test-priorities-matrix.md` - P0–P3 prioritization
 
 ### Related Documents
 
-- PRD: `eusolicit-docs/EU_Solicit_PRD_v1.md`
-- Epic: `eusolicit-docs/planning-artifacts/epic-12-analytics-admin-platform.md`
-- Architecture: `eusolicit-docs/EU_Solicit_Solution_Architecture_v4.md`
-- System-level Test Design (Architecture): `eusolicit-docs/test-artifacts/test-design-architecture.md`
-- System-level Test Design (QA): `eusolicit-docs/test-artifacts/test-design-qa.md`
-- Traceability Matrix: `eusolicit-docs/test-artifacts/traceability-matrix.md`
-- NFR Report: `eusolicit-docs/test-artifacts/nfr-report.md`
+- Epic: `eusolicit-docs/planning-artifacts/epics/epic-12-admin-platform.md`
+- System-level (architecture): `eusolicit-docs/test-artifacts/test-design-architecture.md` (inherits R-002 cross-tenant, two-tier RBAC, R-014 HMAC discipline)
+- System-level (QA): `eusolicit-docs/test-artifacts/test-design-qa.md`
+- Project context: `eusolicit-docs/project-context.md`
 
 ---
 
-**Generated by**: BMad TEA Agent — Test Architect Module
+**Generated by**: BMad TEA Agent - Test Architect Module
 **Workflow**: `bmad-testarch-test-design`
 **Version**: 4.0 (BMad v6)
-**Mode**: Epic-Level (Phase 4)
